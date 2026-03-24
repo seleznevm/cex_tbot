@@ -23,3 +23,4 @@
 - Added in-memory execution state snapshots plus a combined trade timeline builder that merges execution events with position-state history.
 - Added file-backed JSONL persistence for execution events and position snapshots, including reload tests to verify continuity across process restarts.
 - Added approval→execution handoff service so approved proposals can move directly into pre-execution checks and simulated execution with resulting status synchronized back to the proposal store.
+- Added file-backed proposal/approval persistence and fixed proposal status replay so reloaded stores preserve later status transitions rather than only initial inserts.

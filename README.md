@@ -135,5 +135,5 @@ Execution/simulator foundation now includes:
 
 - richer partial-close accounting per target leg
 - end-to-end operator timeline views
-- file-backed proposal/approval persistence for full continuity
 - higher-level operator workflows on top of approval→execution handoff
+- file-backed unified workflow/session storage around the full trade lifecycle
