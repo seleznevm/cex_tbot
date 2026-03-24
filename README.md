@@ -40,9 +40,22 @@ tests/
 python3 -m unittest discover -s tests -t . -v
 ```
 
+## What is now implemented in Phase 2
+
+- deterministic universe refresh from raw instrument metadata
+- materialization into whitelist records with refresh timestamps
+- eligibility filtering for:
+  - active status
+  - USDT quote asset
+  - listing age threshold
+  - spread threshold
+  - non-zero volume / open interest / book depth
+- top-N whitelist ranking by liquidity score
+- static in-memory sources/providers for repeatable tests
+
 ## Next steps
 
-- market metadata adapters
-- whitelist refresh implementation
-- eligibility scoring rules
+- real market metadata adapter
+- Gate instrument fetcher
 - proposal validation and risk engine
+- journal/state persistence

@@ -8,6 +8,19 @@ from cex_tbot.shared import ensure_utc, utc_now
 
 
 @dataclass(frozen=True)
+class RawInstrument:
+    symbol: str
+    quote_asset: str = "USDT"
+    status: str = "active"
+    is_new_listing: bool = False
+    listing_age_hours: int = 0
+    volume_24h: float = 0.0
+    open_interest: float = 0.0
+    spread_bps: float = 0.0
+    top_book_depth: float = 0.0
+
+
+@dataclass(frozen=True)
 class WhitelistedInstrument:
     symbol: str
     exchange: Exchange = Exchange.GATE

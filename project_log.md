@@ -5,3 +5,4 @@
 - Scope aligned to requested Phase 1–2 skeleton only.
 - Reference handoff lives outside repo in workspace docs (`agents/nova/trading-bot-implementation-brief.md`).
 - This repo commit establishes project structure, config/env loading, shared enums/reason codes, and universe/eligibility skeleton.
+- Follow-up implementation extends Phase 2 with deterministic universe refresh, raw-instrument materialization, eligibility filters, and top-N whitelist ranking.
