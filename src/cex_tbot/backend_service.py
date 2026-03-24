@@ -9,6 +9,7 @@ from cex_tbot.decision_contracts import TradeProposal
 from cex_tbot.execution import ExecutionOrchestrator, TradeTimelineBuilder
 from cex_tbot.handoff import ApprovalExecutionHandoff
 from cex_tbot.operator_router import OperatorCommandRouter, RenderedResponse
+from cex_tbot.read_models import QueryService, TradeDetailView, TradeListItem
 from cex_tbot.reporting import TradeReport, TradeReportBuilder
 from cex_tbot.review_cards import ReviewCardBuilder
 from cex_tbot.risk_engine import PortfolioState, RiskEngine
@@ -30,6 +31,7 @@ class TradingBackendService:
     review_cards: ReviewCardBuilder
     summary_builder: SessionSummaryBuilder
     timeline_builder: TradeTimelineBuilder
+    query_service: QueryService
 
     @classmethod
     def from_session(
@@ -61,6 +63,7 @@ class TradingBackendService:
             review_cards=review_cards,
             summary_builder=SessionSummaryBuilder(),
             timeline_builder=timeline_builder,
+            query_service=QueryService(session, timeline_builder),
         )
 
     def submit_proposal(self, proposal: TradeProposal) -> TradeProposal:
@@ -100,3 +103,9 @@ class TradingBackendService:
 
     def get_session_summary(self) -> SessionSummary:
         return self.summary_builder.build(self.session)
+
+    def list_trades(self) -> list[TradeListItem]:
+        return self.query_service.list_trades()
+
+    def get_trade_detail(self, proposal_id: str) -> TradeDetailView:
+        return self.query_service.get_trade_detail(proposal_id)

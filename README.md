@@ -171,8 +171,10 @@ The repo now also includes a backend facade service that exposes a simpler API f
 - run operator command
 - get trade report
 - get session summary
+- list trades
+- get trade detail
 
-This is the intended bridge layer for future CLI, bot, or dashboard integrations.
+It also includes a query/read-model layer intended for future CLI, bot, or dashboard integrations.
 
 ## Next steps
 

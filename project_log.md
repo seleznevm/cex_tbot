@@ -32,3 +32,4 @@
 - Added file-backed session bundle so the full session stack (proposal, approval, execution, state, operator transcript) can be reopened from one base directory and replayed after restart.
 - Added session summary builder to produce dashboard-like textual rollups across proposal statuses, approvals, execution activity, state snapshots, and operator command counts.
 - Added backend facade service that wraps session, workflow, router, reporting, and summary access behind a simpler integration-oriented API for future clients.
+- Added read-model/query layer with trade listing and detail views so clients can consume session data without digging through low-level stores.

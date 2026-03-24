@@ -7,6 +7,7 @@ from .config import BotConfig, load_config
 from .handoff import ApprovalExecutionHandoff, ApprovalExecutionResult
 from .operator_router import OperatorCommandRouter, RenderedResponse
 from .proposal_store import InMemoryProposalStore
+from .read_models import QueryService, TradeDetailView, TradeListItem
 from .reporting import TradeReport, TradeReportBuilder
 from .review_cards import ReviewCard, ReviewCardBuilder
 from .risk_engine import PendingRiskBook, PortfolioState, RiskEngine, RiskEvaluation
@@ -27,6 +28,9 @@ __all__ = [
     "InMemoryProposalStore",
     "OperatorCommandRouter",
     "RenderedResponse",
+    "QueryService",
+    "TradeListItem",
+    "TradeDetailView",
     "TradeReport",
     "TradeReportBuilder",
     "ReviewCard",
