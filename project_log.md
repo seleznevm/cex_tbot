@@ -22,3 +22,4 @@
 - Added in-memory execution journal and timeline events for pre-check, fills, TP1, TP2, and stop-trigger transitions.
 - Added in-memory execution state snapshots plus a combined trade timeline builder that merges execution events with position-state history.
 - Added file-backed JSONL persistence for execution events and position snapshots, including reload tests to verify continuity across process restarts.
+- Added approval→execution handoff service so approved proposals can move directly into pre-execution checks and simulated execution with resulting status synchronized back to the proposal store.

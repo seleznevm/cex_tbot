@@ -134,6 +134,6 @@ Execution/simulator foundation now includes:
 ## Next steps
 
 - richer partial-close accounting per target leg
-- approval + execution integration
 - end-to-end operator timeline views
 - file-backed proposal/approval persistence for full continuity
+- higher-level operator workflows on top of approval→execution handoff
