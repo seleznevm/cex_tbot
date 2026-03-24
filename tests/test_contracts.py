@@ -2,6 +2,7 @@ from datetime import UTC, datetime, timedelta
 import unittest
 
 from cex_tbot.decision_contracts import EntrySplitLeg, TradeProposal
+from cex_tbot.enums import TradeDirection
 
 
 class ContractTests(unittest.TestCase):
@@ -14,6 +15,7 @@ class ContractTests(unittest.TestCase):
             market_context_id="ctx_1",
             symbol="BTC_USDT",
             timeframe="15m",
+            direction=TradeDirection.LONG,
             entry_zone_min=99.0,
             entry_zone_max=100.0,
             entry_split=[EntrySplitLeg(1, 100.0, 100.0, 1.0, now + timedelta(minutes=15))],

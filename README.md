@@ -69,8 +69,9 @@ Implemented foundation pieces:
 - proposal validation against universe eligibility and confidence thresholds
 - split-entry total checks
 - leg price checks against entry zone
-- stop-loss sanity checks versus entry zone
-- basic take-profit ladder progression checks
+- direction-aware stop-loss geometry for LONG/SHORT
+- direction-aware take-profit ladder checks
+- minimum reward sanity versus stop distance
 - portfolio/risk evaluation against:
   - max open positions
   - max daily drawdown
@@ -79,9 +80,20 @@ Implemented foundation pieces:
 - pre-execution recheck for expiry/freshness
 - pending risk reservation book skeleton
 
+## Phase 4 status
+
+Initial approval-flow foundation added:
+- strict parser for:
+  - `APPROVE <proposal_id>`
+  - `REJECT <proposal_id>`
+  - `MODIFY <proposal_id>: <changes>`
+- approval decision recording
+- status transition mapping for approve/reject/modify
+- invalid free-text commands stay non-strict and do not transition state
+
 ## Next steps
 
-- richer semantic validation for stop loss / take-profit geometry
-- pre-execution recheck logic
-- approval flow state machine
+- supersede / revalidation workflow for MODIFY
+- approval state storage
+- review card generation
 - journal/state persistence

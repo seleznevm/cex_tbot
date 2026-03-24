@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Sequence
 
-from cex_tbot.enums import ContractType, Exchange, MarketType, NoTradeReasonCode
+from cex_tbot.enums import ContractType, Exchange, MarketType, NoTradeReasonCode, ProposalStatus, TradeDirection
 from cex_tbot.shared import ensure_utc, new_id, utc_now
 
 
@@ -30,6 +30,7 @@ class TradeProposal:
     market_context_id: str
     symbol: str
     timeframe: str
+    direction: TradeDirection
     entry_zone_min: float
     entry_zone_max: float
     entry_split: Sequence[EntrySplitLeg]
@@ -51,6 +52,7 @@ class TradeProposal:
     exchange: Exchange = Exchange.GATE
     market_type: MarketType = MarketType.USDT_PERPETUAL
     contract_type: ContractType = ContractType.PERPETUAL
+    status: ProposalStatus = ProposalStatus.GENERATED
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "created_at", ensure_utc(self.created_at))
@@ -75,6 +77,22 @@ class NoTradeDecision:
     liquidity_check: str
     data_freshness_ms: int
     decision_id: str = field(default_factory=lambda: new_id("no_trade"))
+    created_at: datetime = field(default_factory=utc_now)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "created_at", ensure_utc(self.created_at))
+
+
+@dataclass(frozen=True)
+class ApprovalDecision:
+    proposal_id: str
+    actor: str
+    action: str
+    raw_command: str
+    parsed_command: str
+    is_strict_match: bool
+    reason_text: str | None = None
+    approval_decision_id: str = field(default_factory=lambda: new_id("approval"))
     created_at: datetime = field(default_factory=utc_now)
 
     def __post_init__(self) -> None:
