@@ -57,6 +57,7 @@ python3 -m unittest discover -s tests -t . -v
 - market snapshot normalization from raw ticker input
 - deterministic symbol eligibility query with stale/not-found handling
 - placeholder config plumbing for `GATE_DEMO_API`
+- Gate metadata adapter skeleton for raw instrument normalization
 
 ## Next steps
 
