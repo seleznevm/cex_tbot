@@ -108,9 +108,20 @@ Approval-flow foundation now includes:
 - anti-averaging-down rule added to risk consistency checks
 - review cards added for approval/revalidation flow
 
+## Phase 5 status
+
+Initial execution/simulator foundation added:
+- simulator position model
+- fill events
+- split-leg fill application
+- protective level processing for stop / take-profit
+- execution orchestrator with pre-execution risk check
+- expired proposal rejection at execution time using actual current time
+
 ## Next steps
 
-- Phase 5 execution/simulator work
+- richer partial-close / TP1/TP2 lifecycle
+- fee/slippage model
 - append-only journal wiring
 - persistent proposal/state storage
 - approval + execution integration

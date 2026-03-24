@@ -17,3 +17,4 @@
 - Added direction-aware proposal geometry (LONG/SHORT) and started Phase 4 with strict approval command parsing plus proposal status transition mapping.
 - Completed Phase 4 foundation with in-memory proposal store, approval history tracking, and MODIFY supersede/revalidation flow that creates replacement proposals with incremented versioning.
 - Closed remaining Phase 2–4 tails with market snapshot freshness checks, universe refresh policy, stricter risk consistency checks, anti-averaging-down rule, and operator review card generation.
+- Started Phase 5 with simulator models, fill application, protective-level processing, and execution orchestrator foundation; fixed pre-execution expiry check to use real current time instead of proposal creation time.
