@@ -3,7 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from cex_tbot.approval_flow import ApprovalFlow
+from cex_tbot.approval_flow import ApprovalFlow, ApprovalApplyResult
+from cex_tbot.decision_contracts import TradeProposal
 from cex_tbot.execution import TradeTimelineBuilder
 from cex_tbot.handoff import ApprovalExecutionHandoff, ApprovalExecutionResult
 from cex_tbot.reporting import TradeReport, TradeReportBuilder
@@ -14,7 +15,8 @@ from cex_tbot.shared import utc_now
 
 @dataclass(frozen=True)
 class WorkflowResult:
-    approval_execution: ApprovalExecutionResult
+    approval_execution: ApprovalExecutionResult | None = None
+    approval_only: ApprovalApplyResult | None = None
     report: TradeReport | None = None
 
 
@@ -51,3 +53,32 @@ class TradeWorkflowService:
         timeline = self.timeline_builder.build(proposal_id)
         report = self.report_builder.build(review_card, timeline, result.execution.position)
         return WorkflowResult(approval_execution=result, report=report)
+
+    def approve_only(self, actor: str, raw_text: str) -> WorkflowResult:
+        result = self.approval_flow.apply_command(actor, raw_text)
+        report = None
+        if result.proposal_id != "UNKNOWN" and result.resulting_status is not None:
+            proposal = self.approval_flow.store.require(result.proposal_id)
+            report = self.report_builder.build(
+                self.review_cards.build(proposal),
+                self.timeline_builder.build(result.proposal_id),
+                None,
+            )
+        return WorkflowResult(approval_only=result, report=report)
+
+    def reject_and_report(self, actor: str, raw_text: str) -> WorkflowResult:
+        return self.approve_only(actor, raw_text)
+
+    def modify_revalidate_and_report(
+        self,
+        actor: str,
+        raw_text: str,
+        replacement: TradeProposal,
+    ) -> WorkflowResult:
+        result = self.approval_flow.revalidate_modified_proposal(actor, raw_text, replacement)
+        report = result.review_card and self.report_builder.build(
+            result.review_card,
+            self.timeline_builder.build(result.proposal_id),
+            None,
+        )
+        return WorkflowResult(approval_only=result, report=report)

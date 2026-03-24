@@ -26,3 +26,4 @@
 - Added file-backed proposal/approval persistence and fixed proposal status replay so reloaded stores preserve later status transitions rather than only initial inserts.
 - Added operator-facing trade report builder that combines review card, execution timeline, and latest position state into a readable trade summary.
 - Added high-level workflow service that can approve, execute, and generate a trade report in one orchestrated path.
+- Expanded workflow branches so operators can now choose approve-only, reject+report, or modify+revalidate+report without manually stitching lower-level services.

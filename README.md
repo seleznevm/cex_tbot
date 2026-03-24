@@ -135,12 +135,11 @@ Execution/simulator foundation now includes:
 
 The repo now includes:
 - a text report builder that combines review card, execution timeline, and latest position state
-- a workflow service that can run:
-  - approve
-  - execute
-  - report
-
-as one higher-level flow.
+- a workflow service with higher-level branches:
+  - approve only
+  - approve + execute + report
+  - reject + report
+  - modify + revalidate + report
 
 ## Next steps
 
