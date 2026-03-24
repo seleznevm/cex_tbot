@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 import unittest
 
 from cex_tbot.config import BotConfig
-from cex_tbot.market_data import GateInstrumentRecord
+from cex_tbot.market_data import GateInstrumentRecord, StaticGateInstrumentFetcher
 from cex_tbot.universe import InMemoryUniverseSnapshotRepository, RawInstrument, UniverseService
 from cex_tbot.universe.orchestrator import UniverseRefreshOrchestrator
 
@@ -72,6 +72,31 @@ class UniverseOrchestratorTests(unittest.TestCase):
         self.assertEqual(result.rejected_count, 0)
         self.assertEqual(result.top_whitelist_symbols, ("ETH_USDT",))
         self.assertIsNotNone(orchestrator.repository.latest())
+
+    def test_refresh_from_fetcher_uses_fetch_contract(self) -> None:
+        orchestrator = UniverseRefreshOrchestrator(
+            service=UniverseService(BotConfig(whitelist_size=2)),
+            repository=InMemoryUniverseSnapshotRepository(),
+        )
+        fetcher = StaticGateInstrumentFetcher.from_iterable(
+            [
+                GateInstrumentRecord(
+                    name="BTC_USDT",
+                    trade_status="tradable",
+                    listing_age_hours=300,
+                    volume_24h=2_000_000,
+                    open_interest=1_500_000,
+                    spread_bps=1.0,
+                    top_book_depth=300_000,
+                )
+            ]
+        )
+
+        result = orchestrator.refresh_from_fetcher(fetcher, snapshot_id="snap_003")
+
+        self.assertEqual(result.snapshot_id, "snap_003")
+        self.assertEqual(result.eligible_count, 1)
+        self.assertEqual(result.top_whitelist_symbols, ("BTC_USDT",))
 
 
 if __name__ == "__main__":

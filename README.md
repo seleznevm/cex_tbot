@@ -60,6 +60,7 @@ python3 -m unittest discover -s tests -t . -v
 - Gate metadata adapter skeleton for raw instrument normalization
 - append-only in-memory universe snapshot repository skeleton
 - universe refresh orchestrator skeleton with result contract
+- Gate fetch client contract with deterministic static fetcher
 
 ## Next steps
 

@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 from cex_tbot.enums import EligibilityStatus
+from cex_tbot.market_data.gate_client import GateInstrumentFetcher
 from cex_tbot.market_data.gate_metadata import GateInstrumentMetadataAdapter, GateInstrumentRecord
 from cex_tbot.shared import ensure_utc, utc_now
 from cex_tbot.universe.repository import InMemoryUniverseSnapshotRepository, UniverseSnapshot
@@ -87,6 +88,21 @@ class UniverseRefreshOrchestrator:
             rejected_count=len([item for item in refreshed if item.eligibility_status != EligibilityStatus.ELIGIBLE]),
             top_whitelist_symbols=tuple(item.symbol for item in ranked),
             snapshot=snapshot,
+        )
+
+    def refresh_from_fetcher(
+        self,
+        fetcher: GateInstrumentFetcher,
+        *,
+        snapshot_id: str,
+        refresh_reason: str = "scheduled_refresh",
+        created_at: datetime | None = None,
+    ) -> UniverseRefreshResult:
+        return self.refresh_from_gate_records(
+            fetcher.fetch_instruments(),
+            snapshot_id=snapshot_id,
+            refresh_reason=refresh_reason,
+            created_at=created_at,
         )
 
     def _normalize_records(self, records: list[GateInstrumentRecord]) -> list[RawInstrument]:
