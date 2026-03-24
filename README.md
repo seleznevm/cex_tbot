@@ -82,18 +82,25 @@ Implemented foundation pieces:
 
 ## Phase 4 status
 
-Initial approval-flow foundation added:
+Approval-flow foundation now includes:
 - strict parser for:
   - `APPROVE <proposal_id>`
   - `REJECT <proposal_id>`
   - `MODIFY <proposal_id>: <changes>`
 - approval decision recording
-- status transition mapping for approve/reject/modify
+- proposal status transition mapping for approve/reject/modify
+- in-memory proposal store
+- approval history per proposal
+- `MODIFY` revalidation path that:
+  - supersedes old proposal
+  - inserts replacement proposal
+  - bumps proposal version
+  - returns replacement to `PENDING_APPROVAL`
 - invalid free-text commands stay non-strict and do not transition state
 
 ## Next steps
 
-- supersede / revalidation workflow for MODIFY
-- approval state storage
 - review card generation
-- journal/state persistence
+- append-only journal wiring
+- persistent proposal/state storage
+- approval + execution integration
