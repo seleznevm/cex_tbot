@@ -59,6 +59,7 @@ python3 -m unittest discover -s tests -t . -v
 - placeholder config plumbing for `GATE_DEMO_API`
 - Gate metadata adapter skeleton for raw instrument normalization
 - append-only in-memory universe snapshot repository skeleton
+- universe refresh orchestrator skeleton with result contract
 
 ## Next steps
 

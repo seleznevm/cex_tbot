@@ -9,3 +9,4 @@
 - Added market-data normalization skeleton, placeholder `GATE_DEMO_API` config wiring, and deterministic symbol eligibility query behavior with stale/not-found handling.
 - Added Gate metadata adapter skeleton to normalize exchange instrument records into deterministic Phase 2 raw-universe inputs.
 - Added append-only in-memory universe snapshot repository skeleton for storing and querying latest universe state without introducing persistence complexity yet.
+- Added universe refresh orchestrator skeleton and refresh result contract to connect Gate metadata normalization, universe evaluation, ranking, and snapshot storage into one Phase 2 flow.
