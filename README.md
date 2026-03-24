@@ -63,9 +63,20 @@ python3 -m unittest discover -s tests -t . -v
 - Gate fetch client contract with deterministic static fetcher
 - typed eligibility reason taxonomy for controlled universe decisions
 
+## Phase 3 status
+
+Implemented foundation pieces:
+- proposal validation against universe eligibility and confidence thresholds
+- split-entry total checks
+- portfolio/risk evaluation against:
+  - max open positions
+  - max daily drawdown
+  - aggregate open risk including pending reservations
+- pending risk reservation book skeleton
+
 ## Next steps
 
-- real market metadata adapter
-- Gate instrument fetcher
-- proposal validation and risk engine
+- richer semantic validation for stop loss / take-profit geometry
+- pre-execution recheck logic
+- approval flow state machine
 - journal/state persistence
