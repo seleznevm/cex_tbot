@@ -144,6 +144,8 @@ The repo now includes:
   - parse approval commands
   - choose the matching workflow branch
   - render plain or Telegram-friendly output
+- operator transcript / audit entries for command outcomes
+- a unified in-memory session store for proposal + execution + operator layers
 
 ## Next steps
 

@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from cex_tbot.approval_flow import ApprovalFlow
+from cex_tbot.audit import AuditEntry, InMemoryOperatorTranscript
 from cex_tbot.decision_contracts import TradeProposal
 from cex_tbot.enums import ApprovalAction
 from cex_tbot.reporting import TradeReport
@@ -19,9 +20,10 @@ class RenderedResponse:
 
 
 class OperatorCommandRouter:
-    def __init__(self, workflow: TradeWorkflowService, approval_flow: ApprovalFlow) -> None:
+    def __init__(self, workflow: TradeWorkflowService, approval_flow: ApprovalFlow, transcript: InMemoryOperatorTranscript | None = None) -> None:
         self.workflow = workflow
         self.approval_flow = approval_flow
+        self.transcript = transcript or InMemoryOperatorTranscript()
 
     def route(
         self,
@@ -37,7 +39,9 @@ class OperatorCommandRouter:
         effective_now = now or utc_now()
         parsed = self.approval_flow.parse_command(raw_text)
         if not parsed.is_valid or parsed.command is None:
-            return RenderedResponse(render_mode, f"Invalid command: {parsed.reason}")
+            rendered = RenderedResponse(render_mode, f"Invalid command: {parsed.reason}")
+            self.transcript.append(AuditEntry(actor=actor, raw_command=raw_text, outcome="INVALID_COMMAND"))
+            return rendered
 
         if parsed.command.action == ApprovalAction.APPROVE:
             result = (
@@ -45,19 +49,29 @@ class OperatorCommandRouter:
                 if execute_on_approve
                 else self.workflow.approve_only(actor, raw_text)
             )
-            return RenderedResponse(render_mode, self.render(result, render_mode))
+            rendered = RenderedResponse(render_mode, self.render(result, render_mode))
+            self.transcript.append(AuditEntry(actor=actor, raw_command=raw_text, outcome="APPROVE", proposal_id=parsed.command.proposal_id))
+            return rendered
 
         if parsed.command.action == ApprovalAction.REJECT:
             result = self.workflow.reject_and_report(actor, raw_text)
-            return RenderedResponse(render_mode, self.render(result, render_mode))
+            rendered = RenderedResponse(render_mode, self.render(result, render_mode))
+            self.transcript.append(AuditEntry(actor=actor, raw_command=raw_text, outcome="REJECT", proposal_id=parsed.command.proposal_id))
+            return rendered
 
         if parsed.command.action == ApprovalAction.MODIFY:
             if replacement is None:
-                return RenderedResponse(render_mode, "MODIFY requires replacement proposal")
+                rendered = RenderedResponse(render_mode, "MODIFY requires replacement proposal")
+                self.transcript.append(AuditEntry(actor=actor, raw_command=raw_text, outcome="MODIFY_MISSING_REPLACEMENT", proposal_id=parsed.command.proposal_id))
+                return rendered
             result = self.workflow.modify_revalidate_and_report(actor, raw_text, replacement)
-            return RenderedResponse(render_mode, self.render(result, render_mode))
+            rendered = RenderedResponse(render_mode, self.render(result, render_mode))
+            self.transcript.append(AuditEntry(actor=actor, raw_command=raw_text, outcome="MODIFY", proposal_id=parsed.command.proposal_id))
+            return rendered
 
-        return RenderedResponse(render_mode, "Unsupported command")
+        rendered = RenderedResponse(render_mode, "Unsupported command")
+        self.transcript.append(AuditEntry(actor=actor, raw_command=raw_text, outcome="UNSUPPORTED", proposal_id=parsed.command.proposal_id))
+        return rendered
 
     def render(self, result: WorkflowResult, mode: str) -> str:
         if result.report is None:
