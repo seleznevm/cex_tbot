@@ -118,11 +118,17 @@ Execution/simulator foundation now includes:
 - stop-loss handling
 - realized PnL / remaining size / total fees tracking
 - execution orchestrator with pre-execution risk check
+- execution journal for:
+  - pre-execution check
+  - fills
+  - TP1 partial close
+  - TP2 full close
+  - stop trigger
 - expired proposal rejection at execution time using actual current time
 
 ## Next steps
 
 - richer partial-close accounting per target leg
-- append-only journal wiring
-- persistent proposal/state storage
+- persistent execution/state storage
 - approval + execution integration
+- end-to-end trade timeline views
