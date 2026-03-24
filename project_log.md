@@ -21,3 +21,4 @@
 - Expanded Phase 5 with TP1 partial-close / TP2 full-close lifecycle, fee/slippage-aware fills, and tracked realized PnL plus remaining position size.
 - Added in-memory execution journal and timeline events for pre-check, fills, TP1, TP2, and stop-trigger transitions.
 - Added in-memory execution state snapshots plus a combined trade timeline builder that merges execution events with position-state history.
+- Added file-backed JSONL persistence for execution events and position snapshots, including reload tests to verify continuity across process restarts.

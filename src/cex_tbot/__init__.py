@@ -5,6 +5,7 @@ from .config import BotConfig, load_config
 from .proposal_store import InMemoryProposalStore
 from .review_cards import ReviewCard, ReviewCardBuilder
 from .risk_engine import PendingRiskBook, PortfolioState, RiskEngine, RiskEvaluation
+from .storage import FileExecutionJournal, FileExecutionStateStore
 
 __all__ = [
     "ApprovalFlow",
@@ -13,6 +14,8 @@ __all__ = [
     "InMemoryProposalStore",
     "ReviewCard",
     "ReviewCardBuilder",
+    "FileExecutionJournal",
+    "FileExecutionStateStore",
     "PendingRiskBook",
     "PortfolioState",
     "RiskEngine",

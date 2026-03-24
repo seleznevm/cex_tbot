@@ -126,11 +126,14 @@ Execution/simulator foundation now includes:
   - stop trigger
 - execution state snapshots via in-memory state store
 - combined trade timeline builder (events + snapshots)
+- file-backed JSONL persistence for:
+  - execution events
+  - position state snapshots
 - expired proposal rejection at execution time using actual current time
 
 ## Next steps
 
 - richer partial-close accounting per target leg
-- file-backed persistent execution/state storage
 - approval + execution integration
 - end-to-end operator timeline views
+- file-backed proposal/approval persistence for full continuity
