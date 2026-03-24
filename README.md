@@ -131,9 +131,18 @@ Execution/simulator foundation now includes:
   - position state snapshots
 - expired proposal rejection at execution time using actual current time
 
+## Operator-facing output
+
+The repo now includes a text report builder that can combine:
+- review card
+- execution timeline
+- latest position snapshot
+
+into an operator-friendly trade summary.
+
 ## Next steps
 
 - richer partial-close accounting per target leg
-- end-to-end operator timeline views
+- richer report formatting / channel-specific rendering
 - higher-level operator workflows on top of approval→execution handoff
 - file-backed unified workflow/session storage around the full trade lifecycle

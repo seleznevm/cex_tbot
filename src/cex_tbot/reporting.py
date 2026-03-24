@@ -1,0 +1,58 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from cex_tbot.execution import TradeTimelineView
+from cex_tbot.review_cards import ReviewCard
+from cex_tbot.simulator import Position
+
+
+@dataclass(frozen=True)
+class TradeReport:
+    proposal_id: str
+    headline: str
+    summary_lines: list[str]
+    timeline_lines: list[str]
+
+    def to_text(self) -> str:
+        return "\n".join([self.headline, *self.summary_lines, *self.timeline_lines])
+
+
+class TradeReportBuilder:
+    def build(
+        self,
+        review_card: ReviewCard,
+        timeline: TradeTimelineView,
+        position: Position | None = None,
+    ) -> TradeReport:
+        headline = f"Trade Report — {review_card.symbol} {review_card.direction} [{review_card.proposal_id}]"
+        summary_lines = [
+            f"Timeframe: {review_card.timeframe}",
+            f"Confidence: {review_card.confidence_score:.2f}",
+            f"Entry: {review_card.entry_summary}",
+            f"Stop: {review_card.stop_loss}",
+            f"Targets: {review_card.tp_summary}",
+            f"Risk: {review_card.risk_summary}",
+            f"Thesis: {review_card.thesis}",
+        ]
+        if position is not None:
+            summary_lines.extend(
+                [
+                    f"Position status: {position.status}",
+                    f"Remaining size: {position.remaining_size}",
+                    f"Realized PnL: {position.realized_pnl:.4f}",
+                    f"Total fees: {position.total_fees:.4f}",
+                ]
+            )
+        timeline_lines = [
+            f"Timeline events: {timeline.event_count}",
+            f"State snapshots: {timeline.snapshot_count}",
+        ]
+        for event in timeline.events[-5:]:
+            timeline_lines.append(f"- {event['kind']}: {event['message']}")
+        return TradeReport(
+            proposal_id=review_card.proposal_id,
+            headline=headline,
+            summary_lines=summary_lines,
+            timeline_lines=timeline_lines,
+        )

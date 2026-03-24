@@ -4,6 +4,7 @@ from .approval_flow import ApprovalFlow
 from .config import BotConfig, load_config
 from .handoff import ApprovalExecutionHandoff, ApprovalExecutionResult
 from .proposal_store import InMemoryProposalStore
+from .reporting import TradeReport, TradeReportBuilder
 from .review_cards import ReviewCard, ReviewCardBuilder
 from .risk_engine import PendingRiskBook, PortfolioState, RiskEngine, RiskEvaluation
 from .storage import FileExecutionJournal, FileExecutionStateStore, FileProposalStore
@@ -15,6 +16,8 @@ __all__ = [
     "ApprovalExecutionHandoff",
     "ApprovalExecutionResult",
     "InMemoryProposalStore",
+    "TradeReport",
+    "TradeReportBuilder",
     "ReviewCard",
     "ReviewCardBuilder",
     "FileExecutionJournal",
