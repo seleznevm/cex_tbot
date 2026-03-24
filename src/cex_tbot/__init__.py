@@ -4,6 +4,7 @@ from .api_surface import ApiSurface, CommandRequest, ProposalSubmitRequest, Trad
 from .approval_flow import ApprovalFlow
 from .audit import AuditEntry, InMemoryOperatorTranscript
 from .backend_service import TradingBackendService
+from .bootstrap import TradingApplication, build_app
 from .config import BotConfig, load_config
 from .dashboard_models import DashboardBuilder, DashboardView, KpiWidget, OperatorActivityWidget, RiskWidget
 from .handoff import ApprovalExecutionHandoff, ApprovalExecutionResult
@@ -26,6 +27,8 @@ __all__ = [
     "ProposalSubmitRequest",
     "TradeListRequest",
     "ApprovalFlow",
+    "TradingApplication",
+    "build_app",
     "BotConfig",
     "DashboardBuilder",
     "DashboardView",

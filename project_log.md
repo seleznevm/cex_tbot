@@ -37,3 +37,7 @@
 - Added thin API-surface contracts with endpoint-like request objects so future web/CLI/bot adapters can plug into the backend facade without touching internal service wiring.
 - Added dashboard-oriented read models/widgets plus backend/API accessors for KPI, risk, latest-trades, and operator-activity views that can feed a future UI.
 - Added explicit trade query semantics (filtering, sorting, pagination) and threaded them through read models, backend facade, and API surface.
+- Added a single application composition root in `src/cex_tbot/bootstrap.py` via `build_app(...)` so runtime wiring now happens in one place instead of being reconstructed ad hoc in tests/integrations.
+- Added `TradingApplication` runtime bundle exposing the wired config, storage/session, approval/execution/workflow stack, backend facade, API surface, universe services, and deterministic placeholder adapters.
+- Added a thin `python -m cex_tbot` bootstrap smoke entrypoint that validates wiring and can open either in-memory or file-backed session storage without touching live network logic.
+- Added bootstrap tests covering in-memory wiring, file-backed wiring, explicit-session wiring, and CLI/module smoke startup to catch missing dependency regressions early.

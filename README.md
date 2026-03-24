@@ -190,9 +190,48 @@ It also includes:
 
 This is the intended bridge layer for future CLI, bot, web, or dashboard integrations.
 
+## Application bootstrap + service wiring
+
+This repo now has a single composition root:
+
+- `cex_tbot.bootstrap.build_app(...)`
+
+It wires the runtime graph in one place and returns a `TradingApplication` bundle with:
+
+- config
+- session storage (`TradeSessionStore` or `FileTradeSessionStore`)
+- risk engine + pending-risk book
+- simulator / execution orchestrator
+- approval / workflow / operator router
+- backend facade + API surface
+- query / dashboard / summary services
+- universe + validation services
+- deterministic placeholder adapters for market data and instrument fetchers
+
+The bootstrap intentionally stays away from live network logic. By default it uses in-memory runtime components and deterministic static providers/fetchers. If you pass `storage_dir=...`, session state becomes file-backed without changing service wiring.
+
+### Bootstrap usage
+
+```python
+from cex_tbot import build_app
+
+app = build_app()
+summary = app.backend.get_session_summary_payload()
+```
+
+### Runtime smoke check
+
+```bash
+PYTHONPATH=src python3 -m cex_tbot --format json
+PYTHONPATH=src python3 -m cex_tbot --storage-dir .runtime/session --format json
+```
+
+The module entrypoint only validates that bootstrap wiring is complete and returns a tiny status payload; it does not start exchange/network workflows.
+
 ## Next steps
 
 - richer partial-close accounting per target leg
 - richer report formatting / channel-specific rendering
 - more operator commands and workflow branches
 - higher-level dashboard/UI views
+- later: explicit live adapters behind the same composition root, once network logic is intentionally introduced
