@@ -61,6 +61,9 @@ python3 -m unittest discover -s tests -t . -v
 - append-only in-memory universe snapshot repository skeleton
 - universe refresh orchestrator skeleton with result contract
 - Gate fetch client contract with deterministic static fetcher
+- Gate demo transport/client boundary that stays compatible with `GateInstrumentRecord`
+- explicit `gate_demo` mode with guardrails blocking accidental live transport
+- predictable config failure when `CEX_TBOT_EXECUTION_MODE=gate_demo` but `GATE_DEMO_API` is missing
 - typed eligibility reason taxonomy for controlled universe decisions
 
 ## Phase 3 status
@@ -209,6 +212,18 @@ It wires the runtime graph in one place and returns a `TradingApplication` bundl
 - deterministic placeholder adapters for market data and instrument fetchers
 
 The bootstrap intentionally stays away from live network logic. By default it uses in-memory runtime components and deterministic static providers/fetchers. If you pass `storage_dir=...`, session state becomes file-backed without changing service wiring.
+
+### Gate demo boundary / guardrails
+
+The repo now exposes a demo-safe integration path for Gate metadata wiring without introducing live transport:
+
+- default runtime remains `paper_sim`
+- supported execution modes are only `paper_sim`, `dry_run`, and `gate_demo`
+- any live-like mode (`live`, `gate_live`, `prod`, etc.) fails fast during config load
+- `gate_demo` mode requires `GATE_DEMO_API` and fails predictably if it is missing
+- bootstrap wires a `GateDemoInstrumentFetcher` only in `gate_demo` mode
+- the fetcher talks to a `GateDemoInstrumentClient` boundary that returns normal `GateInstrumentRecord` items, so the existing universe pipeline stays unchanged
+- no concrete HTTP/live trading transport is shipped in this commit; integrations must inject a demo client explicitly
 
 ### Bootstrap usage
 

@@ -5,6 +5,15 @@ from .approval_flow import ApprovalFlow
 from .audit import AuditEntry, InMemoryOperatorTranscript
 from .backend_service import TradingBackendService
 from .bootstrap import TradingApplication, build_app
+from .exceptions import GateDemoTransportError, GateLiveModeBlockedError, MissingGateDemoApiError
+from .market_data import (
+    GateDemoInstrumentClient,
+    GateDemoInstrumentFetcher,
+    GateInstrumentFetcher,
+    GateInstrumentRecord,
+    StaticGateInstrumentFetcher,
+    UnimplementedGateDemoInstrumentClient,
+)
 from .config import BotConfig, load_config
 from .dashboard_models import DashboardBuilder, DashboardView, KpiWidget, OperatorActivityWidget, RiskWidget
 from .handoff import ApprovalExecutionHandoff, ApprovalExecutionResult
@@ -30,6 +39,15 @@ __all__ = [
     "TradingApplication",
     "build_app",
     "BotConfig",
+    "GateInstrumentFetcher",
+    "GateDemoInstrumentClient",
+    "GateDemoInstrumentFetcher",
+    "GateDemoTransportError",
+    "GateLiveModeBlockedError",
+    "MissingGateDemoApiError",
+    "StaticGateInstrumentFetcher",
+    "UnimplementedGateDemoInstrumentClient",
+    "GateInstrumentRecord",
     "DashboardBuilder",
     "DashboardView",
     "KpiWidget",

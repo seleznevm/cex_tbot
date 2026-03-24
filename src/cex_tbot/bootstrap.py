@@ -11,7 +11,13 @@ from cex_tbot.dashboard_models import DashboardBuilder
 from cex_tbot.decision_contracts.validator import ProposalValidator
 from cex_tbot.execution import ExecutionOrchestrator, TradeTimelineBuilder
 from cex_tbot.handoff import ApprovalExecutionHandoff
-from cex_tbot.market_data.gate_client import GateInstrumentFetcher, StaticGateInstrumentFetcher
+from cex_tbot.market_data.gate_client import (
+    GateDemoInstrumentClient,
+    GateDemoInstrumentFetcher,
+    GateInstrumentFetcher,
+    StaticGateInstrumentFetcher,
+    UnimplementedGateDemoInstrumentClient,
+)
 from cex_tbot.market_data.provider import StaticMarketDataProvider
 from cex_tbot.market_data.service import MarketDataService
 from cex_tbot.operator_router import OperatorCommandRouter
@@ -70,6 +76,7 @@ def build_app(
     storage_dir: str | Path | None = None,
     market_data_provider: StaticMarketDataProvider | None = None,
     instrument_fetcher: GateInstrumentFetcher | None = None,
+    gate_demo_client: GateDemoInstrumentClient | None = None,
 ) -> TradingApplication:
     resolved_config = config or load_config(env)
     resolved_session = session or _build_session(storage_dir)
@@ -115,7 +122,10 @@ def build_app(
     universe_refresh_policy = UniverseRefreshPolicy(resolved_config.universe_refresh_minutes)
     universe_orchestrator = UniverseRefreshOrchestrator(universe_service, universe_repository)
     proposal_validator = ProposalValidator(resolved_config, universe_service)
-    resolved_instrument_fetcher = instrument_fetcher or StaticGateInstrumentFetcher()
+    resolved_instrument_fetcher = instrument_fetcher or _build_default_instrument_fetcher(
+        resolved_config,
+        gate_demo_client=gate_demo_client,
+    )
     return TradingApplication(
         config=resolved_config,
         session=resolved_session,
@@ -151,3 +161,14 @@ def _build_session(storage_dir: str | Path | None) -> TradeSessionStore:
     if storage_dir is None:
         return TradeSessionStore()
     return FileTradeSessionStore.open(storage_dir)
+
+
+def _build_default_instrument_fetcher(
+    config: BotConfig,
+    *,
+    gate_demo_client: GateDemoInstrumentClient | None,
+) -> GateInstrumentFetcher:
+    if config.execution_mode == "gate_demo":
+        client = gate_demo_client or UnimplementedGateDemoInstrumentClient(config.gate_demo_api)
+        return GateDemoInstrumentFetcher(client)
+    return StaticGateInstrumentFetcher()

@@ -4,6 +4,11 @@ from dataclasses import dataclass
 import os
 
 from .enums import Exchange, MarketType
+from .exceptions import GateLiveModeBlockedError, MissingGateDemoApiError
+
+
+_ALLOWED_EXECUTION_MODES = {"paper_sim", "dry_run", "gate_demo"}
+_BLOCKED_LIVE_EXECUTION_MODES = {"live", "gate_live", "prod", "production"}
 
 
 @dataclass(frozen=True)
@@ -21,6 +26,28 @@ class BotConfig:
     max_daily_drawdown_percent: float = 2.0
     max_open_positions: int = 2
     gate_demo_api: str = ""
+
+    def __post_init__(self) -> None:
+        normalized_mode = self.execution_mode.strip().lower()
+        object.__setattr__(self, "execution_mode", normalized_mode)
+        object.__setattr__(self, "gate_demo_api", self.gate_demo_api.strip())
+
+        if normalized_mode in _BLOCKED_LIVE_EXECUTION_MODES or (
+            "live" in normalized_mode and normalized_mode != "gate_demo"
+        ):
+            raise GateLiveModeBlockedError(
+                "Live Gate transport is intentionally blocked in this repo. "
+                "Use paper_sim, dry_run, or gate_demo."
+            )
+        if normalized_mode not in _ALLOWED_EXECUTION_MODES:
+            raise ValueError(
+                "Unsupported CEX_TBOT_EXECUTION_MODE. "
+                f"Expected one of {sorted(_ALLOWED_EXECUTION_MODES)}, got {self.execution_mode!r}."
+            )
+        if normalized_mode == "gate_demo" and not self.gate_demo_api:
+            raise MissingGateDemoApiError(
+                "GATE_DEMO_API is required when CEX_TBOT_EXECUTION_MODE=gate_demo"
+            )
 
 
 def load_config(env: dict[str, str] | None = None) -> BotConfig:

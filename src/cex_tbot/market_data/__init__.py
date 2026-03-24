@@ -1,4 +1,12 @@
-from .gate_client import GateInstrumentFetcher, StaticGateInstrumentFetcher
+from cex_tbot.exceptions import GateDemoTransportError, GateLiveModeBlockedError, MissingGateDemoApiError
+
+from .gate_client import (
+    GateDemoInstrumentClient,
+    GateDemoInstrumentFetcher,
+    GateInstrumentFetcher,
+    StaticGateInstrumentFetcher,
+    UnimplementedGateDemoInstrumentClient,
+)
 from .gate_metadata import GateInstrumentMetadataAdapter, GateInstrumentRecord
 from .models import MarketSnapshot
 from .normalizer import MarketDataNormalizer, RawMarketTicker
@@ -11,7 +19,13 @@ __all__ = [
     "MarketDataNormalizer",
     "RawMarketTicker",
     "GateInstrumentFetcher",
+    "GateDemoInstrumentClient",
+    "GateDemoInstrumentFetcher",
+    "GateDemoTransportError",
+    "GateLiveModeBlockedError",
+    "MissingGateDemoApiError",
     "StaticGateInstrumentFetcher",
+    "UnimplementedGateDemoInstrumentClient",
     "GateInstrumentMetadataAdapter",
     "GateInstrumentRecord",
     "MarketDataService",

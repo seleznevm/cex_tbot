@@ -8,8 +8,23 @@ import sys
 import tempfile
 import unittest
 
-from cex_tbot import TradeSessionStore, build_app
+from cex_tbot import (
+    GateDemoInstrumentFetcher,
+    GateInstrumentRecord,
+    StaticGateInstrumentFetcher,
+    TradeSessionStore,
+    build_app,
+)
+from cex_tbot.market_data import MissingGateDemoApiError
 from cex_tbot.storage import FileTradeSessionStore
+
+
+class _FakeGateDemoClient:
+    def __init__(self, records: list[GateInstrumentRecord]) -> None:
+        self._records = records
+
+    def list_instruments(self) -> list[GateInstrumentRecord]:
+        return list(self._records)
 
 
 class BootstrapTests(unittest.TestCase):
@@ -26,6 +41,7 @@ class BootstrapTests(unittest.TestCase):
         self.assertIs(app.router.transcript, app.session.operator_transcript)
         self.assertIs(app.query_service.session, app.session)
         self.assertIs(app.dashboard_builder.session, app.session)
+        self.assertIsInstance(app.instrument_fetcher, StaticGateInstrumentFetcher)
 
     def test_build_app_supports_file_backed_session(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -45,6 +61,25 @@ class BootstrapTests(unittest.TestCase):
         self.assertEqual(app.backend.get_session_summary_payload()["total_proposals"], 0)
         self.assertEqual(app.backend.get_dashboard_payload()["kpis"]["total_proposals"], 0)
         self.assertEqual(app.api.list_trades(), [])
+
+    def test_build_app_uses_gate_demo_boundary_when_mode_enabled(self) -> None:
+        app = build_app(
+            env={
+                "CEX_TBOT_EXECUTION_MODE": "gate_demo",
+                "GATE_DEMO_API": "demo-secret-placeholder",
+            },
+            gate_demo_client=_FakeGateDemoClient(
+                [GateInstrumentRecord(name="BTC_USDT", listing_age_hours=300)]
+            ),
+        )
+
+        self.assertEqual(app.config.execution_mode, "gate_demo")
+        self.assertIsInstance(app.instrument_fetcher, GateDemoInstrumentFetcher)
+        self.assertEqual(app.instrument_fetcher.fetch_instruments()[0].name, "BTC_USDT")
+
+    def test_build_app_fails_predictably_when_gate_demo_api_missing(self) -> None:
+        with self.assertRaisesRegex(MissingGateDemoApiError, "GATE_DEMO_API"):
+            build_app(env={"CEX_TBOT_EXECUTION_MODE": "gate_demo"})
 
     def test_python_m_bootstrap_smoke(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

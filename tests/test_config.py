@@ -1,6 +1,7 @@
 import unittest
 
 from cex_tbot.config import load_config
+from cex_tbot.market_data import GateLiveModeBlockedError, MissingGateDemoApiError
 
 
 class ConfigTests(unittest.TestCase):
@@ -21,6 +22,24 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(cfg.whitelist_size, 10)
         self.assertEqual(cfg.execution_mode, "dry_run")
         self.assertEqual(cfg.gate_demo_api, "demo-secret-placeholder")
+
+    def test_gate_demo_requires_demo_api(self) -> None:
+        with self.assertRaisesRegex(MissingGateDemoApiError, "GATE_DEMO_API"):
+            load_config({"CEX_TBOT_EXECUTION_MODE": "gate_demo"})
+
+    def test_gate_demo_normalizes_mode_and_trims_api(self) -> None:
+        cfg = load_config(
+            {
+                "CEX_TBOT_EXECUTION_MODE": " GATE_DEMO ",
+                "GATE_DEMO_API": "  demo-secret-placeholder  ",
+            }
+        )
+        self.assertEqual(cfg.execution_mode, "gate_demo")
+        self.assertEqual(cfg.gate_demo_api, "demo-secret-placeholder")
+
+    def test_live_mode_is_explicitly_blocked(self) -> None:
+        with self.assertRaisesRegex(GateLiveModeBlockedError, "blocked"):
+            load_config({"CEX_TBOT_EXECUTION_MODE": "live"})
 
 
 if __name__ == "__main__":

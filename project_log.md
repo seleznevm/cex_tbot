@@ -41,3 +41,7 @@
 - Added `TradingApplication` runtime bundle exposing the wired config, storage/session, approval/execution/workflow stack, backend facade, API surface, universe services, and deterministic placeholder adapters.
 - Added a thin `python -m cex_tbot` bootstrap smoke entrypoint that validates wiring and can open either in-memory or file-backed session storage without touching live network logic.
 - Added bootstrap tests covering in-memory wiring, file-backed wiring, explicit-session wiring, and CLI/module smoke startup to catch missing dependency regressions early.
+- Added an explicit Gate demo transport/client boundary so demo integrations can inject a `GateDemoInstrumentClient` while still feeding the existing `GateInstrumentRecord` → universe pipeline unchanged.
+- Added config guardrails for execution modes: default stays `paper_sim`, `gate_demo` is allowed only with `GATE_DEMO_API`, and live-like modes now fail fast instead of silently drifting toward unsupported transport.
+- Updated bootstrap wiring so `gate_demo` mode resolves to a demo-only fetcher boundary, while non-demo modes keep deterministic static fetchers by default.
+- Added unit coverage for Gate demo config validation, bootstrap wiring, and transport guardrails/predictable failures.
