@@ -10,7 +10,7 @@ from .reporting import TradeReport, TradeReportBuilder
 from .review_cards import ReviewCard, ReviewCardBuilder
 from .risk_engine import PendingRiskBook, PortfolioState, RiskEngine, RiskEvaluation
 from .session_store import TradeSessionStore
-from .storage import FileExecutionJournal, FileExecutionStateStore, FileProposalStore
+from .storage import FileExecutionJournal, FileExecutionStateStore, FileOperatorTranscript, FileProposalStore, FileTradeSessionStore
 from .workflow import TradeWorkflowService, WorkflowResult
 
 __all__ = [
@@ -33,7 +33,9 @@ __all__ = [
     "WorkflowResult",
     "FileExecutionJournal",
     "FileExecutionStateStore",
+    "FileOperatorTranscript",
     "FileProposalStore",
+    "FileTradeSessionStore",
     "PendingRiskBook",
     "PortfolioState",
     "RiskEngine",

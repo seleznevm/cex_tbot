@@ -29,3 +29,4 @@
 - Expanded workflow branches so operators can now choose approve-only, reject+report, or modify+revalidate+report without manually stitching lower-level services.
 - Added operator command router with delivery-oriented rendering so one entrypoint can dispatch approval commands into the right workflow branch and return channel-friendly output.
 - Added operator transcript audit entries plus a unified in-memory session store to group proposal, execution, and operator-level state under one session-shaped container.
+- Added file-backed session bundle so the full session stack (proposal, approval, execution, state, operator transcript) can be reopened from one base directory and replayed after restart.

@@ -146,10 +146,16 @@ The repo now includes:
   - render plain or Telegram-friendly output
 - operator transcript / audit entries for command outcomes
 - a unified in-memory session store for proposal + execution + operator layers
+- a file-backed session bundle that reloads:
+  - proposals
+  - approval decisions
+  - execution events
+  - position snapshots
+  - operator transcript
 
 ## Next steps
 
 - richer partial-close accounting per target leg
 - richer report formatting / channel-specific rendering
-- file-backed unified workflow/session storage around the full trade lifecycle
 - more operator commands and workflow branches
+- higher-level session summaries / dashboard-style views
