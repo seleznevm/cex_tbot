@@ -153,9 +153,20 @@ The repo now includes:
   - position snapshots
   - operator transcript
 
+## Session visibility
+
+The repo now includes a session summary builder that can aggregate:
+- proposal counts and status breakdowns
+- approval decision counts
+- execution event volume
+- state snapshot volume
+- operator command counts
+
+into a compact dashboard-like textual summary.
+
 ## Next steps
 
 - richer partial-close accounting per target leg
 - richer report formatting / channel-specific rendering
 - more operator commands and workflow branches
-- higher-level session summaries / dashboard-style views
+- higher-level dashboard/UI views
