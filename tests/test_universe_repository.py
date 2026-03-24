@@ -1,7 +1,7 @@
 from datetime import UTC, datetime, timedelta
 import unittest
 
-from cex_tbot.enums import EligibilityStatus
+from cex_tbot.enums import EligibilityReasonCode, EligibilityStatus
 from cex_tbot.universe import InMemoryUniverseSnapshotRepository, WhitelistedInstrument
 
 
@@ -17,7 +17,7 @@ class UniverseRepositoryTests(unittest.TestCase):
             open_interest=1_500_000,
             top_book_depth=400_000,
             eligibility_status=EligibilityStatus.ELIGIBLE,
-            eligibility_reason="passes_phase2_rules",
+            eligibility_reason=EligibilityReasonCode.PASSES_PHASE2_RULES,
             eligible_until=now + timedelta(minutes=30),
         )
         snapshot = repository.append(
@@ -44,7 +44,7 @@ class UniverseRepositoryTests(unittest.TestCase):
             open_interest=1_500_000,
             top_book_depth=400_000,
             eligibility_status=EligibilityStatus.ELIGIBLE,
-            eligibility_reason="passes_phase2_rules",
+            eligibility_reason=EligibilityReasonCode.PASSES_PHASE2_RULES,
             eligible_until=now + timedelta(minutes=30),
         )
         stale = WhitelistedInstrument(
@@ -55,7 +55,7 @@ class UniverseRepositoryTests(unittest.TestCase):
             open_interest=1_500_000,
             top_book_depth=400_000,
             eligibility_status=EligibilityStatus.STALE,
-            eligibility_reason="eligibility_window_expired",
+            eligibility_reason=EligibilityReasonCode.ELIGIBILITY_WINDOW_EXPIRED,
             eligible_until=now - timedelta(minutes=1),
         )
         repository.append([eligible, stale], snapshot_id="universe_002", created_at=now)

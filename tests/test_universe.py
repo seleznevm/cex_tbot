@@ -2,7 +2,7 @@ from datetime import UTC, datetime, timedelta
 import unittest
 
 from cex_tbot.config import BotConfig
-from cex_tbot.enums import EligibilityStatus
+from cex_tbot.enums import EligibilityReasonCode, EligibilityStatus
 from cex_tbot.universe import UniverseService, WhitelistedInstrument
 
 
@@ -42,13 +42,13 @@ class UniverseTests(unittest.TestCase):
             open_interest=900_000,
             top_book_depth=100_000,
             eligibility_status=EligibilityStatus.ELIGIBLE,
-            eligibility_reason="passes_phase2_rules",
+            eligibility_reason=EligibilityReasonCode.PASSES_PHASE2_RULES,
             liquidity_score=1_500_000,
             eligible_until=now + timedelta(minutes=30),
         )
         decision = service.get_symbol_eligibility("BTC_USDT", [instrument], now=now)
         self.assertEqual(decision.status, EligibilityStatus.ELIGIBLE)
-        self.assertEqual(decision.reason, "passes_phase2_rules")
+        self.assertEqual(decision.reason, EligibilityReasonCode.PASSES_PHASE2_RULES)
 
     def test_get_symbol_eligibility_marks_stale_after_expiry(self) -> None:
         service = UniverseService(BotConfig())
@@ -61,13 +61,13 @@ class UniverseTests(unittest.TestCase):
             open_interest=900_000,
             top_book_depth=100_000,
             eligibility_status=EligibilityStatus.ELIGIBLE,
-            eligibility_reason="passes_phase2_rules",
+            eligibility_reason=EligibilityReasonCode.PASSES_PHASE2_RULES,
             liquidity_score=1_500_000,
             eligible_until=now - timedelta(minutes=1),
         )
         decision = service.get_symbol_eligibility("BTC_USDT", [instrument], now=now)
         self.assertEqual(decision.status, EligibilityStatus.STALE)
-        self.assertEqual(decision.reason, "eligibility_window_expired")
+        self.assertEqual(decision.reason, EligibilityReasonCode.ELIGIBILITY_WINDOW_EXPIRED)
 
 
 if __name__ == "__main__":

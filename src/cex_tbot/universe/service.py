@@ -4,7 +4,7 @@ from dataclasses import replace
 from datetime import datetime, timedelta
 
 from cex_tbot.config import BotConfig
-from cex_tbot.enums import EligibilityStatus
+from cex_tbot.enums import EligibilityReasonCode, EligibilityStatus
 from cex_tbot.shared import utc_now
 from cex_tbot.universe.models import EligibilityDecision, RawInstrument, WhitelistedInstrument
 
@@ -25,42 +25,42 @@ class UniverseService:
             return EligibilityDecision(
                 symbol=instrument.symbol,
                 status=EligibilityStatus.INELIGIBLE,
-                reason="instrument_inactive",
+                reason=EligibilityReasonCode.INSTRUMENT_INACTIVE,
                 liquidity_score=0.0,
             )
         if instrument.quote_asset != "USDT":
             return EligibilityDecision(
                 symbol=instrument.symbol,
                 status=EligibilityStatus.INELIGIBLE,
-                reason="quote_asset_not_usdt",
+                reason=EligibilityReasonCode.QUOTE_ASSET_NOT_USDT,
                 liquidity_score=0.0,
             )
         if instrument.is_new_listing or instrument.listing_age_hours < self.config.min_listing_age_hours:
             return EligibilityDecision(
                 symbol=instrument.symbol,
                 status=EligibilityStatus.INELIGIBLE,
-                reason="listing_age_below_threshold",
+                reason=EligibilityReasonCode.LISTING_AGE_BELOW_THRESHOLD,
                 liquidity_score=0.0,
             )
         if instrument.spread_bps > self.config.max_spread_bps:
             return EligibilityDecision(
                 symbol=instrument.symbol,
                 status=EligibilityStatus.INELIGIBLE,
-                reason="spread_above_threshold",
+                reason=EligibilityReasonCode.SPREAD_ABOVE_THRESHOLD,
                 liquidity_score=0.0,
             )
         if instrument.volume_24h <= 0 or instrument.open_interest <= 0 or instrument.top_book_depth <= 0:
             return EligibilityDecision(
                 symbol=instrument.symbol,
                 status=EligibilityStatus.INELIGIBLE,
-                reason="insufficient_market_depth",
+                reason=EligibilityReasonCode.INSUFFICIENT_MARKET_DEPTH,
                 liquidity_score=0.0,
             )
         score = self.compute_liquidity_score(instrument)
         return EligibilityDecision(
             symbol=instrument.symbol,
             status=EligibilityStatus.ELIGIBLE,
-            reason="passes_phase2_rules",
+            reason=EligibilityReasonCode.PASSES_PHASE2_RULES,
             liquidity_score=score,
         )
 
@@ -110,7 +110,7 @@ class UniverseService:
                 return EligibilityDecision(
                     symbol=symbol,
                     status=EligibilityStatus.STALE,
-                    reason="eligibility_window_expired",
+                    reason=EligibilityReasonCode.ELIGIBILITY_WINDOW_EXPIRED,
                     liquidity_score=instrument.liquidity_score,
                     evaluated_at=effective_now,
                 )
@@ -126,7 +126,7 @@ class UniverseService:
         return EligibilityDecision(
             symbol=symbol,
             status=EligibilityStatus.UNKNOWN,
-            reason="symbol_not_found",
+            reason=EligibilityReasonCode.SYMBOL_NOT_FOUND,
             liquidity_score=0.0,
             evaluated_at=effective_now,
         )

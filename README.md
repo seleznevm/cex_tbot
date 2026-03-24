@@ -61,6 +61,7 @@ python3 -m unittest discover -s tests -t . -v
 - append-only in-memory universe snapshot repository skeleton
 - universe refresh orchestrator skeleton with result contract
 - Gate fetch client contract with deterministic static fetcher
+- typed eligibility reason taxonomy for controlled universe decisions
 
 ## Next steps
 

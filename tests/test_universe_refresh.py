@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 import unittest
 
 from cex_tbot.config import BotConfig
-from cex_tbot.enums import EligibilityStatus
+from cex_tbot.enums import EligibilityReasonCode, EligibilityStatus
 from cex_tbot.universe import RawInstrument, UniverseService
 
 
@@ -34,8 +34,8 @@ class UniverseRefreshTests(unittest.TestCase):
             ]
         )
         reasons = {item.symbol: item.eligibility_reason for item in refreshed}
-        self.assertEqual(reasons["BTC_BTC"], "quote_asset_not_usdt")
-        self.assertEqual(reasons["ETH_USDT"], "instrument_inactive")
+        self.assertEqual(reasons["BTC_BTC"], EligibilityReasonCode.QUOTE_ASSET_NOT_USDT)
+        self.assertEqual(reasons["ETH_USDT"], EligibilityReasonCode.INSTRUMENT_INACTIVE)
 
 
 if __name__ == "__main__":

@@ -2,6 +2,7 @@ from datetime import UTC, datetime
 import unittest
 
 from cex_tbot.config import BotConfig
+from cex_tbot.enums import EligibilityReasonCode
 from cex_tbot.market_data import GateInstrumentRecord, StaticGateInstrumentFetcher
 from cex_tbot.universe import InMemoryUniverseSnapshotRepository, RawInstrument, UniverseService
 from cex_tbot.universe.orchestrator import UniverseRefreshOrchestrator
@@ -48,6 +49,9 @@ class UniverseOrchestratorTests(unittest.TestCase):
         self.assertEqual(result.top_whitelist_symbols, ("BTC_USDT",))
         self.assertEqual(result.snapshot.snapshot_id, "snap_001")
         self.assertEqual(len(result.snapshot.instruments), 2)
+        reasons = {item.symbol: item.eligibility_reason for item in result.snapshot.instruments}
+        self.assertEqual(reasons["BTC_USDT"], EligibilityReasonCode.PASSES_PHASE2_RULES)
+        self.assertEqual(reasons["NEW_USDT"], EligibilityReasonCode.LISTING_AGE_BELOW_THRESHOLD)
 
     def test_refresh_from_raw_instruments_uses_existing_universe_service(self) -> None:
         orchestrator = UniverseRefreshOrchestrator(

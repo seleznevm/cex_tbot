@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from cex_tbot.enums import ContractType, EligibilityStatus, Exchange, MarketType
+from cex_tbot.enums import ContractType, EligibilityReasonCode, EligibilityStatus, Exchange, MarketType
 from cex_tbot.shared import ensure_utc, utc_now
 
 
@@ -37,7 +37,7 @@ class WhitelistedInstrument:
     top_book_depth: float = 0.0
     liquidity_score: float = 0.0
     eligibility_status: EligibilityStatus = EligibilityStatus.UNKNOWN
-    eligibility_reason: str = "not_evaluated"
+    eligibility_reason: EligibilityReasonCode = EligibilityReasonCode.NOT_EVALUATED
     last_market_check_at: datetime = field(default_factory=utc_now)
     last_universe_refresh_at: datetime = field(default_factory=utc_now)
     eligible_until: datetime = field(default_factory=utc_now)
@@ -52,7 +52,7 @@ class WhitelistedInstrument:
 class EligibilityDecision:
     symbol: str
     status: EligibilityStatus
-    reason: str
+    reason: EligibilityReasonCode
     liquidity_score: float
     evaluated_at: datetime = field(default_factory=utc_now)
 
