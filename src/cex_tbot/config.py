@@ -16,10 +16,11 @@ class BotConfig:
     min_confidence_score: float = 0.70
     universe_refresh_minutes: int = 60
     execution_mode: str = "paper_sim"
+    gate_demo_api: str = ""
 
 
 def load_config(env: dict[str, str] | None = None) -> BotConfig:
-    source = env or os.environ
+    source = os.environ if env is None else env
     return BotConfig(
         whitelist_size=int(source.get("CEX_TBOT_WHITELIST_SIZE", "20")),
         min_listing_age_hours=int(source.get("CEX_TBOT_MIN_LISTING_AGE_HOURS", "72")),
@@ -27,4 +28,5 @@ def load_config(env: dict[str, str] | None = None) -> BotConfig:
         min_confidence_score=float(source.get("CEX_TBOT_MIN_CONFIDENCE_SCORE", "0.70")),
         universe_refresh_minutes=int(source.get("CEX_TBOT_UNIVERSE_REFRESH_MINUTES", "60")),
         execution_mode=source.get("CEX_TBOT_EXECUTION_MODE", "paper_sim"),
+        gate_demo_api=source.get("GATE_DEMO_API", ""),
     )

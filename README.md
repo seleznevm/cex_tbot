@@ -12,6 +12,8 @@ This first real commit covers the requested Phase 1–2 skeleton:
 - domain skeleton for project phases 1–2
 - universe / eligibility skeleton
 - project log entry inside repo
+- market data normalization skeleton
+- deterministic symbol eligibility query API
 
 This is intentionally a foundation commit: contracts and module boundaries first, execution logic later.
 
@@ -52,6 +54,9 @@ python3 -m unittest discover -s tests -t . -v
   - non-zero volume / open interest / book depth
 - top-N whitelist ranking by liquidity score
 - static in-memory sources/providers for repeatable tests
+- market snapshot normalization from raw ticker input
+- deterministic symbol eligibility query with stale/not-found handling
+- placeholder config plumbing for `GATE_DEMO_API`
 
 ## Next steps
 

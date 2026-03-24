@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from cex_tbot.config import BotConfig
 from cex_tbot.enums import EligibilityStatus
@@ -94,6 +94,42 @@ class UniverseService:
     def refresh_universe(self, raw_instruments: list[RawInstrument]) -> list[WhitelistedInstrument]:
         materialized = [self.materialize_instrument(item) for item in raw_instruments]
         return [self.apply_decision(item) for item in materialized]
+
+    def get_symbol_eligibility(
+        self,
+        symbol: str,
+        instruments: list[WhitelistedInstrument],
+        *,
+        now: datetime | None = None,
+    ) -> EligibilityDecision:
+        effective_now = now or utc_now()
+        for instrument in instruments:
+            if instrument.symbol != symbol:
+                continue
+            if instrument.eligible_until <= effective_now:
+                return EligibilityDecision(
+                    symbol=symbol,
+                    status=EligibilityStatus.STALE,
+                    reason="eligibility_window_expired",
+                    liquidity_score=instrument.liquidity_score,
+                    evaluated_at=effective_now,
+                )
+            if instrument.eligibility_status == EligibilityStatus.UNKNOWN:
+                return self.evaluate_instrument(instrument)
+            return EligibilityDecision(
+                symbol=symbol,
+                status=instrument.eligibility_status,
+                reason=instrument.eligibility_reason,
+                liquidity_score=instrument.liquidity_score,
+                evaluated_at=effective_now,
+            )
+        return EligibilityDecision(
+            symbol=symbol,
+            status=EligibilityStatus.UNKNOWN,
+            reason="symbol_not_found",
+            liquidity_score=0.0,
+            evaluated_at=effective_now,
+        )
 
     def rank_whitelist(self, instruments: list[WhitelistedInstrument]) -> list[WhitelistedInstrument]:
         normalized = [
