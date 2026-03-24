@@ -164,6 +164,12 @@ The repo now includes a session summary builder that can aggregate:
 
 into a compact dashboard-like textual summary.
 
+It also now includes dashboard-oriented widgets/read models for:
+- KPI overview
+- risk/activity overview
+- latest trades
+- operator activity
+
 ## Backend service layer
 
 The repo now also includes a backend facade service that exposes a simpler API for:
@@ -179,6 +185,7 @@ It also includes:
 - serializer helpers for API-ready payloads
 - payload-returning backend methods for command, trade, and session responses
 - a thin API-surface layer with endpoint-like request contracts
+- dashboard payload access for UI-oriented consumers
 
 This is the intended bridge layer for future CLI, bot, web, or dashboard integrations.
 

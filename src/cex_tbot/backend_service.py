@@ -5,6 +5,7 @@ from datetime import datetime
 
 from cex_tbot.approval_flow import ApprovalFlow
 from cex_tbot.config import BotConfig
+from cex_tbot.dashboard_models import DashboardBuilder, DashboardView
 from cex_tbot.decision_contracts import TradeProposal
 from cex_tbot.execution import ExecutionOrchestrator, TradeTimelineBuilder
 from cex_tbot.handoff import ApprovalExecutionHandoff
@@ -34,6 +35,7 @@ class TradingBackendService:
     timeline_builder: TradeTimelineBuilder
     query_service: QueryService
     serializer: ApiSerializer
+    dashboard_builder: DashboardBuilder
 
     @classmethod
     def from_session(
@@ -67,6 +69,7 @@ class TradingBackendService:
             timeline_builder=timeline_builder,
             query_service=QueryService(session, timeline_builder),
             serializer=ApiSerializer(),
+            dashboard_builder=DashboardBuilder(session, QueryService(session, timeline_builder)),
         )
 
     def submit_proposal(self, proposal: TradeProposal) -> TradeProposal:
@@ -147,3 +150,15 @@ class TradingBackendService:
 
     def get_session_summary_payload(self) -> dict[str, object]:
         return self.serializer.session_summary(self.get_session_summary())
+
+    def get_dashboard_view(self) -> DashboardView:
+        return self.dashboard_builder.build()
+
+    def get_dashboard_payload(self) -> dict[str, object]:
+        dashboard = self.get_dashboard_view()
+        return {
+            "kpis": dashboard.kpis.__dict__.copy(),
+            "risk": dashboard.risk.__dict__.copy(),
+            "latest_trades": [self.serializer.trade_list_item(item) for item in dashboard.latest_trades],
+            "operator_activity": dashboard.operator_activity.__dict__.copy(),
+        }

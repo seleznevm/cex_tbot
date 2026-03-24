@@ -5,6 +5,7 @@ from .approval_flow import ApprovalFlow
 from .audit import AuditEntry, InMemoryOperatorTranscript
 from .backend_service import TradingBackendService
 from .config import BotConfig, load_config
+from .dashboard_models import DashboardBuilder, DashboardView, KpiWidget, OperatorActivityWidget, RiskWidget
 from .handoff import ApprovalExecutionHandoff, ApprovalExecutionResult
 from .operator_router import OperatorCommandRouter, RenderedResponse
 from .proposal_store import InMemoryProposalStore
@@ -24,6 +25,11 @@ __all__ = [
     "ProposalSubmitRequest",
     "ApprovalFlow",
     "BotConfig",
+    "DashboardBuilder",
+    "DashboardView",
+    "KpiWidget",
+    "OperatorActivityWidget",
+    "RiskWidget",
     "load_config",
     "TradingBackendService",
     "ApprovalExecutionHandoff",

@@ -63,3 +63,6 @@ class ApiSurface:
 
     def session_summary(self) -> dict[str, object]:
         return self.backend.get_session_summary_payload()
+
+    def dashboard(self) -> dict[str, object]:
+        return self.backend.get_dashboard_payload()
