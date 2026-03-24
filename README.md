@@ -178,6 +178,7 @@ It also includes:
 - a query/read-model layer
 - serializer helpers for API-ready payloads
 - payload-returning backend methods for command, trade, and session responses
+- a thin API-surface layer with endpoint-like request contracts
 
 This is the intended bridge layer for future CLI, bot, web, or dashboard integrations.
 
