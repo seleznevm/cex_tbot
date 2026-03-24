@@ -110,18 +110,19 @@ Approval-flow foundation now includes:
 
 ## Phase 5 status
 
-Initial execution/simulator foundation added:
+Execution/simulator foundation now includes:
 - simulator position model
-- fill events
+- fill events with fee/slippage fields
 - split-leg fill application
-- protective level processing for stop / take-profit
+- TP1 partial close + TP2 full close lifecycle
+- stop-loss handling
+- realized PnL / remaining size / total fees tracking
 - execution orchestrator with pre-execution risk check
 - expired proposal rejection at execution time using actual current time
 
 ## Next steps
 
-- richer partial-close / TP1/TP2 lifecycle
-- fee/slippage model
+- richer partial-close accounting per target leg
 - append-only journal wiring
 - persistent proposal/state storage
 - approval + execution integration

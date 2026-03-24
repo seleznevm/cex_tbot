@@ -54,7 +54,8 @@ class SimulatorTests(unittest.TestCase):
         position = sim.open_position(proposal)
         position = sim.execute_fill(position, FillEvent(proposal.proposal_id, 1, 100.0, 5.0))
         position = sim.execute_fill(position, FillEvent(proposal.proposal_id, 2, 99.8, 5.0))
-        closed = sim.process_protective_levels(position, MarketSnapshot("BTC_USDT", 104.0, 104.1, 104.0, 1_000_000, 500_000, 1.0, 100_000))
+        partial = sim.process_protective_levels(position, MarketSnapshot("BTC_USDT", 102.0, 102.1, 102.0, 1_000_000, 500_000, 1.0, 100_000))
+        closed = sim.process_protective_levels(partial, MarketSnapshot("BTC_USDT", 104.0, 104.1, 104.0, 1_000_000, 500_000, 1.0, 100_000))
         self.assertEqual(closed.status, "CLOSED")
 
 

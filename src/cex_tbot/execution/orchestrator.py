@@ -7,7 +7,7 @@ from cex_tbot.decision_contracts import TradeProposal
 from cex_tbot.enums import ProposalStatus
 from cex_tbot.risk_engine import PortfolioState, RiskEngine
 from cex_tbot.shared import utc_now
-from cex_tbot.simulator import FillEvent, Position, SimulatorService
+from cex_tbot.simulator import Position, SimulatorService
 
 
 @dataclass(frozen=True)
@@ -30,6 +30,6 @@ class ExecutionOrchestrator:
             return ExecutionResult(proposal.proposal_id, ProposalStatus.REJECTED_PRE_EXECUTION, reason=check.reason_code.value)
         position = self.simulator.open_position(proposal)
         for leg in proposal.entry_split:
-            fill = FillEvent(proposal.proposal_id, leg.leg_number, leg.planned_entry_price, proposal.position_size * leg.size_fraction)
+            fill = self.simulator.build_fill(proposal, leg.leg_number, leg.planned_entry_price, proposal.position_size * leg.size_fraction)
             position = self.simulator.execute_fill(position, fill)
         return ExecutionResult(proposal.proposal_id, ProposalStatus.EXECUTED, position=position)
