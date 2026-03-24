@@ -8,6 +8,7 @@ from .reporting import TradeReport, TradeReportBuilder
 from .review_cards import ReviewCard, ReviewCardBuilder
 from .risk_engine import PendingRiskBook, PortfolioState, RiskEngine, RiskEvaluation
 from .storage import FileExecutionJournal, FileExecutionStateStore, FileProposalStore
+from .workflow import TradeWorkflowService, WorkflowResult
 
 __all__ = [
     "ApprovalFlow",
@@ -20,6 +21,8 @@ __all__ = [
     "TradeReportBuilder",
     "ReviewCard",
     "ReviewCardBuilder",
+    "TradeWorkflowService",
+    "WorkflowResult",
     "FileExecutionJournal",
     "FileExecutionStateStore",
     "FileProposalStore",

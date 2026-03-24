@@ -133,16 +133,18 @@ Execution/simulator foundation now includes:
 
 ## Operator-facing output
 
-The repo now includes a text report builder that can combine:
-- review card
-- execution timeline
-- latest position snapshot
+The repo now includes:
+- a text report builder that combines review card, execution timeline, and latest position state
+- a workflow service that can run:
+  - approve
+  - execute
+  - report
 
-into an operator-friendly trade summary.
+as one higher-level flow.
 
 ## Next steps
 
 - richer partial-close accounting per target leg
 - richer report formatting / channel-specific rendering
-- higher-level operator workflows on top of approval→execution handoff
 - file-backed unified workflow/session storage around the full trade lifecycle
+- more operator commands and workflow branches
