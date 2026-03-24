@@ -13,6 +13,7 @@ from cex_tbot.read_models import QueryService, TradeDetailView, TradeListItem
 from cex_tbot.reporting import TradeReport, TradeReportBuilder
 from cex_tbot.review_cards import ReviewCardBuilder
 from cex_tbot.risk_engine import PortfolioState, RiskEngine
+from cex_tbot.serializers import ApiSerializer
 from cex_tbot.session_store import TradeSessionStore
 from cex_tbot.session_summary import SessionSummary, SessionSummaryBuilder
 from cex_tbot.shared import utc_now
@@ -32,6 +33,7 @@ class TradingBackendService:
     summary_builder: SessionSummaryBuilder
     timeline_builder: TradeTimelineBuilder
     query_service: QueryService
+    serializer: ApiSerializer
 
     @classmethod
     def from_session(
@@ -64,6 +66,7 @@ class TradingBackendService:
             summary_builder=SessionSummaryBuilder(),
             timeline_builder=timeline_builder,
             query_service=QueryService(session, timeline_builder),
+            serializer=ApiSerializer(),
         )
 
     def submit_proposal(self, proposal: TradeProposal) -> TradeProposal:
@@ -90,6 +93,29 @@ class TradingBackendService:
             now=now or utc_now(),
         )
 
+    def run_operator_command_payload(
+        self,
+        actor: str,
+        raw_text: str,
+        portfolio: PortfolioState,
+        *,
+        replacement: TradeProposal | None = None,
+        execute_on_approve: bool = True,
+        render_mode: str = "plain",
+        now: datetime | None = None,
+    ) -> dict[str, object]:
+        return self.serializer.rendered_response(
+            self.run_operator_command(
+                actor,
+                raw_text,
+                portfolio,
+                replacement=replacement,
+                execute_on_approve=execute_on_approve,
+                render_mode=render_mode,
+                now=now,
+            )
+        )
+
     def get_trade_report(self, proposal_id: str) -> TradeReport:
         proposal = self.session.proposals.require(proposal_id)
         review_card = self.review_cards.build(proposal)
@@ -109,3 +135,15 @@ class TradingBackendService:
 
     def get_trade_detail(self, proposal_id: str) -> TradeDetailView:
         return self.query_service.get_trade_detail(proposal_id)
+
+    def list_trades_payload(self) -> list[dict[str, object]]:
+        return [self.serializer.trade_list_item(item) for item in self.list_trades()]
+
+    def get_trade_detail_payload(self, proposal_id: str) -> dict[str, object]:
+        return self.serializer.trade_detail(self.get_trade_detail(proposal_id))
+
+    def get_trade_report_payload(self, proposal_id: str) -> dict[str, object]:
+        return self.serializer.trade_report(self.get_trade_report(proposal_id))
+
+    def get_session_summary_payload(self) -> dict[str, object]:
+        return self.serializer.session_summary(self.get_session_summary())

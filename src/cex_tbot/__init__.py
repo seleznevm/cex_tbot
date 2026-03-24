@@ -9,6 +9,7 @@ from .operator_router import OperatorCommandRouter, RenderedResponse
 from .proposal_store import InMemoryProposalStore
 from .read_models import QueryService, TradeDetailView, TradeListItem
 from .reporting import TradeReport, TradeReportBuilder
+from .serializers import ApiSerializer
 from .review_cards import ReviewCard, ReviewCardBuilder
 from .risk_engine import PendingRiskBook, PortfolioState, RiskEngine, RiskEvaluation
 from .session_store import TradeSessionStore
@@ -31,6 +32,7 @@ __all__ = [
     "QueryService",
     "TradeListItem",
     "TradeDetailView",
+    "ApiSerializer",
     "TradeReport",
     "TradeReportBuilder",
     "ReviewCard",

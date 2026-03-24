@@ -174,7 +174,12 @@ The repo now also includes a backend facade service that exposes a simpler API f
 - list trades
 - get trade detail
 
-It also includes a query/read-model layer intended for future CLI, bot, or dashboard integrations.
+It also includes:
+- a query/read-model layer
+- serializer helpers for API-ready payloads
+- payload-returning backend methods for command, trade, and session responses
+
+This is the intended bridge layer for future CLI, bot, web, or dashboard integrations.
 
 ## Next steps
 
