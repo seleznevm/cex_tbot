@@ -58,6 +58,7 @@ python3 -m unittest discover -s tests -t . -v
 - deterministic symbol eligibility query with stale/not-found handling
 - placeholder config plumbing for `GATE_DEMO_API`
 - Gate metadata adapter skeleton for raw instrument normalization
+- append-only in-memory universe snapshot repository skeleton
 
 ## Next steps
 
