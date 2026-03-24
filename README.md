@@ -140,6 +140,10 @@ The repo now includes:
   - approve + execute + report
   - reject + report
   - modify + revalidate + report
+- an operator command router that can:
+  - parse approval commands
+  - choose the matching workflow branch
+  - render plain or Telegram-friendly output
 
 ## Next steps
 

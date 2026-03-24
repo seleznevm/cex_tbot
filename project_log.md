@@ -27,3 +27,4 @@
 - Added operator-facing trade report builder that combines review card, execution timeline, and latest position state into a readable trade summary.
 - Added high-level workflow service that can approve, execute, and generate a trade report in one orchestrated path.
 - Expanded workflow branches so operators can now choose approve-only, reject+report, or modify+revalidate+report without manually stitching lower-level services.
+- Added operator command router with delivery-oriented rendering so one entrypoint can dispatch approval commands into the right workflow branch and return channel-friendly output.
