@@ -5,7 +5,7 @@ from datetime import datetime
 
 from cex_tbot.config import BotConfig
 from cex_tbot.decision_contracts.models import TradeProposal
-from cex_tbot.enums import ProposalReasonCode
+from cex_tbot.enums import ProposalReasonCode, TradeDirection
 from cex_tbot.shared import new_id
 
 
@@ -48,8 +48,9 @@ class RiskEngine:
         self.pending_risk_book = pending_risk_book or PendingRiskBook()
 
     def evaluate(self, proposal: TradeProposal, portfolio: PortfolioState) -> RiskEvaluation:
-        if proposal.risk_percent > self.config.max_aggregate_open_risk_percent:
-            return RiskEvaluation(False, ProposalReasonCode.RISK_CALCULATION_MISMATCH, portfolio.aggregate_open_risk_pct, self.pending_risk_book.total_reserved_risk_pct, notes="single proposal risk exceeds portfolio cap")
+        consistency = self.check_proposal_consistency(proposal, portfolio.equity)
+        if consistency is not None:
+            return RiskEvaluation(False, consistency, portfolio.aggregate_open_risk_pct, self.pending_risk_book.total_reserved_risk_pct)
         if portfolio.open_positions_count >= self.config.max_open_positions:
             return RiskEvaluation(False, ProposalReasonCode.MAX_OPEN_POSITIONS_REACHED, portfolio.aggregate_open_risk_pct, self.pending_risk_book.total_reserved_risk_pct)
         if portfolio.daily_drawdown_pct >= self.config.max_daily_drawdown_percent:
@@ -58,6 +59,24 @@ class RiskEngine:
         if total_projected_risk > self.config.max_aggregate_open_risk_percent:
             return RiskEvaluation(False, ProposalReasonCode.TOTAL_OPEN_RISK_EXCEEDED, portfolio.aggregate_open_risk_pct, self.pending_risk_book.total_reserved_risk_pct, notes=f"projected_risk={total_projected_risk}")
         return RiskEvaluation(True, ProposalReasonCode.RISK_BUDGET_RESERVED, portfolio.aggregate_open_risk_pct, self.pending_risk_book.total_reserved_risk_pct)
+
+    def check_proposal_consistency(self, proposal: TradeProposal, equity: float) -> ProposalReasonCode | None:
+        if proposal.risk_percent > self.config.max_aggregate_open_risk_percent:
+            return ProposalReasonCode.RISK_CALCULATION_MISMATCH
+        avg_entry = self._average_entry(proposal)
+        stop_distance = abs(avg_entry - proposal.stop_loss)
+        if stop_distance <= 0:
+            return ProposalReasonCode.STOP_LOSS_INVALID
+        if proposal.direction == TradeDirection.LONG and any(leg.planned_entry_price < avg_entry for leg in proposal.entry_split[1:]):
+            return ProposalReasonCode.AVERAGING_DOWN_FORBIDDEN
+        if proposal.direction == TradeDirection.SHORT and any(leg.planned_entry_price > avg_entry for leg in proposal.entry_split[1:]):
+            return ProposalReasonCode.AVERAGING_DOWN_FORBIDDEN
+        if proposal.risk_usd <= 0 or equity <= 0:
+            return ProposalReasonCode.RISK_CALCULATION_MISMATCH
+        expected_risk_pct = (proposal.risk_usd / equity) * 100
+        if abs(expected_risk_pct - proposal.risk_percent) > max(0.05, proposal.risk_percent * 0.2):
+            return ProposalReasonCode.RISK_CALCULATION_MISMATCH
+        return None
 
     def pre_execution_check(
         self,
@@ -79,3 +98,9 @@ class RiskEngine:
 
     def release_pending_risk(self, proposal_id: str) -> None:
         self.pending_risk_book.release(proposal_id)
+
+    @staticmethod
+    def _average_entry(proposal: TradeProposal) -> float:
+        weighted_sum = sum(leg.planned_entry_price * leg.size_fraction for leg in proposal.entry_split)
+        total_fraction = sum(leg.size_fraction for leg in proposal.entry_split)
+        return weighted_sum / total_fraction

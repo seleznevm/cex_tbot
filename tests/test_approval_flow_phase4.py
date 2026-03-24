@@ -59,6 +59,7 @@ class ApprovalFlowPhase4Tests(unittest.TestCase):
         self.assertEqual(store.get("proposal_1").status, ProposalStatus.SUPERSEDED)
         self.assertEqual(store.get("proposal_2").status, ProposalStatus.PENDING_APPROVAL)
         self.assertEqual(store.get("proposal_2").proposal_version, 2)
+        self.assertIsNotNone(result.review_card)
 
     def test_invalid_command_keeps_state(self) -> None:
         store = InMemoryProposalStore()

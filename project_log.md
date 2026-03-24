@@ -16,3 +16,4 @@
 - Strengthened Phase 3 with entry-zone geometry checks, stop-loss / take-profit sanity checks, and pre-execution recheck logic for expiry and freshness.
 - Added direction-aware proposal geometry (LONG/SHORT) and started Phase 4 with strict approval command parsing plus proposal status transition mapping.
 - Completed Phase 4 foundation with in-memory proposal store, approval history tracking, and MODIFY supersede/revalidation flow that creates replacement proposals with incremented versioning.
+- Closed remaining Phase 2–4 tails with market snapshot freshness checks, universe refresh policy, stricter risk consistency checks, anti-averaging-down rule, and operator review card generation.

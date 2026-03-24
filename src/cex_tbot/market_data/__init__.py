@@ -3,6 +3,7 @@ from .gate_metadata import GateInstrumentMetadataAdapter, GateInstrumentRecord
 from .models import MarketSnapshot
 from .normalizer import MarketDataNormalizer, RawMarketTicker
 from .provider import StaticMarketDataProvider
+from .service import MarketDataService, SnapshotFreshness
 
 __all__ = [
     "MarketSnapshot",
@@ -13,4 +14,6 @@ __all__ = [
     "StaticGateInstrumentFetcher",
     "GateInstrumentMetadataAdapter",
     "GateInstrumentRecord",
+    "MarketDataService",
+    "SnapshotFreshness",
 ]

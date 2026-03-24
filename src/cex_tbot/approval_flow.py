@@ -6,6 +6,8 @@ import re
 from cex_tbot.decision_contracts.models import ApprovalDecision, TradeProposal
 from cex_tbot.enums import ApprovalAction, ProposalStatus
 from cex_tbot.proposal_store import InMemoryProposalStore
+from cex_tbot.review_cards import ReviewCard, ReviewCardBuilder
+from cex_tbot.risk_engine import RiskEvaluation
 
 
 APPROVE_RE = re.compile(r"^APPROVE\s+(?P<proposal_id>\S+)$")
@@ -33,11 +35,13 @@ class ApprovalApplyResult:
     resulting_status: ProposalStatus | None
     proposal_id: str
     superseded_proposal_id: str | None = None
+    review_card: ReviewCard | None = None
 
 
 class ApprovalFlow:
-    def __init__(self, store: InMemoryProposalStore | None = None) -> None:
+    def __init__(self, store: InMemoryProposalStore | None = None, review_cards: ReviewCardBuilder | None = None) -> None:
         self.store = store or InMemoryProposalStore()
+        self.review_cards = review_cards or ReviewCardBuilder()
 
     def parse_command(self, raw_text: str) -> ApprovalParseResult:
         text = raw_text.strip()
@@ -84,6 +88,10 @@ class ApprovalFlow:
             return ProposalStatus.MODIFY_REQUESTED
         return current_status
 
+    def build_review_card(self, proposal_id: str, risk_evaluation: RiskEvaluation | None = None) -> ReviewCard:
+        proposal = self.store.require(proposal_id)
+        return self.review_cards.build(proposal, risk_evaluation)
+
     def apply_command(self, actor: str, raw_text: str) -> ApprovalApplyResult:
         decision = self.record_decision(actor, raw_text)
         self.store.append_decision(decision)
@@ -108,9 +116,11 @@ class ApprovalFlow:
         previous = self.store.require(decision.proposal_id)
         replacement = replace(replacement, status=ProposalStatus.PENDING_APPROVAL, proposal_version=previous.proposal_version + 1)
         self.store.supersede_and_add(previous.proposal_id, replacement)
+        review_card = self.review_cards.build(replacement)
         return ApprovalApplyResult(
             decision=decision,
             resulting_status=replacement.status,
             proposal_id=replacement.proposal_id,
             superseded_proposal_id=previous.proposal_id,
+            review_card=review_card,
         )

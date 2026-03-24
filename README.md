@@ -91,16 +91,26 @@ Approval-flow foundation now includes:
 - proposal status transition mapping for approve/reject/modify
 - in-memory proposal store
 - approval history per proposal
+- review card builder for operator-facing proposal summaries
 - `MODIFY` revalidation path that:
   - supersedes old proposal
   - inserts replacement proposal
   - bumps proposal version
   - returns replacement to `PENDING_APPROVAL`
+  - yields a fresh review card for the replacement
 - invalid free-text commands stay non-strict and do not transition state
+
+## Phase 2–4 tail work completed
+
+- market snapshot freshness service added
+- universe refresh policy added
+- risk consistency now checks `risk_usd` vs `risk_percent` against portfolio equity
+- anti-averaging-down rule added to risk consistency checks
+- review cards added for approval/revalidation flow
 
 ## Next steps
 
-- review card generation
+- Phase 5 execution/simulator work
 - append-only journal wiring
 - persistent proposal/state storage
 - approval + execution integration
