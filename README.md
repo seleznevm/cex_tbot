@@ -164,6 +164,16 @@ The repo now includes a session summary builder that can aggregate:
 
 into a compact dashboard-like textual summary.
 
+## Backend service layer
+
+The repo now also includes a backend facade service that exposes a simpler API for:
+- submit proposal
+- run operator command
+- get trade report
+- get session summary
+
+This is the intended bridge layer for future CLI, bot, or dashboard integrations.
+
 ## Next steps
 
 - richer partial-close accounting per target leg

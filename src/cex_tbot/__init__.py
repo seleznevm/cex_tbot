@@ -2,6 +2,7 @@
 
 from .approval_flow import ApprovalFlow
 from .audit import AuditEntry, InMemoryOperatorTranscript
+from .backend_service import TradingBackendService
 from .config import BotConfig, load_config
 from .handoff import ApprovalExecutionHandoff, ApprovalExecutionResult
 from .operator_router import OperatorCommandRouter, RenderedResponse
@@ -18,6 +19,7 @@ __all__ = [
     "ApprovalFlow",
     "BotConfig",
     "load_config",
+    "TradingBackendService",
     "ApprovalExecutionHandoff",
     "ApprovalExecutionResult",
     "AuditEntry",
