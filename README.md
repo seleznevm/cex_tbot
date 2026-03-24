@@ -124,11 +124,13 @@ Execution/simulator foundation now includes:
   - TP1 partial close
   - TP2 full close
   - stop trigger
+- execution state snapshots via in-memory state store
+- combined trade timeline builder (events + snapshots)
 - expired proposal rejection at execution time using actual current time
 
 ## Next steps
 
 - richer partial-close accounting per target leg
-- persistent execution/state storage
+- file-backed persistent execution/state storage
 - approval + execution integration
-- end-to-end trade timeline views
+- end-to-end operator timeline views
