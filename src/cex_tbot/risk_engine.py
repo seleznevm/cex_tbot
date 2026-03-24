@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
 
 from cex_tbot.config import BotConfig
 from cex_tbot.decision_contracts.models import TradeProposal
@@ -47,6 +48,8 @@ class RiskEngine:
         self.pending_risk_book = pending_risk_book or PendingRiskBook()
 
     def evaluate(self, proposal: TradeProposal, portfolio: PortfolioState) -> RiskEvaluation:
+        if proposal.risk_percent > self.config.max_aggregate_open_risk_percent:
+            return RiskEvaluation(False, ProposalReasonCode.RISK_CALCULATION_MISMATCH, portfolio.aggregate_open_risk_pct, self.pending_risk_book.total_reserved_risk_pct, notes="single proposal risk exceeds portfolio cap")
         if portfolio.open_positions_count >= self.config.max_open_positions:
             return RiskEvaluation(False, ProposalReasonCode.MAX_OPEN_POSITIONS_REACHED, portfolio.aggregate_open_risk_pct, self.pending_risk_book.total_reserved_risk_pct)
         if portfolio.daily_drawdown_pct >= self.config.max_daily_drawdown_percent:
@@ -55,6 +58,19 @@ class RiskEngine:
         if total_projected_risk > self.config.max_aggregate_open_risk_percent:
             return RiskEvaluation(False, ProposalReasonCode.TOTAL_OPEN_RISK_EXCEEDED, portfolio.aggregate_open_risk_pct, self.pending_risk_book.total_reserved_risk_pct, notes=f"projected_risk={total_projected_risk}")
         return RiskEvaluation(True, ProposalReasonCode.RISK_BUDGET_RESERVED, portfolio.aggregate_open_risk_pct, self.pending_risk_book.total_reserved_risk_pct)
+
+    def pre_execution_check(
+        self,
+        proposal: TradeProposal,
+        portfolio: PortfolioState,
+        *,
+        now: datetime,
+    ) -> RiskEvaluation:
+        if proposal.expires_at <= now:
+            return RiskEvaluation(False, ProposalReasonCode.PROPOSAL_EXPIRED, portfolio.aggregate_open_risk_pct, self.pending_risk_book.total_reserved_risk_pct)
+        if proposal.data_freshness_ms < 0:
+            return RiskEvaluation(False, ProposalReasonCode.STALE_MARKET_DATA, portfolio.aggregate_open_risk_pct, self.pending_risk_book.total_reserved_risk_pct, notes="invalid freshness")
+        return self.evaluate(proposal, portfolio)
 
     def reserve_pending_risk(self, proposal: TradeProposal) -> str:
         reservation_id = new_id("reserve")

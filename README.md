@@ -68,10 +68,15 @@ python3 -m unittest discover -s tests -t . -v
 Implemented foundation pieces:
 - proposal validation against universe eligibility and confidence thresholds
 - split-entry total checks
+- leg price checks against entry zone
+- stop-loss sanity checks versus entry zone
+- basic take-profit ladder progression checks
 - portfolio/risk evaluation against:
   - max open positions
   - max daily drawdown
   - aggregate open risk including pending reservations
+  - single-trade risk above portfolio cap
+- pre-execution recheck for expiry/freshness
 - pending risk reservation book skeleton
 
 ## Next steps

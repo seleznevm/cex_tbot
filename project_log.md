@@ -13,3 +13,4 @@
 - Added Gate fetch client contract plus deterministic static fetcher to prepare live metadata transport later without coupling current Phase 2 logic to network I/O.
 - Replaced ad-hoc string eligibility reasons with typed eligibility reason taxonomy to keep universe decisions controlled and persistence-friendly.
 - Started Phase 3 with proposal validator, risk evaluation, and pending-risk reservation skeleton tied to configured portfolio limits.
+- Strengthened Phase 3 with entry-zone geometry checks, stop-loss / take-profit sanity checks, and pre-execution recheck logic for expiry and freshness.
