@@ -36,3 +36,4 @@
 - Added serializer/API-prep layer plus payload-oriented backend methods so future interfaces can consume stable dict responses instead of internal dataclasses.
 - Added thin API-surface contracts with endpoint-like request objects so future web/CLI/bot adapters can plug into the backend facade without touching internal service wiring.
 - Added dashboard-oriented read models/widgets plus backend/API accessors for KPI, risk, latest-trades, and operator-activity views that can feed a future UI.
+- Added explicit trade query semantics (filtering, sorting, pagination) and threaded them through read models, backend facade, and API surface.

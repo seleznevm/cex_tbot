@@ -1,6 +1,6 @@
 """cex_tbot package."""
 
-from .api_surface import ApiSurface, CommandRequest, ProposalSubmitRequest
+from .api_surface import ApiSurface, CommandRequest, ProposalSubmitRequest, TradeListRequest
 from .approval_flow import ApprovalFlow
 from .audit import AuditEntry, InMemoryOperatorTranscript
 from .backend_service import TradingBackendService
@@ -9,6 +9,7 @@ from .dashboard_models import DashboardBuilder, DashboardView, KpiWidget, Operat
 from .handoff import ApprovalExecutionHandoff, ApprovalExecutionResult
 from .operator_router import OperatorCommandRouter, RenderedResponse
 from .proposal_store import InMemoryProposalStore
+from .query_params import TradeQuery
 from .read_models import QueryService, TradeDetailView, TradeListItem
 from .reporting import TradeReport, TradeReportBuilder
 from .serializers import ApiSerializer
@@ -23,6 +24,7 @@ __all__ = [
     "ApiSurface",
     "CommandRequest",
     "ProposalSubmitRequest",
+    "TradeListRequest",
     "ApprovalFlow",
     "BotConfig",
     "DashboardBuilder",
@@ -39,6 +41,7 @@ __all__ = [
     "InMemoryProposalStore",
     "OperatorCommandRouter",
     "RenderedResponse",
+    "TradeQuery",
     "QueryService",
     "TradeListItem",
     "TradeDetailView",

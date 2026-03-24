@@ -10,6 +10,7 @@ from cex_tbot.decision_contracts import TradeProposal
 from cex_tbot.execution import ExecutionOrchestrator, TradeTimelineBuilder
 from cex_tbot.handoff import ApprovalExecutionHandoff
 from cex_tbot.operator_router import OperatorCommandRouter, RenderedResponse
+from cex_tbot.query_params import TradeQuery
 from cex_tbot.read_models import QueryService, TradeDetailView, TradeListItem
 from cex_tbot.reporting import TradeReport, TradeReportBuilder
 from cex_tbot.review_cards import ReviewCardBuilder
@@ -133,14 +134,14 @@ class TradingBackendService:
     def get_session_summary(self) -> SessionSummary:
         return self.summary_builder.build(self.session)
 
-    def list_trades(self) -> list[TradeListItem]:
-        return self.query_service.list_trades()
+    def list_trades(self, query: TradeQuery | None = None) -> list[TradeListItem]:
+        return self.query_service.list_trades(query)
 
     def get_trade_detail(self, proposal_id: str) -> TradeDetailView:
         return self.query_service.get_trade_detail(proposal_id)
 
-    def list_trades_payload(self) -> list[dict[str, object]]:
-        return [self.serializer.trade_list_item(item) for item in self.list_trades()]
+    def list_trades_payload(self, query: TradeQuery | None = None) -> list[dict[str, object]]:
+        return [self.serializer.trade_list_item(item) for item in self.list_trades(query)]
 
     def get_trade_detail_payload(self, proposal_id: str) -> dict[str, object]:
         return self.serializer.trade_detail(self.get_trade_detail(proposal_id))

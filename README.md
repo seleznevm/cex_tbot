@@ -186,6 +186,7 @@ It also includes:
 - payload-returning backend methods for command, trade, and session responses
 - a thin API-surface layer with endpoint-like request contracts
 - dashboard payload access for UI-oriented consumers
+- trade query semantics for filtering / sorting / pagination
 
 This is the intended bridge layer for future CLI, bot, web, or dashboard integrations.
 

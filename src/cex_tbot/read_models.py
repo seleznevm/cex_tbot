@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from cex_tbot.execution import TradeTimelineBuilder, TradeTimelineView
+from cex_tbot.query_params import TradeQuery
 from cex_tbot.session_store import TradeSessionStore
 
 
@@ -36,7 +37,8 @@ class QueryService:
         self.session = session
         self.timeline_builder = timeline_builder
 
-    def list_trades(self) -> list[TradeListItem]:
+    def list_trades(self, query: TradeQuery | None = None) -> list[TradeListItem]:
+        query = query or TradeQuery()
         items: list[TradeListItem] = []
         for proposal in self.session.proposals._proposals.values():
             timeline = self.timeline_builder.build(proposal.proposal_id)
@@ -52,8 +54,18 @@ class QueryService:
                     snapshot_count=timeline.snapshot_count,
                 )
             )
-        items.sort(key=lambda item: item.proposal_id)
-        return items
+        if query.status is not None:
+            items = [item for item in items if item.status == query.status]
+        if query.symbol is not None:
+            items = [item for item in items if item.symbol == query.symbol]
+        if query.direction is not None:
+            items = [item for item in items if item.direction == query.direction]
+        if query.sort_by not in {"proposal_id", "confidence_score", "status", "symbol"}:
+            raise ValueError(f"unsupported sort_by={query.sort_by}")
+        items.sort(key=lambda item: getattr(item, query.sort_by), reverse=query.descending)
+        start = max(query.offset, 0)
+        end = None if query.limit is None else start + max(query.limit, 0)
+        return items[start:end]
 
     def get_trade_detail(self, proposal_id: str) -> TradeDetailView:
         proposal = self.session.proposals.require(proposal_id)

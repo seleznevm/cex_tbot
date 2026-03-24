@@ -5,6 +5,7 @@ from datetime import datetime
 
 from cex_tbot.backend_service import TradingBackendService
 from cex_tbot.decision_contracts import TradeProposal
+from cex_tbot.query_params import TradeQuery
 from cex_tbot.risk_engine import PortfolioState
 
 
@@ -25,6 +26,17 @@ class CommandRequest:
 @dataclass(frozen=True)
 class ProposalSubmitRequest:
     proposal: TradeProposal
+
+
+@dataclass(frozen=True)
+class TradeListRequest:
+    status: str | None = None
+    symbol: str | None = None
+    direction: str | None = None
+    sort_by: str = "proposal_id"
+    descending: bool = False
+    limit: int | None = None
+    offset: int = 0
 
 
 class ApiSurface:
@@ -52,8 +64,19 @@ class ApiSurface:
             now=request.now,
         )
 
-    def list_trades(self) -> list[dict[str, object]]:
-        return self.backend.list_trades_payload()
+    def list_trades(self, request: TradeListRequest | None = None) -> list[dict[str, object]]:
+        query = None
+        if request is not None:
+            query = TradeQuery(
+                status=request.status,
+                symbol=request.symbol,
+                direction=request.direction,
+                sort_by=request.sort_by,
+                descending=request.descending,
+                limit=request.limit,
+                offset=request.offset,
+            )
+        return self.backend.list_trades_payload(query)
 
     def trade_detail(self, proposal_id: str) -> dict[str, object]:
         return self.backend.get_trade_detail_payload(proposal_id)
