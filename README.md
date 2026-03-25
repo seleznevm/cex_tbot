@@ -333,10 +333,35 @@ PYTHONPATH=src python3 -m cex_tbot unhalt --storage-dir .runtime/session --forma
 
 When halt is active, operator commands and explicit execution requests return a blocked response instead of mutating trade state.
 
+## Bot-facing adapter layer
+
+The repo now also exposes a bot-facing adapter contract that can sit behind Telegram/OpenClaw delivery without changing core trading logic.
+
+Main entrypoint:
+
+- `cex_tbot.bot_adapter.BotCommandAdapter`
+
+It provides high-level handlers for:
+
+- help
+- status
+- dashboard
+- list
+- detail
+- report
+- approve / approve_only
+- execute
+- halt / unhalt
+- no-trade listing
+
+The adapter returns simple `BotReply(text, parse_mode)` objects, so a messaging integration can decide how to deliver them.
+
+This is an integration layer, not a network bot by itself. That is intentional: messaging transport stays outside the core repo logic.
+
 ## Next steps
 
 - richer partial-close accounting per target leg
-- richer report formatting / channel-specific rendering
-- more operator commands and workflow branches
+- auto-stop policy layer beyond manual halt
+- post-analysis / calibration layer
+- real Telegram/OpenClaw message transport binding on top of the bot adapter
 - higher-level dashboard/UI views
-- later: explicit live adapters behind the same composition root, once network logic is intentionally introduced

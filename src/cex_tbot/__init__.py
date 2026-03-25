@@ -1,6 +1,7 @@
 """cex_tbot package."""
 
 from .api_surface import ApiSurface, CommandRequest, ExecuteRequest, ProposalSubmitRequest, TradeListRequest
+from .bot_adapter import BotCommandAdapter, BotReply
 from .demo import DemoArtifacts, build_demo_proposal, render_demo, run_demo
 from .approval_flow import ApprovalFlow
 from .audit import AuditEntry, InMemoryOperatorTranscript
@@ -39,6 +40,8 @@ __all__ = [
     "ExecuteRequest",
     "ProposalSubmitRequest",
     "TradeListRequest",
+    "BotCommandAdapter",
+    "BotReply",
     "DemoArtifacts",
     "build_demo_proposal",
     "render_demo",
