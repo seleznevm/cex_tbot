@@ -307,7 +307,51 @@ It is intentionally an adapter layer only.
 
 ---
 
-## 12. Safe usage pattern right now
+## 12. Bot command dispatcher
+
+There is now also a text-command dispatcher layer on top of the adapter.
+
+Python entrypoint:
+
+```python
+from cex_tbot import BotCommandAdapter, BotCommandDispatcher, build_app
+
+app = build_app(storage_dir=".runtime/session")
+adapter = BotCommandAdapter(app.backend)
+dispatcher = BotCommandDispatcher(adapter)
+
+reply = dispatcher.dispatch("/help")
+print(reply.text)
+```
+
+Supported text commands:
+
+- `/help`
+- `/status`
+- `/dashboard`
+- `/list [limit]`
+- `/detail <proposal_id>`
+- `/report <proposal_id>`
+- `/approve <proposal_id>`
+- `/approve_only <proposal_id>`
+- `/execute <proposal_id>`
+- `/halt <reason>`
+- `/unhalt`
+- `/no_trades`
+- `/seed_demo`
+- `/seed_no_trade`
+
+Why it exists:
+
+- chat platforms deliver raw text
+- the adapter exposes semantic operations
+- the dispatcher bridges raw command text to semantic adapter calls
+
+This is the most direct handoff point for a real Telegram/OpenClaw chat integration layer.
+
+---
+
+## 13. Safe usage pattern right now
 
 Recommended operator sequence:
 
