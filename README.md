@@ -237,6 +237,8 @@ summary = app.backend.get_session_summary_payload()
 ### Runtime smoke check
 
 ```bash
+PYTHONPATH=src python3 -m cex_tbot --format json
+PYTHONPATH=src python3 -m cex_tbot --storage-dir .runtime/session --format json
 PYTHONPATH=src python3 -m cex_tbot status --format json
 PYTHONPATH=src python3 -m cex_tbot status --storage-dir .runtime/session --format json
 ```
