@@ -1,0 +1,52 @@
+from __future__ import annotations
+
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+import unittest
+
+
+class CliHaltNoTradeTests(unittest.TestCase):
+    def _run(self, *args: str) -> subprocess.CompletedProcess[str]:
+        env = os.environ.copy()
+        env["PYTHONPATH"] = "src"
+        return subprocess.run(
+            [sys.executable, "-m", "cex_tbot", *args],
+            cwd=Path(__file__).resolve().parents[1],
+            check=True,
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+
+    def test_no_trade_and_halt_commands(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            storage = str(Path(tmp) / "runtime")
+            no_trade = self._run("no-trade-demo", "--storage-dir", storage, "--format", "json")
+            no_trade_payload = json.loads(no_trade.stdout)
+            self.assertEqual(no_trade_payload["symbol"], "BTC_USDT")
+
+            listed = self._run("list-no-trades", "--storage-dir", storage, "--format", "json")
+            listed_payload = json.loads(listed.stdout)
+            self.assertEqual(len(listed_payload), 1)
+
+            halted = self._run("halt", "manual-safety-stop", "--storage-dir", storage, "--format", "json")
+            halted_payload = json.loads(halted.stdout)
+            self.assertTrue(halted_payload["emergency_halt_active"])
+
+            submit = self._run("submit-demo", "--storage-dir", storage, "--format", "json")
+            proposal_id = json.loads(submit.stdout)["proposal_id"]
+            blocked = self._run("command", f"APPROVE {proposal_id}", "--storage-dir", storage, "--format", "json")
+            blocked_payload = json.loads(blocked.stdout)
+            self.assertIn("Emergency halt active", blocked_payload["text"])
+
+            unhalted = self._run("unhalt", "--storage-dir", storage, "--format", "json")
+            unhalted_payload = json.loads(unhalted.stdout)
+            self.assertFalse(unhalted_payload["emergency_halt_active"])
+
+
+if __name__ == "__main__":
+    unittest.main()

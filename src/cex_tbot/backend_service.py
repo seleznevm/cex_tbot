@@ -7,7 +7,7 @@ from cex_tbot.approval_flow import ApprovalFlow
 from cex_tbot.audit import AuditEntry
 from cex_tbot.config import BotConfig
 from cex_tbot.dashboard_models import DashboardBuilder, DashboardView
-from cex_tbot.decision_contracts import TradeProposal
+from cex_tbot.decision_contracts import NoTradeDecision, TradeProposal
 from cex_tbot.execution import ExecutionOrchestrator, TradeTimelineBuilder
 from cex_tbot.handoff import ApprovalExecutionHandoff
 from cex_tbot.operator_router import OperatorCommandRouter, RenderedResponse
@@ -78,6 +78,22 @@ class TradingBackendService:
     def submit_proposal(self, proposal: TradeProposal) -> TradeProposal:
         return self.session.proposals.upsert(proposal)
 
+    def submit_no_trade_decision(self, decision: NoTradeDecision) -> NoTradeDecision:
+        return self.session.no_trades.add(decision)
+
+    def activate_emergency_halt(self, reason: str) -> None:
+        self.session.system_state.activate_halt(reason)
+        self.session.operator_transcript.append(
+            AuditEntry(actor="system", raw_command=f"HALT {reason}", outcome="HALT_ON")
+        )
+
+    def clear_emergency_halt(self) -> None:
+        previous_reason = self.session.system_state.halt_reason or "manual clear"
+        self.session.system_state.clear_halt()
+        self.session.operator_transcript.append(
+            AuditEntry(actor="system", raw_command=f"UNHALT {previous_reason}", outcome="HALT_OFF")
+        )
+
     def run_operator_command(
         self,
         actor: str,
@@ -89,6 +105,11 @@ class TradingBackendService:
         render_mode: str = "plain",
         now: datetime | None = None,
     ) -> RenderedResponse:
+        if self.session.system_state.emergency_halt_active:
+            return RenderedResponse(
+                render_mode,
+                f"Emergency halt active: {self.session.system_state.halt_reason or 'no reason provided'}",
+            )
         return self.router.route(
             actor,
             raw_text,
@@ -131,6 +152,11 @@ class TradingBackendService:
         render_mode: str = "plain",
         now: datetime | None = None,
     ) -> RenderedResponse:
+        if self.session.system_state.emergency_halt_active:
+            return RenderedResponse(
+                render_mode,
+                f"Emergency halt active: {self.session.system_state.halt_reason or 'no reason provided'}",
+            )
         proposal = self.session.proposals.require(proposal_id)
         if proposal.status != ProposalStatus.APPROVED_PENDING_EXECUTION_CHECK:
             return RenderedResponse(
@@ -199,6 +225,9 @@ class TradingBackendService:
 
     def get_trade_detail(self, proposal_id: str) -> TradeDetailView:
         return self.query_service.get_trade_detail(proposal_id)
+
+    def list_no_trades_payload(self) -> list[dict[str, object]]:
+        return [self.serializer.no_trade_decision(item) for item in self.session.no_trades.list()]
 
     def list_trades_payload(self, query: TradeQuery | None = None) -> list[dict[str, object]]:
         return [self.serializer.trade_list_item(item) for item in self.list_trades(query)]

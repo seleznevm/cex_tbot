@@ -6,7 +6,9 @@ from pathlib import Path
 
 from cex_tbot import build_app
 from cex_tbot.api_surface import CommandRequest, ProposalSubmitRequest, TradeListRequest
+from cex_tbot.decision_contracts import NoTradeDecision
 from cex_tbot.demo import build_demo_proposal, render_demo
+from cex_tbot.enums import NoTradeReasonCode
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -91,6 +93,23 @@ def build_parser() -> argparse.ArgumentParser:
     dashboard_parser.add_argument("--storage-dir", type=Path, help="Optional base directory for file-backed session state")
     dashboard_parser.add_argument("--format", choices=("text", "json"), default="text", help="Output format")
 
+    no_trade_parser = subparsers.add_parser("no-trade-demo", help="Store a deterministic no-trade decision")
+    no_trade_parser.add_argument("--storage-dir", type=Path, help="Optional base directory for file-backed session state")
+    no_trade_parser.add_argument("--format", choices=("text", "json"), default="text", help="Output format")
+
+    no_trade_list_parser = subparsers.add_parser("list-no-trades", help="List stored no-trade decisions")
+    no_trade_list_parser.add_argument("--storage-dir", type=Path, help="Optional base directory for file-backed session state")
+    no_trade_list_parser.add_argument("--format", choices=("text", "json"), default="text", help="Output format")
+
+    halt_parser = subparsers.add_parser("halt", help="Activate emergency halt")
+    halt_parser.add_argument("reason")
+    halt_parser.add_argument("--storage-dir", type=Path, help="Optional base directory for file-backed session state")
+    halt_parser.add_argument("--format", choices=("text", "json"), default="text", help="Output format")
+
+    unhalt_parser = subparsers.add_parser("unhalt", help="Clear emergency halt")
+    unhalt_parser.add_argument("--storage-dir", type=Path, help="Optional base directory for file-backed session state")
+    unhalt_parser.add_argument("--format", choices=("text", "json"), default="text", help="Output format")
+
     return parser
 
 
@@ -172,8 +191,8 @@ def render_trade_detail_text(detail: dict[str, object]) -> str:
 def render_dashboard_text(payload: dict[str, object]) -> str:
     lines = [
         "Dashboard",
-        f"- proposals={payload['kpis']['total_proposals']} executed={payload['kpis']['executed_proposals']} rejected={payload['kpis']['rejected_proposals']}",
-        f"- commands={payload['kpis']['operator_commands']} approval_decisions={payload['risk']['approval_decisions']} execution_events={payload['risk']['execution_events']}",
+        f"- proposals={payload['kpis']['total_proposals']} no_trades={payload['kpis']['total_no_trade_decisions']} executed={payload['kpis']['executed_proposals']} rejected={payload['kpis']['rejected_proposals']}",
+        f"- commands={payload['kpis']['operator_commands']} approval_decisions={payload['risk']['approval_decisions']} execution_events={payload['risk']['execution_events']} halt={payload['risk']['emergency_halt_active']}",
     ]
     latest = payload["latest_trades"]
     if latest:
@@ -266,6 +285,43 @@ def main() -> int:
     if command == "dashboard":
         payload = api.dashboard()
         print(_print_payload(payload, fmt) if fmt == "json" else render_dashboard_text(payload))
+        return 0
+
+    if command == "no-trade-demo":
+        decision = app.backend.submit_no_trade_decision(
+            NoTradeDecision(
+                agent_name="Luma",
+                strategy_id="breakout_reclaim",
+                strategy_version="v3",
+                symbol="BTC_USDT",
+                timeframe="15m",
+                confidence_score=0.41,
+                reason_code=NoTradeReasonCode.CONFIDENCE_BELOW_THRESHOLD,
+                reason_text="Confidence stayed below execution threshold after validation.",
+                market_context_id="ctx_demo_btc_20260325",
+                liquidity_check="spread ok but setup confidence insufficient",
+                data_freshness_ms=12_000,
+            )
+        )
+        payload = app.backend.serializer.no_trade_decision(decision)
+        print(_print_payload(payload, fmt))
+        return 0
+
+    if command == "list-no-trades":
+        payload = app.backend.list_no_trades_payload()
+        print(_print_payload(payload, fmt))
+        return 0
+
+    if command == "halt":
+        app.backend.activate_emergency_halt(args.reason)
+        payload = app.backend.get_session_summary_payload()
+        print(_print_payload(payload, fmt))
+        return 0
+
+    if command == "unhalt":
+        app.backend.clear_emergency_halt()
+        payload = app.backend.get_session_summary_payload()
+        print(_print_payload(payload, fmt))
         return 0
 
     print(render_status(storage_dir=storage_dir, fmt=fmt))

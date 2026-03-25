@@ -6,7 +6,9 @@ from pathlib import Path
 from cex_tbot.session_store import TradeSessionStore
 from cex_tbot.storage.audit_files import FileOperatorTranscript
 from cex_tbot.storage.execution_files import FileExecutionJournal, FileExecutionStateStore
+from cex_tbot.storage.no_trade_files import FileNoTradeStore
 from cex_tbot.storage.proposal_files import FileProposalStore
+from cex_tbot.storage.system_state_files import FileSystemState
 
 
 @dataclass
@@ -17,7 +19,9 @@ class FileTradeSessionStore(TradeSessionStore):
         root.mkdir(parents=True, exist_ok=True)
         return cls(
             proposals=FileProposalStore(root / "proposals.jsonl", root / "decisions.jsonl"),
+            no_trades=FileNoTradeStore(root / "no-trades.jsonl"),
             execution_journal=FileExecutionJournal(root / "execution-events.jsonl"),
             execution_state=FileExecutionStateStore(root / "execution-state.jsonl"),
             operator_transcript=FileOperatorTranscript(root / "operator-transcript.jsonl"),
+            system_state=FileSystemState(root / "system-state.json"),
         )

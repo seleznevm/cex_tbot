@@ -8,26 +8,33 @@ from cex_tbot.session_store import TradeSessionStore
 @dataclass(frozen=True)
 class SessionSummary:
     total_proposals: int
+    total_no_trade_decisions: int
     executed_proposals: int
     rejected_proposals: int
     approval_decisions: int
     execution_events: int
     state_snapshots: int
     operator_commands: int
+    emergency_halt_active: bool
+    halt_reason: str | None
     proposal_status_breakdown: dict[str, int]
 
     def to_text(self) -> str:
         lines = [
             "Session Summary",
             f"Total proposals: {self.total_proposals}",
+            f"No-trade decisions: {self.total_no_trade_decisions}",
             f"Executed proposals: {self.executed_proposals}",
             f"Rejected proposals: {self.rejected_proposals}",
             f"Approval decisions: {self.approval_decisions}",
             f"Execution events: {self.execution_events}",
             f"State snapshots: {self.state_snapshots}",
             f"Operator commands: {self.operator_commands}",
+            f"Emergency halt: {self.emergency_halt_active}",
             "Status breakdown:",
         ]
+        if self.halt_reason:
+            lines.append(f"Halt reason: {self.halt_reason}")
         for status, count in sorted(self.proposal_status_breakdown.items()):
             lines.append(f"- {status}: {count}")
         return "\n".join(lines)
@@ -44,11 +51,14 @@ class SessionSummaryBuilder:
         rejected = sum(1 for proposal in proposals if "REJECTED" in proposal.status.value)
         return SessionSummary(
             total_proposals=len(proposals),
+            total_no_trade_decisions=len(session.no_trades.list()),
             executed_proposals=executed,
             rejected_proposals=rejected,
             approval_decisions=decisions,
             execution_events=len(session.execution_journal.list_events()),
             state_snapshots=sum(len(session.execution_state.list_snapshots(proposal.proposal_id)) for proposal in proposals),
             operator_commands=len(session.operator_transcript.list_entries()),
+            emergency_halt_active=session.system_state.emergency_halt_active,
+            halt_reason=session.system_state.halt_reason,
             proposal_status_breakdown=status_breakdown,
         )

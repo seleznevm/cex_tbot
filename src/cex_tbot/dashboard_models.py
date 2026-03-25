@@ -10,6 +10,7 @@ from cex_tbot.session_summary import SessionSummaryBuilder
 @dataclass(frozen=True)
 class KpiWidget:
     total_proposals: int
+    total_no_trade_decisions: int
     executed_proposals: int
     rejected_proposals: int
     operator_commands: int
@@ -21,6 +22,7 @@ class RiskWidget:
     avg_confidence_score: float
     approval_decisions: int
     execution_events: int
+    emergency_halt_active: bool
 
 
 @dataclass(frozen=True)
@@ -52,6 +54,7 @@ class DashboardBuilder:
         return DashboardView(
             kpis=KpiWidget(
                 total_proposals=summary.total_proposals,
+                total_no_trade_decisions=summary.total_no_trade_decisions,
                 executed_proposals=summary.executed_proposals,
                 rejected_proposals=summary.rejected_proposals,
                 operator_commands=summary.operator_commands,
@@ -61,6 +64,7 @@ class DashboardBuilder:
                 avg_confidence_score=avg_conf,
                 approval_decisions=summary.approval_decisions,
                 execution_events=summary.execution_events,
+                emergency_halt_active=summary.emergency_halt_active,
             ),
             latest_trades=latest_trades,
             operator_activity=OperatorActivityWidget(

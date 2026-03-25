@@ -310,6 +310,29 @@ Available render modes for operator output:
 
 This gives us a cleaner operator UX and a stable shell-level integration surface for a later Telegram bot or UI layer.
 
+## No-trade decisions and emergency halt
+
+The local runtime now also supports two important semi-auto controls:
+
+- first-class no-trade decisions
+- emergency halt that blocks operator approval/execution flows
+
+Store and inspect a demo no-trade decision:
+
+```bash
+PYTHONPATH=src python3 -m cex_tbot no-trade-demo --storage-dir .runtime/session --format json
+PYTHONPATH=src python3 -m cex_tbot list-no-trades --storage-dir .runtime/session --format json
+```
+
+Activate and clear emergency halt:
+
+```bash
+PYTHONPATH=src python3 -m cex_tbot halt "manual-safety-stop" --storage-dir .runtime/session --format json
+PYTHONPATH=src python3 -m cex_tbot unhalt --storage-dir .runtime/session --format json
+```
+
+When halt is active, operator commands and explicit execution requests return a blocked response instead of mutating trade state.
+
 ## Next steps
 
 - richer partial-close accounting per target leg
