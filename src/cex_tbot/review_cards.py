@@ -13,11 +13,15 @@ class ReviewCard:
     direction: str
     timeframe: str
     confidence_score: float
+    entry_zone_min: float
+    entry_zone_max: float
     entry_summary: str
     stop_loss: float
     tp_summary: str
     risk_summary: str
     thesis: str
+    invalidity_condition: str
+    liquidity_check: str
 
 
 class ReviewCardBuilder:
@@ -36,9 +40,13 @@ class ReviewCardBuilder:
             direction=proposal.direction.value,
             timeframe=proposal.timeframe,
             confidence_score=proposal.confidence_score,
+            entry_zone_min=proposal.entry_zone_min,
+            entry_zone_max=proposal.entry_zone_max,
             entry_summary=entry_summary,
             stop_loss=proposal.stop_loss,
             tp_summary=tp_summary,
             risk_summary=risk_summary,
             thesis=proposal.thesis,
+            invalidity_condition=proposal.invalidity_condition,
+            liquidity_check=proposal.liquidity_check,
         )

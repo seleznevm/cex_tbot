@@ -76,16 +76,18 @@ class OperatorCommandRouter:
     def render(self, result: WorkflowResult, mode: str) -> str:
         if result.report is None:
             return "Command processed, but no report available."
-        if mode == "telegram":
-            return self._render_telegram(result.report)
-        return result.report.to_text()
+        return self.render_report(result.report, mode)
 
     @staticmethod
-    def _render_telegram(report: TradeReport) -> str:
-        return "\n".join(
-            [
-                f"**{report.headline}**",
-                *report.summary_lines,
-                *report.timeline_lines,
-            ]
-        )
+    def render_report(report: TradeReport, mode: str) -> str:
+        if mode == "telegram":
+            return report.to_telegram_text()
+        if mode == "operator":
+            return report.to_operator_text()
+        if mode == "compact":
+            return report.to_compact_text()
+        return report.to_text()
+
+    @classmethod
+    def render_trade_report(cls, report: TradeReport, mode: str = "plain") -> str:
+        return cls.render_report(report, mode)

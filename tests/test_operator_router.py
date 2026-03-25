@@ -75,6 +75,33 @@ class OperatorRouterTests(unittest.TestCase):
         response = self._router(store).route("Mike", "MODIFY proposal_1: stop_loss=98.5", PortfolioState(equity=1000.0))
         self.assertIn("requires replacement proposal", response.text)
 
+    def test_renders_operator_mode_with_spacing(self) -> None:
+        store = InMemoryProposalStore()
+        proposal = self._proposal()
+        store.upsert(proposal)
+        response = self._router(store).route(
+            "Mike",
+            "APPROVE proposal_1",
+            PortfolioState(equity=1000.0),
+            now=proposal.created_at,
+            render_mode="operator",
+        )
+        self.assertIn("\n\nTimeline events:", response.text)
+
+    def test_renders_compact_mode(self) -> None:
+        store = InMemoryProposalStore()
+        proposal = self._proposal()
+        store.upsert(proposal)
+        response = self._router(store).route(
+            "Mike",
+            "APPROVE proposal_1",
+            PortfolioState(equity=1000.0),
+            now=proposal.created_at,
+            render_mode="compact",
+        )
+        self.assertIn("Trade Report", response.text)
+        self.assertIn("Timeline events:", response.text)
+
 
 if __name__ == "__main__":
     unittest.main()

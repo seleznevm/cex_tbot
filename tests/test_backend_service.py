@@ -49,6 +49,80 @@ class BackendServiceTests(unittest.TestCase):
         self.assertEqual(summary.total_proposals, 1)
         self.assertEqual(summary.executed_proposals, 1)
 
+    def test_trade_detail_exposes_extended_fields(self) -> None:
+        session = TradeSessionStore()
+        service = TradingBackendService.from_session(session)
+        now = datetime.now(UTC)
+        proposal = TradeProposal(
+            proposal_id="proposal_2",
+            agent_name="Luma",
+            strategy_id="reclaim",
+            strategy_version="v2",
+            market_context_id="ctx_2",
+            symbol="ETH_USDT",
+            timeframe="1h",
+            direction=TradeDirection.SHORT,
+            entry_zone_min=2000.0,
+            entry_zone_max=2015.0,
+            entry_split=[EntrySplitLeg(1, 2008.0, 100.0, 1.0, now + timedelta(minutes=10))],
+            stop_loss=2030.0,
+            take_profit_1=1980.0,
+            take_profit_2=1960.0,
+            risk_percent=0.5,
+            risk_usd=25.0,
+            position_size=1.5,
+            confidence_score=0.77,
+            thesis="local failure into resistance",
+            invalidity_condition="acceptance above local supply",
+            liquidity_check="spread ok",
+            data_freshness_ms=250,
+            created_at=now,
+            expires_at=now + timedelta(minutes=20),
+            status=ProposalStatus.PENDING_APPROVAL,
+        )
+        service.submit_proposal(proposal)
+        detail = service.get_trade_detail_payload("proposal_2")
+        self.assertEqual(detail["agent_name"], "Luma")
+        self.assertEqual(detail["strategy_id"], "reclaim")
+        self.assertEqual(detail["entry_zone_min"], 2000.0)
+        self.assertIn("created_at", detail)
+
+    def test_trade_report_text_supports_operator_mode(self) -> None:
+        session = TradeSessionStore()
+        service = TradingBackendService.from_session(session)
+        now = datetime.now(UTC)
+        proposal = TradeProposal(
+            proposal_id="proposal_3",
+            agent_name="Luma",
+            strategy_id="breakout",
+            strategy_version="v1",
+            market_context_id="ctx_3",
+            symbol="BTC_USDT",
+            timeframe="15m",
+            direction=TradeDirection.LONG,
+            entry_zone_min=100.0,
+            entry_zone_max=101.0,
+            entry_split=[EntrySplitLeg(1, 100.5, 100.0, 1.0, now + timedelta(minutes=10))],
+            stop_loss=99.0,
+            take_profit_1=102.0,
+            take_profit_2=103.0,
+            risk_percent=0.5,
+            risk_usd=10.0,
+            position_size=2.0,
+            confidence_score=0.81,
+            thesis="trend continuation",
+            invalidity_condition="range failure",
+            liquidity_check="good",
+            data_freshness_ms=100,
+            created_at=now,
+            expires_at=now + timedelta(minutes=20),
+            status=ProposalStatus.PENDING_APPROVAL,
+        )
+        service.submit_proposal(proposal)
+        text = service.get_trade_report_text("proposal_3", render_mode="operator")
+        self.assertIn("Invalidation:", text)
+        self.assertIn("\n\nTimeline events:", text)
+
 
 if __name__ == "__main__":
     unittest.main()

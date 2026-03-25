@@ -156,7 +156,7 @@ class TradingBackendService:
                 proposal_id=proposal_id,
             )
         )
-        rendered_text = self.router._render_telegram(report) if render_mode == "telegram" else report.to_text()
+        rendered_text = self.router.render_report(report, render_mode)
         return RenderedResponse(render_mode, rendered_text)
 
     def execute_approved_proposal_payload(
@@ -185,9 +185,11 @@ class TradingBackendService:
         snapshots = self.session.execution_state.list_snapshots(proposal_id)
         position = None
         if snapshots:
-            # report builder only needs optional position-like info; no reconstruction yet
             position = None
         return self.report_builder.build(review_card, timeline, position)
+
+    def get_trade_report_text(self, proposal_id: str, *, render_mode: str = "plain") -> str:
+        return self.router.render_report(self.get_trade_report(proposal_id), render_mode)
 
     def get_session_summary(self) -> SessionSummary:
         return self.summary_builder.build(self.session)

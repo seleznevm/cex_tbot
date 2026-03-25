@@ -17,6 +17,36 @@ class TradeReport:
     def to_text(self) -> str:
         return "\n".join([self.headline, *self.summary_lines, *self.timeline_lines])
 
+    def to_operator_text(self) -> str:
+        return "\n".join(
+            [
+                self.headline,
+                *self.summary_lines,
+                "",
+                *self.timeline_lines,
+            ]
+        )
+
+    def to_telegram_text(self) -> str:
+        return "\n".join(
+            [
+                f"**{self.headline}**",
+                *self.summary_lines,
+                "",
+                *self.timeline_lines,
+            ]
+        )
+
+    def to_compact_text(self) -> str:
+        first_timeline = self.timeline_lines[0] if self.timeline_lines else "Timeline events: 0"
+        return "\n".join(
+            [
+                self.headline,
+                *self.summary_lines[:4],
+                first_timeline,
+            ]
+        )
+
 
 class TradeReportBuilder:
     def build(
@@ -29,10 +59,13 @@ class TradeReportBuilder:
         summary_lines = [
             f"Timeframe: {review_card.timeframe}",
             f"Confidence: {review_card.confidence_score:.2f}",
-            f"Entry: {review_card.entry_summary}",
+            f"Entry zone: {review_card.entry_zone_min} → {review_card.entry_zone_max}",
+            f"Entry split: {review_card.entry_summary}",
             f"Stop: {review_card.stop_loss}",
             f"Targets: {review_card.tp_summary}",
             f"Risk: {review_card.risk_summary}",
+            f"Invalidation: {review_card.invalidity_condition}",
+            f"Liquidity: {review_card.liquidity_check}",
             f"Thesis: {review_card.thesis}",
         ]
         if position is not None:
@@ -48,7 +81,7 @@ class TradeReportBuilder:
             f"Timeline events: {timeline.event_count}",
             f"State snapshots: {timeline.snapshot_count}",
         ]
-        for event in timeline.events[-5:]:
+        for event in timeline.events[-8:]:
             timeline_lines.append(f"- {event['kind']}: {event['message']}")
         return TradeReport(
             proposal_id=review_card.proposal_id,

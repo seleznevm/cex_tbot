@@ -269,6 +269,47 @@ PYTHONPATH=src python3 -m cex_tbot demo --flow approve-then-execute --storage-di
 
 The demo stays fully deterministic and demo-safe: no live exchange transport, no hidden network calls, only in-memory/file-backed components already wired by bootstrap.
 
+## Operator-oriented CLI
+
+The repo now also exposes simple local commands on top of the same public API surface.
+
+Seed the demo proposal into file-backed storage:
+
+```bash
+PYTHONPATH=src python3 -m cex_tbot submit-demo --storage-dir .runtime/session --format json
+```
+
+List stored trades:
+
+```bash
+PYTHONPATH=src python3 -m cex_tbot list --storage-dir .runtime/session
+PYTHONPATH=src python3 -m cex_tbot list --storage-dir .runtime/session --format json
+```
+
+Approve only, then execute explicitly:
+
+```bash
+PYTHONPATH=src python3 -m cex_tbot command "APPROVE proposal_demo_btc_breakout" --approve-only --storage-dir .runtime/session
+PYTHONPATH=src python3 -m cex_tbot execute proposal_demo_btc_breakout --storage-dir .runtime/session
+```
+
+Inspect detail/report/dashboard views:
+
+```bash
+PYTHONPATH=src python3 -m cex_tbot detail proposal_demo_btc_breakout --storage-dir .runtime/session
+PYTHONPATH=src python3 -m cex_tbot report proposal_demo_btc_breakout --storage-dir .runtime/session --render-mode telegram
+PYTHONPATH=src python3 -m cex_tbot dashboard --storage-dir .runtime/session
+```
+
+Available render modes for operator output:
+
+- `plain`
+- `operator`
+- `telegram`
+- `compact`
+
+This gives us a cleaner operator UX and a stable shell-level integration surface for a later Telegram bot or UI layer.
+
 ## Next steps
 
 - richer partial-close accounting per target leg
