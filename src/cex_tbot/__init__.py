@@ -1,6 +1,7 @@
 """cex_tbot package."""
 
-from .api_surface import ApiSurface, CommandRequest, ProposalSubmitRequest, TradeListRequest
+from .api_surface import ApiSurface, CommandRequest, ExecuteRequest, ProposalSubmitRequest, TradeListRequest
+from .demo import DemoArtifacts, build_demo_proposal, render_demo, run_demo
 from .approval_flow import ApprovalFlow
 from .audit import AuditEntry, InMemoryOperatorTranscript
 from .backend_service import TradingBackendService
@@ -33,8 +34,13 @@ from .workflow import TradeWorkflowService, WorkflowResult
 __all__ = [
     "ApiSurface",
     "CommandRequest",
+    "ExecuteRequest",
     "ProposalSubmitRequest",
     "TradeListRequest",
+    "DemoArtifacts",
+    "build_demo_proposal",
+    "render_demo",
+    "run_demo",
     "ApprovalFlow",
     "TradingApplication",
     "build_app",

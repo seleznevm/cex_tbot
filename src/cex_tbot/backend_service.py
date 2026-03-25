@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from cex_tbot.approval_flow import ApprovalFlow
+from cex_tbot.audit import AuditEntry
 from cex_tbot.config import BotConfig
 from cex_tbot.dashboard_models import DashboardBuilder, DashboardView
 from cex_tbot.decision_contracts import TradeProposal
@@ -11,6 +12,7 @@ from cex_tbot.execution import ExecutionOrchestrator, TradeTimelineBuilder
 from cex_tbot.handoff import ApprovalExecutionHandoff
 from cex_tbot.operator_router import OperatorCommandRouter, RenderedResponse
 from cex_tbot.query_params import TradeQuery
+from cex_tbot.enums import ProposalStatus
 from cex_tbot.read_models import QueryService, TradeDetailView, TradeListItem
 from cex_tbot.reporting import TradeReport, TradeReportBuilder
 from cex_tbot.review_cards import ReviewCardBuilder
@@ -115,6 +117,62 @@ class TradingBackendService:
                 portfolio,
                 replacement=replacement,
                 execute_on_approve=execute_on_approve,
+                render_mode=render_mode,
+                now=now,
+            )
+        )
+
+    def execute_approved_proposal(
+        self,
+        proposal_id: str,
+        portfolio: PortfolioState,
+        *,
+        actor: str = "operator",
+        render_mode: str = "plain",
+        now: datetime | None = None,
+    ) -> RenderedResponse:
+        proposal = self.session.proposals.require(proposal_id)
+        if proposal.status != ProposalStatus.APPROVED_PENDING_EXECUTION_CHECK:
+            return RenderedResponse(
+                render_mode,
+                f"Proposal {proposal_id} is not ready for execution: status={proposal.status.value}",
+            )
+        result = self.execution.execute(proposal, portfolio, now=now or utc_now())
+        if result.status == ProposalStatus.EXECUTED:
+            self.session.proposals.update_status(proposal_id, ProposalStatus.EXECUTED)
+        elif result.status == ProposalStatus.REJECTED_PRE_EXECUTION:
+            self.session.proposals.update_status(proposal_id, ProposalStatus.REJECTED_PRE_EXECUTION)
+        updated = self.session.proposals.require(proposal_id)
+        report = self.report_builder.build(
+            self.review_cards.build(updated),
+            self.timeline_builder.build(proposal_id),
+            result.position,
+        )
+        self.session.operator_transcript.append(
+            AuditEntry(
+                actor=actor,
+                raw_command=f"EXECUTE {proposal_id}",
+                outcome="EXECUTE",
+                proposal_id=proposal_id,
+            )
+        )
+        rendered_text = self.router._render_telegram(report) if render_mode == "telegram" else report.to_text()
+        return RenderedResponse(render_mode, rendered_text)
+
+    def execute_approved_proposal_payload(
+        self,
+        proposal_id: str,
+        portfolio: PortfolioState,
+        *,
+        actor: str = "operator",
+        render_mode: str = "plain",
+        now: datetime | None = None,
+    ) -> dict[str, object]:
+        return self.serializer.rendered_response(
+            self.execute_approved_proposal(
+                proposal_id,
+                portfolio,
+                actor=actor,
                 render_mode=render_mode,
                 now=now,
             )

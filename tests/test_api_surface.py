@@ -53,6 +53,57 @@ class ApiSurfaceTests(unittest.TestCase):
         self.assertIn("Trade Report", report["text"])
         self.assertEqual(summary["executed_proposals"], 1)
 
+    def test_execute_approved_proposal_via_api_surface(self) -> None:
+        backend = TradingBackendService.from_session(TradeSessionStore())
+        api = ApiSurface(backend)
+        now = datetime.now(UTC)
+        proposal = TradeProposal(
+            proposal_id="proposal_2",
+            agent_name="Luma",
+            strategy_id="pullback",
+            strategy_version="v1",
+            market_context_id="ctx_2",
+            symbol="BTC_USDT",
+            timeframe="15m",
+            direction=TradeDirection.LONG,
+            entry_zone_min=99.0,
+            entry_zone_max=100.0,
+            entry_split=[EntrySplitLeg(1, 100.0, 100.0, 1.0, now + timedelta(minutes=10))],
+            stop_loss=98.5,
+            take_profit_1=101.5,
+            take_profit_2=103.0,
+            risk_percent=0.5,
+            risk_usd=5.0,
+            position_size=10.0,
+            confidence_score=0.8,
+            thesis="structure intact",
+            invalidity_condition="swing low breaks",
+            liquidity_check="ok",
+            data_freshness_ms=100,
+            created_at=now,
+            expires_at=now + timedelta(minutes=15),
+            status=ProposalStatus.PENDING_APPROVAL,
+        )
+        api.submit_proposal(ProposalSubmitRequest(proposal))
+        api.command(
+            CommandRequest(
+                actor="Mike",
+                command="APPROVE proposal_2",
+                portfolio_equity=1000.0,
+                execute_on_approve=False,
+                now=now,
+            )
+        )
+        execution = api.execute_approved_proposal(
+            "proposal_2",
+            actor="Mike",
+            portfolio_equity=1000.0,
+            now=now,
+        )
+        detail = api.trade_detail("proposal_2")
+        self.assertEqual(execution["mode"], "plain")
+        self.assertEqual(detail["status"], "EXECUTED")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -29,6 +29,18 @@ class ProposalSubmitRequest:
 
 
 @dataclass(frozen=True)
+class ExecuteRequest:
+    proposal_id: str
+    actor: str
+    portfolio_equity: float
+    aggregate_open_risk_pct: float = 0.0
+    daily_drawdown_pct: float = 0.0
+    open_positions_count: int = 0
+    render_mode: str = "plain"
+    now: datetime | None = None
+
+
+@dataclass(frozen=True)
 class TradeListRequest:
     status: str | None = None
     symbol: str | None = None
@@ -60,6 +72,22 @@ class ApiSurface:
             portfolio,
             replacement=request.replacement,
             execute_on_approve=request.execute_on_approve,
+            render_mode=request.render_mode,
+            now=request.now,
+        )
+
+    def execute_approved_proposal(self, proposal_id: str, **kwargs: object) -> dict[str, object]:
+        request = ExecuteRequest(proposal_id=proposal_id, **kwargs)
+        portfolio = PortfolioState(
+            equity=request.portfolio_equity,
+            aggregate_open_risk_pct=request.aggregate_open_risk_pct,
+            daily_drawdown_pct=request.daily_drawdown_pct,
+            open_positions_count=request.open_positions_count,
+        )
+        return self.backend.execute_approved_proposal_payload(
+            request.proposal_id,
+            portfolio,
+            actor=request.actor,
             render_mode=request.render_mode,
             now=request.now,
         )

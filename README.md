@@ -237,11 +237,35 @@ summary = app.backend.get_session_summary_payload()
 ### Runtime smoke check
 
 ```bash
-PYTHONPATH=src python3 -m cex_tbot --format json
-PYTHONPATH=src python3 -m cex_tbot --storage-dir .runtime/session --format json
+PYTHONPATH=src python3 -m cex_tbot status --format json
+PYTHONPATH=src python3 -m cex_tbot status --storage-dir .runtime/session --format json
 ```
 
-The module entrypoint only validates that bootstrap wiring is complete and returns a tiny status payload; it does not start exchange/network workflows.
+### First runnable semi-auto demo flow
+
+This repo now includes a deterministic local demo that exercises the semi-auto path end-to-end through the public API/service layer:
+
+- build app
+- seed a realistic sample proposal
+- approve it
+- either execute immediately or execute in an explicit second step
+- emit operator-facing text plus machine-readable JSON
+- optionally persist the session to JSONL files
+
+Run the default single-step demo:
+
+```bash
+PYTHONPATH=src python3 -m cex_tbot demo
+PYTHONPATH=src python3 -m cex_tbot demo --format json
+```
+
+Run the explicit two-step variant with file-backed session storage:
+
+```bash
+PYTHONPATH=src python3 -m cex_tbot demo --flow approve-then-execute --storage-dir .runtime/demo-session
+```
+
+The demo stays fully deterministic and demo-safe: no live exchange transport, no hidden network calls, only in-memory/file-backed components already wired by bootstrap.
 
 ## Next steps
 
