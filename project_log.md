@@ -55,3 +55,4 @@
 - Added a built-in static SPA shell (no React/build step) served directly by FastAPI, with dashboard/proposals/no-trades views, polling-based reactivity, and proposal action buttons wired to the REST bridge.
 - Expanded the SPA with a proposal modify flow (editable replacement JSON + change summary), richer detail/timeline rendering, status color-coding, loading states, and more polished operator UX.
 - Added submit-proposal and halt/unhalt controls to the SPA, plus matching REST endpoints for emergency halt management.
+- Added proposal filters/sorting, report mode switching (text/operator/telegram/compact), and localStorage-backed API key persistence for the SPA.

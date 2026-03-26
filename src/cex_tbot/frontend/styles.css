@@ -36,6 +36,9 @@ button.danger { background: linear-gradient(180deg, #991b1b, #7f1d1d); border-co
 button.ghost, .nav-btn { background: transparent; }
 button:disabled { opacity: .6; cursor: wait; transform: none; }
 .nav { display: grid; gap: 8px; margin-top: 20px; }
+.inline-toggle { display: flex; align-items: center; gap: 10px; }
+.inline-toggle input { width: auto; }
+.inline-toggle.compact { margin: 0; white-space: nowrap; }
 .nav-btn.active { background: var(--panel-2); border-color: var(--accent); }
 .muted { color: var(--muted); }
 .success-text { color: var(--accent); }
