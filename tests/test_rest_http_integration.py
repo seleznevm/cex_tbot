@@ -62,6 +62,11 @@ class RestHttpIntegrationTests(unittest.TestCase):
             os.environ["CEX_TBOT_API_TOKEN"] = self.previous_token
         self.tempdir.cleanup()
 
+    def test_root_serves_static_spa(self) -> None:
+        response = self.client.get("/")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("cex_tbot UI Bridge", response.text)
+
     def test_health_requires_api_key(self) -> None:
         response = self.client.get("/health")
         self.assertEqual(response.status_code, 401)

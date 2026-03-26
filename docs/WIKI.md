@@ -386,6 +386,9 @@ Serve it like this once optional deps are available:
 PYTHONPATH=src python3 -m cex_tbot serve-rest --storage-dir .runtime/session --host 127.0.0.1 --port 8000
 ```
 
+The server now also serves a built-in static SPA at `/` plus assets under `/app/...`.
+That SPA uses REST polling to refresh dashboard, proposals, proposal detail/report, and no-trade views without full-page reloads.
+
 This is the current UI-first bridge layer for local REST integration.
 
 ---

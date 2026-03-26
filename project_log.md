@@ -52,3 +52,4 @@
 - Expanded the REST bridge toward a true UI-first MVP shape with proposal-centric endpoints (`/proposals`, approve/reject/modify actions), a no-trade read endpoint, minimal API-key auth via `CEX_TBOT_API_TOKEN`, and normalized structured error payloads.
 - Declared FastAPI/uvicorn/pydantic as real project dependencies and added HTTP-level integration coverage with `fastapi.testclient`, including auth checks and submit→approve→execute→report flow coverage.
 - Replaced raw-dict REST contracts with typed Pydantic web schemas and wired explicit response models into the FastAPI bridge so the OpenAPI surface now documents the UI-first contract cleanly.
+- Added a built-in static SPA shell (no React/build step) served directly by FastAPI, with dashboard/proposals/no-trades views, polling-based reactivity, and proposal action buttons wired to the REST bridge.

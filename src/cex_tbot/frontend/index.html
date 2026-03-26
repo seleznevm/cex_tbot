@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>cex_tbot UI Bridge</title>
+    <link rel="stylesheet" href="/app/styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <aside class="sidebar">
+        <h1>cex_tbot</h1>
+        <p class="muted">Static SPA MVP</p>
+        <label class="field">
+          <span>API key</span>
+          <input id="api-key" type="password" placeholder="X-API-Key" />
+        </label>
+        <label class="field">
+          <span>Auto refresh</span>
+          <select id="refresh-interval">
+            <option value="0">off</option>
+            <option value="3000">3s</option>
+            <option value="5000" selected>5s</option>
+            <option value="10000">10s</option>
+          </select>
+        </label>
+        <nav class="nav">
+          <button data-view="dashboard" class="nav-btn active">Dashboard</button>
+          <button data-view="proposals" class="nav-btn">Proposals</button>
+          <button data-view="no-trades" class="nav-btn">No-trades</button>
+        </nav>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <h2 id="view-title">Dashboard</h2>
+            <p id="status-line" class="muted">Ready.</p>
+          </div>
+          <button id="refresh-now" class="ghost">Refresh now</button>
+        </header>
+
+        <section id="dashboard-view" class="view active"></section>
+
+        <section id="proposals-view" class="view">
+          <div class="toolbar">
+            <input id="proposal-filter" type="text" placeholder="Filter by symbol / id / status" />
+          </div>
+          <div class="split">
+            <div id="proposal-list" class="panel"></div>
+            <div id="proposal-detail" class="panel detail-panel">
+              <p class="muted">Select a proposal.</p>
+            </div>
+          </div>
+        </section>
+
+        <section id="no-trades-view" class="view"></section>
+      </main>
+    </div>
+
+    <script src="/app/app.js" type="module"></script>
+  </body>
+</html>

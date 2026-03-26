@@ -10,6 +10,7 @@ from cex_tbot.api_surface import ApiSurface, CommandRequest, ProposalSubmitReque
 from cex_tbot.bootstrap import build_app
 from cex_tbot.decision_contracts import EntrySplitLeg, TradeProposal
 from cex_tbot.enums import ContractType, Exchange, MarketType, ProposalStatus, TradeDirection
+from cex_tbot.spa import frontend_dir
 from cex_tbot.web_schemas import (
     CommandPayload,
     DashboardPayload,
@@ -141,6 +142,8 @@ def _build_portfolio_payload(payload: dict[str, Any] | PortfolioContextPayload) 
 def create_rest_app(*, storage_dir: str | Path | None = None, api_token: str | None = None) -> RestAppBundle:
     try:
         from fastapi import Depends, FastAPI, Header, HTTPException
+        from fastapi.responses import FileResponse
+        from fastapi.staticfiles import StaticFiles
     except ModuleNotFoundError as exc:
         raise RestApiDependencyError(
             "FastAPI is not installed. Install optional dependencies to use the REST bridge."
@@ -150,7 +153,8 @@ def create_rest_app(*, storage_dir: str | Path | None = None, api_token: str | N
     trading_app = build_app(storage_dir=resolved_storage)
     api = trading_app.api
     auth = RestAuth(api_token)
-    app = FastAPI(title="cex_tbot REST bridge", version="0.2.0")
+    app = FastAPI(title="cex_tbot REST bridge", version="0.3.0")
+    static_dir = frontend_dir()
 
     def require_auth(x_api_key: str | None = Header(default=None)) -> None:
         if not auth.verify(x_api_key):
@@ -161,6 +165,20 @@ def create_rest_app(*, storage_dir: str | Path | None = None, api_token: str | N
 
     def http_error(status_code: int, code: str, message: str, *, details: dict[str, Any] | None = None) -> HTTPException:
         return HTTPException(status_code=status_code, detail=RestErrorFactory.payload(code, message, details=details))
+
+    @app.get("/", include_in_schema=False)
+    def spa_index() -> FileResponse:
+        return FileResponse(static_dir / "index.html")
+
+    @app.get("/app-config", dependencies=[Depends(require_auth)], include_in_schema=False)
+    def app_config() -> dict[str, object]:
+        return {
+            "apiBase": "",
+            "authEnabled": auth.enabled,
+            "pollingMsDefault": 5000,
+        }
+
+    app.mount("/app", StaticFiles(directory=static_dir), name="app")
 
     @app.get("/health", dependencies=[Depends(require_auth)], response_model=HealthPayload, responses={401: {"model": ErrorEnvelope}})
     def health() -> HealthPayload:

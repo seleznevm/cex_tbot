@@ -343,6 +343,9 @@ Run it once optional deps are installed:
 PYTHONPATH=src python3 -m cex_tbot serve-rest --storage-dir .runtime/session --host 127.0.0.1 --port 8000
 ```
 
+This now also serves a built-in static SPA at `/` and frontend assets at `/app/...`.
+The SPA polls the REST endpoints for dashboard, proposals, detail/report, and no-trade updates without full-page reloads.
+
 If FastAPI/uvicorn are missing, the command fails fast with a clear message instead of breaking the core runtime.
 
 This gives the project a real REST-shaped UI bridge without pulling transport/web concerns into the core trading modules.
