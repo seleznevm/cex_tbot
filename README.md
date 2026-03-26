@@ -345,6 +345,7 @@ PYTHONPATH=src python3 -m cex_tbot serve-rest --storage-dir .runtime/session --h
 
 This now also serves a built-in static SPA at `/` and frontend assets at `/app/...`.
 The SPA polls the REST endpoints for dashboard, proposals, detail/report, and no-trade updates without full-page reloads.
+It now also includes submit-proposal and halt/unhalt controls for operator-side MVP use.
 
 If FastAPI/uvicorn are missing, the command fails fast with a clear message instead of breaking the core runtime.
 

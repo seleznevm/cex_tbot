@@ -21,6 +21,7 @@ const els = {
   proposalList: document.getElementById('proposal-list'),
   proposalDetail: document.getElementById('proposal-detail'),
   proposalFilter: document.getElementById('proposal-filter'),
+  proposalSubmit: document.getElementById('proposal-submit'),
   navButtons: [...document.querySelectorAll('.nav-btn')],
 };
 
@@ -69,6 +70,48 @@ function switchView(view) {
   els.viewTitle.textContent = view === 'no-trades' ? 'No-trades' : view[0].toUpperCase() + view.slice(1);
 }
 
+function renderProposalSubmitForm() {
+  const defaultProposal = {
+    agent_name: 'Luma',
+    strategy_id: 'breakout_reclaim',
+    strategy_version: 'v3',
+    market_context_id: `ctx_${Date.now()}`,
+    symbol: 'BTC_USDT',
+    timeframe: '15m',
+    direction: 'LONG',
+    entry_zone_min: 100,
+    entry_zone_max: 101,
+    entry_split: [{ leg_number: 1, planned_entry_price: 101, allocation_pct: 100, size_fraction: 1, valid_until: new Date(Date.now() + 15 * 60 * 1000).toISOString() }],
+    stop_loss: 99,
+    take_profit_1: 103,
+    take_profit_2: 105,
+    risk_percent: 0.5,
+    risk_usd: 5,
+    position_size: 10,
+    confidence_score: 0.8,
+    thesis: 'structure intact',
+    invalidity_condition: 'reclaim fails',
+    liquidity_check: 'ok',
+    data_freshness_ms: 1000,
+    created_at: new Date().toISOString(),
+    expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+    status: 'PENDING_APPROVAL',
+  };
+  els.proposalSubmit.innerHTML = `
+    <details class="nested-panel" ${state.proposals.length === 0 ? 'open' : ''}>
+      <summary>Submit proposal</summary>
+      <label class="field">
+        <span>Proposal JSON</span>
+        <textarea id="proposal-submit-json" rows="18">${JSON.stringify(defaultProposal, null, 2)}</textarea>
+      </label>
+      <div class="actions">
+        <button id="submit-proposal-btn" class="primary">Submit proposal</button>
+      </div>
+    </details>
+  `;
+  document.getElementById('submit-proposal-btn')?.addEventListener('click', submitProposalForm);
+}
+
 function renderDashboard() {
   if (!state.dashboard) {
     els.dashboardView.innerHTML = '<p class="muted">No dashboard data yet.</p>';
@@ -84,7 +127,24 @@ function renderDashboard() {
       <div class="card"><h3>Commands</h3><div class="metric">${d.kpis.operator_commands}</div></div>
       <div class="card"><h3>Halt</h3><div class="metric ${d.risk.emergency_halt_active ? 'danger-text' : 'success-text'}">${d.risk.emergency_halt_active ? 'ON' : 'OFF'}</div></div>
     </div>
-    <div class="panel" style="margin-top:16px;">
+    <div class="panel nested-panel">
+      <div class="detail-header">
+        <div>
+          <h3>System controls</h3>
+          <p class="muted">Emergency halt for operator flows.</p>
+        </div>
+      </div>
+      <label class="field">
+        <span>Halt reason</span>
+        <input id="halt-reason" type="text" placeholder="manual-safety-stop" value="manual-safety-stop" />
+      </label>
+      <div class="actions wrap">
+        <button id="halt-btn" class="danger">Halt</button>
+        <button id="unhalt-btn">Unhalt</button>
+        ${d.risk.halt_reason ? `<span class="muted">Current reason: ${d.risk.halt_reason}</span>` : ''}
+      </div>
+    </div>
+    <div class="panel nested-panel">
       <h3>Latest trades</h3>
       ${d.latest_trades.length ? d.latest_trades.map(item => `
         <div class="proposal-item quick-open" data-proposal-id="${item.proposal_id}">
@@ -95,6 +155,8 @@ function renderDashboard() {
       `).join('') : '<p class="muted">No trades yet.</p>'}
     </div>
   `;
+  document.getElementById('halt-btn')?.addEventListener('click', haltSystem);
+  document.getElementById('unhalt-btn')?.addEventListener('click', unhaltSystem);
   els.dashboardView.querySelectorAll('.quick-open').forEach(node => {
     node.addEventListener('click', async () => {
       switchView('proposals');
@@ -146,15 +208,7 @@ function buildReplacementPayload(detail) {
     direction: detail.direction,
     entry_zone_min: detail.entry_zone_min,
     entry_zone_max: detail.entry_zone_max,
-    entry_split: [
-      {
-        leg_number: 1,
-        planned_entry_price: Number(detail.entry_zone_max),
-        allocation_pct: 100.0,
-        size_fraction: 1.0,
-        valid_until: detail.expires_at,
-      },
-    ],
+    entry_split: [{ leg_number: 1, planned_entry_price: Number(detail.entry_zone_max), allocation_pct: 100.0, size_fraction: 1.0, valid_until: detail.expires_at }],
     stop_loss: detail.stop_loss,
     take_profit_1: detail.take_profit_1,
     take_profit_2: detail.take_profit_2,
@@ -185,9 +239,7 @@ function renderModifyPanel(detail) {
         <span>Replacement payload (editable JSON)</span>
         <textarea id="modify-payload" rows="18">${JSON.stringify(replacement, null, 2)}</textarea>
       </label>
-      <div class="actions">
-        <button data-action="modify" class="primary">Submit modify</button>
-      </div>
+      <div class="actions"><button data-action="modify" class="primary">Submit modify</button></div>
     </details>
   `;
 }
@@ -195,22 +247,11 @@ function renderModifyPanel(detail) {
 async function loadProposalDetail(proposalId) {
   try {
     setLoading(true, `Loading ${proposalId}…`);
-    const [detail, report] = await Promise.all([
-      apiFetch(`/proposals/${proposalId}`),
-      apiFetch(`/trades/${proposalId}/report`),
-    ]);
+    const [detail, report] = await Promise.all([apiFetch(`/proposals/${proposalId}`), apiFetch(`/trades/${proposalId}/report`)]);
     state.selectedProposalDetail = detail;
     const latestEvents = (detail.timeline?.events || []).slice(-6).map(event => `• ${event.kind}: ${event.message}`).join('\n') || 'No timeline events yet.';
     els.proposalDetail.innerHTML = `
-      <div class="detail-header">
-        <div>
-          <h3>${detail.proposal_id}</h3>
-          <div class="meta-row">
-            <span class="badge ${badgeClass(detail.status)}">${detail.status}</span>
-            <span class="muted">${detail.symbol} ${detail.direction} · ${detail.timeframe}</span>
-          </div>
-        </div>
-      </div>
+      <div class="detail-header"><div><h3>${detail.proposal_id}</h3><div class="meta-row"><span class="badge ${badgeClass(detail.status)}">${detail.status}</span><span class="muted">${detail.symbol} ${detail.direction} · ${detail.timeframe}</span></div></div></div>
       <div class="detail-grid">
         <div><span class="muted">Confidence</span><div>${Number(detail.confidence_score).toFixed(2)}</div></div>
         <div><span class="muted">Risk</span><div>${detail.risk_percent}% / $${detail.risk_usd}</div></div>
@@ -219,29 +260,14 @@ async function loadProposalDetail(proposalId) {
         <div><span class="muted">Stop / TP1 / TP2</span><div>${detail.stop_loss} / ${detail.take_profit_1} / ${detail.take_profit_2}</div></div>
         <div><span class="muted">Approvals / commands</span><div>${detail.approval_decision_count} / ${detail.operator_command_count}</div></div>
       </div>
-      <div class="panel nested-panel">
-        <h4>Thesis</h4>
-        <p>${detail.thesis}</p>
-        <p class="muted">Invalidation: ${detail.invalidity_condition}</p>
-      </div>
-      <div class="actions wrap">
-        <button class="primary" data-action="approve">Approve</button>
-        <button class="danger" data-action="reject">Reject</button>
-        <button data-action="execute">Execute</button>
-      </div>
+      <div class="panel nested-panel"><h4>Thesis</h4><p>${detail.thesis}</p><p class="muted">Invalidation: ${detail.invalidity_condition}</p></div>
+      <div class="actions wrap"><button class="primary" data-action="approve">Approve</button><button class="danger" data-action="reject">Reject</button><button data-action="execute">Execute</button></div>
       ${renderModifyPanel(detail)}
-      <div class="panel nested-panel">
-        <h4>Timeline</h4>
-        <pre>${latestEvents}</pre>
-      </div>
-      <div class="panel nested-panel">
-        <h4>Report</h4>
-        <pre>${report.text}</pre>
-      </div>
+      <div class="panel nested-panel"><h4>Timeline</h4><pre>${latestEvents}</pre></div>
+      <div class="panel nested-panel"><h4>Report</h4><pre>${report.text}</pre></div>
     `;
     els.proposalDetail.querySelectorAll('[data-action="approve"],[data-action="reject"],[data-action="execute"]').forEach(btn => btn.addEventListener('click', () => runAction(proposalId, btn.dataset.action)));
-    const modifyBtn = els.proposalDetail.querySelector('[data-action="modify"]');
-    if (modifyBtn) modifyBtn.addEventListener('click', () => runModify(proposalId));
+    els.proposalDetail.querySelector('[data-action="modify"]')?.addEventListener('click', () => runModify(proposalId));
     setStatus(`Loaded ${proposalId}`);
   } catch (error) {
     toast(error.message, true);
@@ -254,10 +280,7 @@ async function loadProposalDetail(proposalId) {
 function renderNoTrades() {
   els.noTradesView.innerHTML = state.noTrades.length ? state.noTrades.map(item => `
     <div class="panel" style="margin-bottom:12px;">
-      <div class="meta-row">
-        <strong>${item.symbol}</strong>
-        <span class="badge warning">${item.reason_code}</span>
-      </div>
+      <div class="meta-row"><strong>${item.symbol}</strong><span class="badge warning">${item.reason_code}</span></div>
       <div class="muted">conf=${Number(item.confidence_score).toFixed(2)}</div>
       <div>${item.reason_text}</div>
     </div>
@@ -288,15 +311,7 @@ async function runModify(proposalId) {
     if (!rawPayload) throw new Error('Replacement payload is empty.');
     const replacement = JSON.parse(rawPayload);
     setLoading(true, `modify ${proposalId}…`);
-    const result = await apiFetch(`/proposals/${proposalId}/modify`, {
-      method: 'POST',
-      body: JSON.stringify({
-        actor: 'Mike',
-        portfolio_equity: 1000,
-        changes,
-        replacement,
-      }),
-    });
+    const result = await apiFetch(`/proposals/${proposalId}/modify`, { method: 'POST', body: JSON.stringify({ actor: 'Mike', portfolio_equity: 1000, changes, replacement }) });
     toast(result.text || 'modify done');
     await refreshAll(false);
     state.selectedProposalId = replacement.proposal_id;
@@ -309,17 +324,60 @@ async function runModify(proposalId) {
   }
 }
 
+async function submitProposalForm() {
+  try {
+    const raw = document.getElementById('proposal-submit-json')?.value?.trim();
+    if (!raw) throw new Error('Proposal JSON is empty.');
+    const payload = JSON.parse(raw);
+    setLoading(true, 'Submitting proposal…');
+    const result = await apiFetch('/proposals', { method: 'POST', body: JSON.stringify(payload) });
+    toast(`Proposal stored: ${result.proposal_id}`);
+    await refreshAll(false);
+    state.selectedProposalId = result.proposal_id;
+    renderProposalList();
+    await loadProposalDetail(state.selectedProposalId);
+  } catch (error) {
+    toast(error.message, true);
+  } finally {
+    setLoading(false);
+  }
+}
+
+async function haltSystem() {
+  try {
+    const reason = document.getElementById('halt-reason')?.value?.trim() || 'manual-safety-stop';
+    setLoading(true, 'Halting system…');
+    await apiFetch('/system/halt', { method: 'POST', body: JSON.stringify({ reason }) });
+    toast('Emergency halt activated');
+    await refreshAll(false);
+  } catch (error) {
+    toast(error.message, true);
+  } finally {
+    setLoading(false);
+  }
+}
+
+async function unhaltSystem() {
+  try {
+    setLoading(true, 'Clearing halt…');
+    await apiFetch('/system/unhalt', { method: 'POST', body: JSON.stringify({}) });
+    toast('Emergency halt cleared');
+    await refreshAll(false);
+  } catch (error) {
+    toast(error.message, true);
+  } finally {
+    setLoading(false);
+  }
+}
+
 async function refreshAll(showLoading = true) {
   if (showLoading) setLoading(true, 'Refreshing…');
   try {
-    const [dashboard, proposals, noTrades] = await Promise.all([
-      apiFetch('/dashboard'),
-      apiFetch('/proposals'),
-      apiFetch('/no-trades'),
-    ]);
+    const [dashboard, proposals, noTrades] = await Promise.all([apiFetch('/dashboard'), apiFetch('/proposals'), apiFetch('/no-trades')]);
     state.dashboard = dashboard;
     state.proposals = proposals;
     state.noTrades = noTrades;
+    renderProposalSubmitForm();
     renderDashboard();
     renderProposalList();
     renderNoTrades();

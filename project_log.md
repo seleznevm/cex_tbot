@@ -54,3 +54,4 @@
 - Replaced raw-dict REST contracts with typed Pydantic web schemas and wired explicit response models into the FastAPI bridge so the OpenAPI surface now documents the UI-first contract cleanly.
 - Added a built-in static SPA shell (no React/build step) served directly by FastAPI, with dashboard/proposals/no-trades views, polling-based reactivity, and proposal action buttons wired to the REST bridge.
 - Expanded the SPA with a proposal modify flow (editable replacement JSON + change summary), richer detail/timeline rendering, status color-coding, loading states, and more polished operator UX.
+- Added submit-proposal and halt/unhalt controls to the SPA, plus matching REST endpoints for emergency halt management.

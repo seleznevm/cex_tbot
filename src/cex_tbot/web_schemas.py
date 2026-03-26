@@ -175,14 +175,16 @@ class NoTradeDecisionPayload(BaseModel):
 
 class SessionSummaryPayload(BaseModel):
     total_proposals: int
-    status_counts: dict[str, int]
+    total_no_trade_decisions: int
+    executed_proposals: int
+    rejected_proposals: int
     approval_decisions: int
     execution_events: int
     state_snapshots: int
     operator_commands: int
-    total_no_trade_decisions: int
-    executed_proposals: int
-    rejected_proposals: int
+    emergency_halt_active: bool = False
+    halt_reason: str | None = None
+    proposal_status_breakdown: dict[str, int] = Field(default_factory=dict)
 
 
 class DashboardKpisPayload(BaseModel):
@@ -210,6 +212,10 @@ class DashboardPayload(BaseModel):
     risk: DashboardRiskPayload
     latest_trades: list[TradeListItemPayload]
     operator_activity: DashboardOperatorActivityPayload
+
+
+class HaltPayload(BaseModel):
+    reason: str
 
 
 class HealthPayload(BaseModel):

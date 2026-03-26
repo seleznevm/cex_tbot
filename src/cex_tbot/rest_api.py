@@ -15,6 +15,7 @@ from cex_tbot.web_schemas import (
     CommandPayload,
     DashboardPayload,
     ErrorEnvelope,
+    HaltPayload,
     HealthPayload,
     ModifyProposalPayload,
     NoTradeDecisionPayload,
@@ -238,6 +239,16 @@ def create_rest_app(*, storage_dir: str | Path | None = None, api_token: str | N
     @app.get("/no-trades", dependencies=[Depends(require_auth)], response_model=list[NoTradeDecisionPayload], responses={401: {"model": ErrorEnvelope}})
     def list_no_trades() -> list[NoTradeDecisionPayload]:
         return [NoTradeDecisionPayload.model_validate(item) for item in trading_app.backend.list_no_trades_payload()]
+
+    @app.post("/system/halt", dependencies=[Depends(require_auth)], response_model=SessionSummaryPayload, responses={401: {"model": ErrorEnvelope}})
+    def halt_system(payload: HaltPayload) -> SessionSummaryPayload:
+        trading_app.backend.activate_emergency_halt(payload.reason)
+        return SessionSummaryPayload.model_validate(api.session_summary())
+
+    @app.post("/system/unhalt", dependencies=[Depends(require_auth)], response_model=SessionSummaryPayload, responses={401: {"model": ErrorEnvelope}})
+    def unhalt_system() -> SessionSummaryPayload:
+        trading_app.backend.clear_emergency_halt()
+        return SessionSummaryPayload.model_validate(api.session_summary())
 
     @app.post("/proposals", dependencies=[Depends(require_auth)], response_model=ProposalStoredResponse, responses={401: {"model": ErrorEnvelope}, 400: {"model": ErrorEnvelope}})
     def submit_proposal(payload: ProposalPayload) -> ProposalStoredResponse:
