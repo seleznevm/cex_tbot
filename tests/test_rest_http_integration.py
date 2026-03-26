@@ -79,7 +79,8 @@ class RestHttpIntegrationTests(unittest.TestCase):
 
         listed = self.client.get("/proposals", headers=self.headers)
         self.assertEqual(listed.status_code, 200)
-        self.assertEqual(len(listed.json()), 1)
+        self.assertEqual(listed.json()["total"], 1)
+        self.assertEqual(len(listed.json()["items"]), 1)
 
         approved = self.client.post(
             "/proposals/proposal_http_1/approve",
