@@ -50,3 +50,4 @@
 - Added a `serve-rest` CLI entrypoint that fails fast with clear dependency messages when FastAPI/uvicorn are not installed.
 - Added unit coverage for REST payload mapping and dependency guard behavior.
 - Expanded the REST bridge toward a true UI-first MVP shape with proposal-centric endpoints (`/proposals`, approve/reject/modify actions), a no-trade read endpoint, minimal API-key auth via `CEX_TBOT_API_TOKEN`, and normalized structured error payloads.
+- Declared FastAPI/uvicorn/pydantic as real project dependencies and added HTTP-level integration coverage with `fastapi.testclient`, including auth checks and submit→approve→execute→report flow coverage.

@@ -330,7 +330,7 @@ What it exposes:
 - `POST /proposals/{proposal_id}/modify`
 - `POST /trades/{proposal_id}/execute`
 
-The FastAPI dependency is intentionally optional so the core repo stays runnable without web-server packages.
+FastAPI/uvicorn/pydantic are now declared as real project dependencies, so the REST bridge is part of the installable MVP surface.
 
 For MVP safety, the bridge also supports a simple API key gate via `CEX_TBOT_API_TOKEN`.
 When it is set, clients must send `X-API-Key: <token>`.

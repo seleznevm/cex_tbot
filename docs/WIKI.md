@@ -373,8 +373,7 @@ Endpoints:
 - `POST /proposals/{proposal_id}/modify`
 - `POST /trades/{proposal_id}/execute`
 
-The dependency is optional by design.
-If FastAPI or uvicorn are not installed, the CLI exits with a clear error instead of affecting core runtime usage.
+FastAPI/uvicorn/pydantic are now declared project dependencies, so the REST bridge is part of the installable MVP surface.
 
 For minimal operator safety, the bridge can be protected with `CEX_TBOT_API_TOKEN`.
 If set, every request must include `X-API-Key`.

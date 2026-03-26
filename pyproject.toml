@@ -10,6 +10,16 @@ requires-python = ">=3.11"
 authors = [
   { name = "Michael" }
 ]
+dependencies = [
+  "fastapi>=0.115,<1.0",
+  "uvicorn>=0.30,<1.0",
+  "pydantic>=2.8,<3.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "httpx>=0.28,<1.0",
+]
 
 [tool.setuptools]
 package-dir = {"" = "src"}
