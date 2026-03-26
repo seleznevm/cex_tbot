@@ -310,6 +310,34 @@ Available render modes for operator output:
 
 This gives us a cleaner operator UX and a stable shell-level integration surface for a later Telegram bot or UI layer.
 
+## Minimal REST bridge (FastAPI, optional)
+
+The repo now also includes an optional FastAPI bridge layer in `cex_tbot.rest_api`.
+
+What it exposes:
+
+- `GET /health`
+- `GET /session/summary`
+- `GET /dashboard`
+- `GET /trades`
+- `GET /trades/{proposal_id}`
+- `GET /trades/{proposal_id}/report`
+- `POST /proposals`
+- `POST /commands`
+- `POST /trades/{proposal_id}/execute`
+
+The FastAPI dependency is intentionally optional so the core repo stays runnable without web-server packages.
+
+Run it once optional deps are installed:
+
+```bash
+PYTHONPATH=src python3 -m cex_tbot serve-rest --storage-dir .runtime/session --host 127.0.0.1 --port 8000
+```
+
+If FastAPI/uvicorn are missing, the command fails fast with a clear message instead of breaking the core runtime.
+
+This gives the project a real REST-shaped UI bridge without pulling transport/web concerns into the core trading modules.
+
 ## No-trade decisions and emergency halt
 
 The local runtime now also supports two important semi-auto controls:
@@ -364,4 +392,5 @@ This is an integration layer, not a network bot by itself. That is intentional: 
 - auto-stop policy layer beyond manual halt
 - post-analysis / calibration layer
 - real Telegram/OpenClaw message transport binding on top of the bot adapter
+- production-ready FastAPI dependency wiring + auth/rate-limit layer for the REST bridge
 - higher-level dashboard/UI views

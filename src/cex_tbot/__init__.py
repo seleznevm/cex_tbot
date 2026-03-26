@@ -28,6 +28,7 @@ from .reporting import TradeReport, TradeReportBuilder
 from .serializers import ApiSerializer
 from .review_cards import ReviewCard, ReviewCardBuilder
 from .risk_engine import PendingRiskBook, PortfolioState, RiskEngine, RiskEvaluation
+from .rest_api import ProposalPayloadMapper, RestApiDependencyError, RestAppBundle, create_rest_app
 from .session_store import TradeSessionStore
 from .session_summary import SessionSummary, SessionSummaryBuilder
 from .system_state import SystemState
@@ -103,4 +104,8 @@ __all__ = [
     "PortfolioState",
     "RiskEngine",
     "RiskEvaluation",
+    "ProposalPayloadMapper",
+    "RestApiDependencyError",
+    "RestAppBundle",
+    "create_rest_app",
 ]

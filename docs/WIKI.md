@@ -351,7 +351,38 @@ This is the most direct handoff point for a real Telegram/OpenClaw chat integrat
 
 ---
 
-## 13. Safe usage pattern right now
+## 13. Minimal REST bridge
+
+The repo now also contains an optional FastAPI-based REST bridge in `cex_tbot.rest_api`.
+
+It is designed as a thin web wrapper over the existing `ApiSurface`, not as a second backend.
+
+Endpoints:
+
+- `GET /health`
+- `GET /session/summary`
+- `GET /dashboard`
+- `GET /trades`
+- `GET /trades/{proposal_id}`
+- `GET /trades/{proposal_id}/report`
+- `POST /proposals`
+- `POST /commands`
+- `POST /trades/{proposal_id}/execute`
+
+The dependency is optional by design.
+If FastAPI or uvicorn are not installed, the CLI exits with a clear error instead of affecting core runtime usage.
+
+Serve it like this once optional deps are available:
+
+```bash
+PYTHONPATH=src python3 -m cex_tbot serve-rest --storage-dir .runtime/session --host 127.0.0.1 --port 8000
+```
+
+This is the current UI-first bridge layer for local REST integration.
+
+---
+
+## 14. Safe usage pattern right now
 
 Recommended operator sequence:
 

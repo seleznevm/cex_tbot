@@ -45,3 +45,7 @@
 - Added config guardrails for execution modes: default stays `paper_sim`, `gate_demo` is allowed only with `GATE_DEMO_API`, and live-like modes now fail fast instead of silently drifting toward unsupported transport.
 - Updated bootstrap wiring so `gate_demo` mode resolves to a demo-only fetcher boundary, while non-demo modes keep deterministic static fetchers by default.
 - Added unit coverage for Gate demo config validation, bootstrap wiring, and transport guardrails/predictable failures.
+- Added an optional FastAPI REST bridge (`cex_tbot.rest_api`) on top of the existing API surface so the project now has a real UI-first HTTP integration path without pushing web concerns into the core trading modules.
+- Added payload mapping from REST JSON into domain proposals, plus REST endpoints for health, session summary, dashboard, trade list/detail/report, proposal submission, operator commands, and explicit execution.
+- Added a `serve-rest` CLI entrypoint that fails fast with clear dependency messages when FastAPI/uvicorn are not installed.
+- Added unit coverage for REST payload mapping and dependency guard behavior.

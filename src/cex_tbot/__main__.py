@@ -9,6 +9,7 @@ from cex_tbot.api_surface import CommandRequest, ProposalSubmitRequest, TradeLis
 from cex_tbot.decision_contracts import NoTradeDecision
 from cex_tbot.demo import build_demo_proposal, render_demo
 from cex_tbot.enums import NoTradeReasonCode
+from cex_tbot.rest_api import RestApiDependencyError, create_rest_app
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -109,6 +110,11 @@ def build_parser() -> argparse.ArgumentParser:
     unhalt_parser = subparsers.add_parser("unhalt", help="Clear emergency halt")
     unhalt_parser.add_argument("--storage-dir", type=Path, help="Optional base directory for file-backed session state")
     unhalt_parser.add_argument("--format", choices=("text", "json"), default="text", help="Output format")
+
+    serve_rest_parser = subparsers.add_parser("serve-rest", help="Run optional FastAPI REST bridge")
+    serve_rest_parser.add_argument("--storage-dir", type=Path, help="Optional base directory for file-backed session state")
+    serve_rest_parser.add_argument("--host", default="127.0.0.1")
+    serve_rest_parser.add_argument("--port", type=int, default=8000)
 
     return parser
 
@@ -322,6 +328,20 @@ def main() -> int:
         app.backend.clear_emergency_halt()
         payload = app.backend.get_session_summary_payload()
         print(_print_payload(payload, fmt))
+        return 0
+
+    if command == "serve-rest":
+        try:
+            bundle = create_rest_app(storage_dir=storage_dir)
+        except RestApiDependencyError as exc:
+            print(str(exc))
+            return 2
+        try:
+            import uvicorn
+        except ModuleNotFoundError:
+            print("uvicorn is not installed. Install optional REST dependencies to serve the FastAPI app.")
+            return 2
+        uvicorn.run(bundle.app, host=args.host, port=args.port)
         return 0
 
     print(render_status(storage_dir=storage_dir, fmt=fmt))
