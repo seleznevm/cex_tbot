@@ -110,13 +110,21 @@ class RestHttpIntegrationTests(unittest.TestCase):
 
     def test_modify_endpoint_requires_changes_and_replacement(self) -> None:
         response = self.client.post("/proposals/proposal_http_1/modify", json={}, headers=self.headers)
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.json()["detail"]["error"]["code"], "INVALID_PAYLOAD")
+        self.assertEqual(response.status_code, 422)
 
     def test_no_trades_endpoint_works(self) -> None:
         response = self.client.get("/no-trades", headers=self.headers)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), [])
+
+    def test_openapi_contains_ui_bridge_contracts(self) -> None:
+        response = self.client.get("/openapi.json")
+        self.assertEqual(response.status_code, 200)
+        schema = response.json()
+        self.assertIn("/proposals", schema["paths"])
+        self.assertIn("/proposals/{proposal_id}/approve", schema["paths"])
+        self.assertIn("ProposalPayload", schema["components"]["schemas"])
+        self.assertIn("TradeDetailPayload", schema["components"]["schemas"])
 
 
 if __name__ == "__main__":

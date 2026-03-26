@@ -10,6 +10,22 @@ from cex_tbot.api_surface import ApiSurface, CommandRequest, ProposalSubmitReque
 from cex_tbot.bootstrap import build_app
 from cex_tbot.decision_contracts import EntrySplitLeg, TradeProposal
 from cex_tbot.enums import ContractType, Exchange, MarketType, ProposalStatus, TradeDirection
+from cex_tbot.web_schemas import (
+    CommandPayload,
+    DashboardPayload,
+    ErrorEnvelope,
+    HealthPayload,
+    ModifyProposalPayload,
+    NoTradeDecisionPayload,
+    PortfolioContextPayload,
+    ProposalPayload,
+    ProposalStoredResponse,
+    RenderedResponsePayload,
+    SessionSummaryPayload,
+    TradeDetailPayload,
+    TradeListItemPayload,
+    TradeReportPayload,
+)
 
 
 class RestApiDependencyError(RuntimeError):
@@ -24,7 +40,9 @@ class RestAppBundle:
 
 class ProposalPayloadMapper:
     @staticmethod
-    def from_dict(payload: dict[str, Any]) -> TradeProposal:
+    def from_dict(payload: dict[str, Any] | ProposalPayload) -> TradeProposal:
+        if isinstance(payload, ProposalPayload):
+            payload = payload.model_dump(mode="python")
         entry_split = [ProposalPayloadMapper._entry_leg(item) for item in payload["entry_split"]]
         proposal_kwargs: dict[str, Any] = {
             "agent_name": payload["agent_name"],
@@ -55,9 +73,9 @@ class ProposalPayloadMapper:
             "contract_type": ContractType(payload.get("contract_type", ContractType.PERPETUAL.value)),
             "status": ProposalStatus(payload.get("status", ProposalStatus.GENERATED.value)),
         }
-        if "proposal_id" in payload:
+        if payload.get("proposal_id"):
             proposal_kwargs["proposal_id"] = payload["proposal_id"]
-        if "proposal_version" in payload:
+        if payload.get("proposal_version") is not None:
             proposal_kwargs["proposal_version"] = int(payload["proposal_version"])
         return TradeProposal(**proposal_kwargs)
 
@@ -106,7 +124,9 @@ class RestErrorFactory:
         }
 
 
-def _build_portfolio_payload(payload: dict[str, Any]) -> dict[str, Any]:
+def _build_portfolio_payload(payload: dict[str, Any] | PortfolioContextPayload) -> dict[str, Any]:
+    if isinstance(payload, PortfolioContextPayload):
+        payload = payload.model_dump(mode="python")
     return {
         "actor": payload.get("actor", "Mike"),
         "portfolio_equity": float(payload.get("portfolio_equity", 10_000.0)),
@@ -142,24 +162,24 @@ def create_rest_app(*, storage_dir: str | Path | None = None, api_token: str | N
     def http_error(status_code: int, code: str, message: str, *, details: dict[str, Any] | None = None) -> HTTPException:
         return HTTPException(status_code=status_code, detail=RestErrorFactory.payload(code, message, details=details))
 
-    @app.get("/health", dependencies=[Depends(require_auth)])
-    def health() -> dict[str, object]:
-        return {
-            "status": "ok",
-            "storage": str(resolved_storage) if resolved_storage is not None else None,
-            "auth_enabled": auth.enabled,
-        }
+    @app.get("/health", dependencies=[Depends(require_auth)], response_model=HealthPayload, responses={401: {"model": ErrorEnvelope}})
+    def health() -> HealthPayload:
+        return HealthPayload(
+            status="ok",
+            storage=str(resolved_storage) if resolved_storage is not None else None,
+            auth_enabled=auth.enabled,
+        )
 
-    @app.get("/session/summary", dependencies=[Depends(require_auth)])
-    def session_summary() -> dict[str, object]:
-        return api.session_summary()
+    @app.get("/session/summary", dependencies=[Depends(require_auth)], response_model=SessionSummaryPayload, responses={401: {"model": ErrorEnvelope}})
+    def session_summary() -> SessionSummaryPayload:
+        return SessionSummaryPayload.model_validate(api.session_summary())
 
-    @app.get("/dashboard", dependencies=[Depends(require_auth)])
-    def dashboard() -> dict[str, object]:
-        return api.dashboard()
+    @app.get("/dashboard", dependencies=[Depends(require_auth)], response_model=DashboardPayload, responses={401: {"model": ErrorEnvelope}})
+    def dashboard() -> DashboardPayload:
+        return DashboardPayload.model_validate(api.dashboard())
 
-    @app.get("/proposals", dependencies=[Depends(require_auth)])
-    @app.get("/trades", dependencies=[Depends(require_auth)])
+    @app.get("/proposals", dependencies=[Depends(require_auth)], response_model=list[TradeListItemPayload], responses={401: {"model": ErrorEnvelope}})
+    @app.get("/trades", dependencies=[Depends(require_auth)], response_model=list[TradeListItemPayload], responses={401: {"model": ErrorEnvelope}})
     def list_trades(
         status: str | None = None,
         symbol: str | None = None,
@@ -168,8 +188,8 @@ def create_rest_app(*, storage_dir: str | Path | None = None, api_token: str | N
         descending: bool = False,
         limit: int | None = None,
         offset: int = 0,
-    ) -> list[dict[str, object]]:
-        return api.list_trades(
+    ) -> list[TradeListItemPayload]:
+        items = api.list_trades(
             TradeListRequest(
                 status=status,
                 symbol=symbol,
@@ -180,128 +200,132 @@ def create_rest_app(*, storage_dir: str | Path | None = None, api_token: str | N
                 offset=offset,
             )
         )
+        return [TradeListItemPayload.model_validate(item) for item in items]
 
-    @app.get("/proposals/{proposal_id}", dependencies=[Depends(require_auth)])
-    @app.get("/trades/{proposal_id}", dependencies=[Depends(require_auth)])
-    def trade_detail(proposal_id: str) -> dict[str, object]:
+    @app.get("/proposals/{proposal_id}", dependencies=[Depends(require_auth)], response_model=TradeDetailPayload, responses={401: {"model": ErrorEnvelope}, 404: {"model": ErrorEnvelope}})
+    @app.get("/trades/{proposal_id}", dependencies=[Depends(require_auth)], response_model=TradeDetailPayload, responses={401: {"model": ErrorEnvelope}, 404: {"model": ErrorEnvelope}})
+    def trade_detail(proposal_id: str) -> TradeDetailPayload:
         try:
-            return api.trade_detail(proposal_id)
+            return TradeDetailPayload.model_validate(api.trade_detail(proposal_id))
         except KeyError as exc:
             raise http_error(404, "PROPOSAL_NOT_FOUND", f"Unknown proposal_id: {proposal_id}") from exc
 
-    @app.get("/trades/{proposal_id}/report", dependencies=[Depends(require_auth)])
-    def trade_report(proposal_id: str) -> dict[str, object]:
+    @app.get("/trades/{proposal_id}/report", dependencies=[Depends(require_auth)], response_model=TradeReportPayload, responses={401: {"model": ErrorEnvelope}, 404: {"model": ErrorEnvelope}})
+    def trade_report(proposal_id: str) -> TradeReportPayload:
         try:
-            return api.trade_report(proposal_id)
+            return TradeReportPayload.model_validate(api.trade_report(proposal_id))
         except KeyError as exc:
             raise http_error(404, "PROPOSAL_NOT_FOUND", f"Unknown proposal_id: {proposal_id}") from exc
 
-    @app.get("/no-trades", dependencies=[Depends(require_auth)])
-    def list_no_trades() -> list[dict[str, object]]:
-        return trading_app.backend.list_no_trades_payload()
+    @app.get("/no-trades", dependencies=[Depends(require_auth)], response_model=list[NoTradeDecisionPayload], responses={401: {"model": ErrorEnvelope}})
+    def list_no_trades() -> list[NoTradeDecisionPayload]:
+        return [NoTradeDecisionPayload.model_validate(item) for item in trading_app.backend.list_no_trades_payload()]
 
-    @app.post("/proposals", dependencies=[Depends(require_auth)])
-    def submit_proposal(payload: dict[str, Any]) -> dict[str, object]:
+    @app.post("/proposals", dependencies=[Depends(require_auth)], response_model=ProposalStoredResponse, responses={401: {"model": ErrorEnvelope}, 400: {"model": ErrorEnvelope}})
+    def submit_proposal(payload: ProposalPayload) -> ProposalStoredResponse:
         try:
             proposal = ProposalPayloadMapper.from_dict(payload)
-        except KeyError as exc:
-            raise http_error(400, "INVALID_PAYLOAD", f"Missing field: {exc.args[0]}") from exc
         except ValueError as exc:
             raise http_error(400, "INVALID_PAYLOAD", str(exc)) from exc
-        return api.submit_proposal(ProposalSubmitRequest(proposal))
+        return ProposalStoredResponse.model_validate(api.submit_proposal(ProposalSubmitRequest(proposal)))
 
-    @app.post("/commands", dependencies=[Depends(require_auth)])
-    def command(payload: dict[str, Any]) -> dict[str, object]:
-        try:
-            portfolio = _build_portfolio_payload(payload)
-            return api.command(
+    @app.post("/commands", dependencies=[Depends(require_auth)], response_model=RenderedResponsePayload, responses={401: {"model": ErrorEnvelope}, 400: {"model": ErrorEnvelope}})
+    def command(payload: CommandPayload) -> RenderedResponsePayload:
+        portfolio = _build_portfolio_payload(payload)
+        return RenderedResponsePayload.model_validate(
+            api.command(
                 CommandRequest(
                     actor=portfolio["actor"],
-                    command=payload["command"],
+                    command=payload.command,
                     portfolio_equity=portfolio["portfolio_equity"],
                     aggregate_open_risk_pct=portfolio["aggregate_open_risk_pct"],
                     daily_drawdown_pct=portfolio["daily_drawdown_pct"],
                     open_positions_count=portfolio["open_positions_count"],
-                    execute_on_approve=bool(payload.get("execute_on_approve", True)),
+                    execute_on_approve=payload.execute_on_approve,
                     render_mode=portfolio["render_mode"],
                     now=portfolio["now"],
                 )
             )
-        except KeyError as exc:
-            raise http_error(400, "INVALID_PAYLOAD", f"Missing field: {exc.args[0]}") from exc
+        )
 
-    @app.post("/proposals/{proposal_id}/approve", dependencies=[Depends(require_auth)])
-    def approve_proposal(proposal_id: str, payload: dict[str, Any] | None = None) -> dict[str, object]:
-        payload = payload or {}
+    @app.post("/proposals/{proposal_id}/approve", dependencies=[Depends(require_auth)], response_model=RenderedResponsePayload, responses={401: {"model": ErrorEnvelope}})
+    def approve_proposal(proposal_id: str, payload: PortfolioContextPayload | None = None) -> RenderedResponsePayload:
+        payload = payload or PortfolioContextPayload()
         portfolio = _build_portfolio_payload(payload)
-        return api.command(
-            CommandRequest(
-                actor=portfolio["actor"],
-                command=f"APPROVE {proposal_id}",
-                portfolio_equity=portfolio["portfolio_equity"],
-                aggregate_open_risk_pct=portfolio["aggregate_open_risk_pct"],
-                daily_drawdown_pct=portfolio["daily_drawdown_pct"],
-                open_positions_count=portfolio["open_positions_count"],
-                execute_on_approve=bool(payload.get("execute_on_approve", True)),
-                render_mode=portfolio["render_mode"],
-                now=portfolio["now"],
+        return RenderedResponsePayload.model_validate(
+            api.command(
+                CommandRequest(
+                    actor=portfolio["actor"],
+                    command=f"APPROVE {proposal_id}",
+                    portfolio_equity=portfolio["portfolio_equity"],
+                    aggregate_open_risk_pct=portfolio["aggregate_open_risk_pct"],
+                    daily_drawdown_pct=portfolio["daily_drawdown_pct"],
+                    open_positions_count=portfolio["open_positions_count"],
+                    execute_on_approve=getattr(payload, "execute_on_approve", True),
+                    render_mode=portfolio["render_mode"],
+                    now=portfolio["now"],
+                )
             )
         )
 
-    @app.post("/proposals/{proposal_id}/reject", dependencies=[Depends(require_auth)])
-    def reject_proposal(proposal_id: str, payload: dict[str, Any] | None = None) -> dict[str, object]:
-        payload = payload or {}
+    @app.post("/proposals/{proposal_id}/reject", dependencies=[Depends(require_auth)], response_model=RenderedResponsePayload, responses={401: {"model": ErrorEnvelope}})
+    def reject_proposal(proposal_id: str, payload: PortfolioContextPayload | None = None) -> RenderedResponsePayload:
+        payload = payload or PortfolioContextPayload()
         portfolio = _build_portfolio_payload(payload)
-        return api.command(
-            CommandRequest(
-                actor=portfolio["actor"],
-                command=f"REJECT {proposal_id}",
-                portfolio_equity=portfolio["portfolio_equity"],
-                aggregate_open_risk_pct=portfolio["aggregate_open_risk_pct"],
-                daily_drawdown_pct=portfolio["daily_drawdown_pct"],
-                open_positions_count=portfolio["open_positions_count"],
-                render_mode=portfolio["render_mode"],
-                now=portfolio["now"],
+        return RenderedResponsePayload.model_validate(
+            api.command(
+                CommandRequest(
+                    actor=portfolio["actor"],
+                    command=f"REJECT {proposal_id}",
+                    portfolio_equity=portfolio["portfolio_equity"],
+                    aggregate_open_risk_pct=portfolio["aggregate_open_risk_pct"],
+                    daily_drawdown_pct=portfolio["daily_drawdown_pct"],
+                    open_positions_count=portfolio["open_positions_count"],
+                    render_mode=portfolio["render_mode"],
+                    now=portfolio["now"],
+                )
             )
         )
 
-    @app.post("/proposals/{proposal_id}/modify", dependencies=[Depends(require_auth)])
-    def modify_proposal(proposal_id: str, payload: dict[str, Any]) -> dict[str, object]:
-        if "replacement" not in payload or "changes" not in payload:
-            raise http_error(400, "INVALID_PAYLOAD", "Fields 'changes' and 'replacement' are required for modify")
+    @app.post("/proposals/{proposal_id}/modify", dependencies=[Depends(require_auth)], response_model=RenderedResponsePayload, responses={401: {"model": ErrorEnvelope}, 400: {"model": ErrorEnvelope}})
+    def modify_proposal(proposal_id: str, payload: ModifyProposalPayload) -> RenderedResponsePayload:
         portfolio = _build_portfolio_payload(payload)
         try:
-            replacement = ProposalPayloadMapper.from_dict(payload["replacement"])
-        except (KeyError, ValueError) as exc:
+            replacement = ProposalPayloadMapper.from_dict(payload.replacement)
+        except ValueError as exc:
             raise http_error(400, "INVALID_PAYLOAD", f"Invalid replacement payload: {exc}") from exc
-        return api.command(
-            CommandRequest(
-                actor=portfolio["actor"],
-                command=f"MODIFY {proposal_id}: {payload['changes']}",
-                portfolio_equity=portfolio["portfolio_equity"],
-                aggregate_open_risk_pct=portfolio["aggregate_open_risk_pct"],
-                daily_drawdown_pct=portfolio["daily_drawdown_pct"],
-                open_positions_count=portfolio["open_positions_count"],
-                render_mode=portfolio["render_mode"],
-                replacement=replacement,
-                now=portfolio["now"],
+        return RenderedResponsePayload.model_validate(
+            api.command(
+                CommandRequest(
+                    actor=portfolio["actor"],
+                    command=f"MODIFY {proposal_id}: {payload.changes}",
+                    portfolio_equity=portfolio["portfolio_equity"],
+                    aggregate_open_risk_pct=portfolio["aggregate_open_risk_pct"],
+                    daily_drawdown_pct=portfolio["daily_drawdown_pct"],
+                    open_positions_count=portfolio["open_positions_count"],
+                    render_mode=portfolio["render_mode"],
+                    replacement=replacement,
+                    now=portfolio["now"],
+                )
             )
         )
 
-    @app.post("/trades/{proposal_id}/execute", dependencies=[Depends(require_auth)])
-    def execute(proposal_id: str, payload: dict[str, Any] | None = None) -> dict[str, object]:
-        payload = payload or {}
+    @app.post("/trades/{proposal_id}/execute", dependencies=[Depends(require_auth)], response_model=RenderedResponsePayload, responses={401: {"model": ErrorEnvelope}, 404: {"model": ErrorEnvelope}})
+    def execute(proposal_id: str, payload: PortfolioContextPayload | None = None) -> RenderedResponsePayload:
+        payload = payload or PortfolioContextPayload()
         portfolio = _build_portfolio_payload(payload)
         try:
-            return api.execute_approved_proposal(
-                proposal_id,
-                actor=portfolio["actor"],
-                portfolio_equity=portfolio["portfolio_equity"],
-                aggregate_open_risk_pct=portfolio["aggregate_open_risk_pct"],
-                daily_drawdown_pct=portfolio["daily_drawdown_pct"],
-                open_positions_count=portfolio["open_positions_count"],
-                render_mode=portfolio["render_mode"],
-                now=portfolio["now"],
+            return RenderedResponsePayload.model_validate(
+                api.execute_approved_proposal(
+                    proposal_id,
+                    actor=portfolio["actor"],
+                    portfolio_equity=portfolio["portfolio_equity"],
+                    aggregate_open_risk_pct=portfolio["aggregate_open_risk_pct"],
+                    daily_drawdown_pct=portfolio["daily_drawdown_pct"],
+                    open_positions_count=portfolio["open_positions_count"],
+                    render_mode=portfolio["render_mode"],
+                    now=portfolio["now"],
+                )
             )
         except KeyError as exc:
             raise http_error(404, "PROPOSAL_NOT_FOUND", f"Unknown proposal_id: {proposal_id}") from exc

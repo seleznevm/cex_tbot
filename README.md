@@ -332,6 +332,8 @@ What it exposes:
 
 FastAPI/uvicorn/pydantic are now declared as real project dependencies, so the REST bridge is part of the installable MVP surface.
 
+The REST layer now uses typed Pydantic request/response schemas, which makes the generated OpenAPI contract UI-friendly and predictable.
+
 For MVP safety, the bridge also supports a simple API key gate via `CEX_TBOT_API_TOKEN`.
 When it is set, clients must send `X-API-Key: <token>`.
 

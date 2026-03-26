@@ -375,6 +375,8 @@ Endpoints:
 
 FastAPI/uvicorn/pydantic are now declared project dependencies, so the REST bridge is part of the installable MVP surface.
 
+The web layer now uses typed Pydantic schemas for request/response contracts, so `/openapi.json` and Swagger docs reflect the UI bridge properly instead of exposing raw anonymous dict payloads.
+
 For minimal operator safety, the bridge can be protected with `CEX_TBOT_API_TOKEN`.
 If set, every request must include `X-API-Key`.
 
