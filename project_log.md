@@ -49,3 +49,4 @@
 - Added payload mapping from REST JSON into domain proposals, plus REST endpoints for health, session summary, dashboard, trade list/detail/report, proposal submission, operator commands, and explicit execution.
 - Added a `serve-rest` CLI entrypoint that fails fast with clear dependency messages when FastAPI/uvicorn are not installed.
 - Added unit coverage for REST payload mapping and dependency guard behavior.
+- Expanded the REST bridge toward a true UI-first MVP shape with proposal-centric endpoints (`/proposals`, approve/reject/modify actions), a no-trade read endpoint, minimal API-key auth via `CEX_TBOT_API_TOKEN`, and normalized structured error payloads.

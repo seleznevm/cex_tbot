@@ -362,15 +362,22 @@ Endpoints:
 - `GET /health`
 - `GET /session/summary`
 - `GET /dashboard`
-- `GET /trades`
-- `GET /trades/{proposal_id}`
+- `GET /proposals` (alias: `GET /trades`)
+- `GET /proposals/{proposal_id}` (alias: `GET /trades/{proposal_id}`)
 - `GET /trades/{proposal_id}/report`
+- `GET /no-trades`
 - `POST /proposals`
 - `POST /commands`
+- `POST /proposals/{proposal_id}/approve`
+- `POST /proposals/{proposal_id}/reject`
+- `POST /proposals/{proposal_id}/modify`
 - `POST /trades/{proposal_id}/execute`
 
 The dependency is optional by design.
 If FastAPI or uvicorn are not installed, the CLI exits with a clear error instead of affecting core runtime usage.
+
+For minimal operator safety, the bridge can be protected with `CEX_TBOT_API_TOKEN`.
+If set, every request must include `X-API-Key`.
 
 Serve it like this once optional deps are available:
 

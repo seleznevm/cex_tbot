@@ -319,14 +319,21 @@ What it exposes:
 - `GET /health`
 - `GET /session/summary`
 - `GET /dashboard`
-- `GET /trades`
-- `GET /trades/{proposal_id}`
+- `GET /proposals` (alias: `GET /trades`)
+- `GET /proposals/{proposal_id}` (alias: `GET /trades/{proposal_id}`)
 - `GET /trades/{proposal_id}/report`
+- `GET /no-trades`
 - `POST /proposals`
 - `POST /commands`
+- `POST /proposals/{proposal_id}/approve`
+- `POST /proposals/{proposal_id}/reject`
+- `POST /proposals/{proposal_id}/modify`
 - `POST /trades/{proposal_id}/execute`
 
 The FastAPI dependency is intentionally optional so the core repo stays runnable without web-server packages.
+
+For MVP safety, the bridge also supports a simple API key gate via `CEX_TBOT_API_TOKEN`.
+When it is set, clients must send `X-API-Key: <token>`.
 
 Run it once optional deps are installed:
 

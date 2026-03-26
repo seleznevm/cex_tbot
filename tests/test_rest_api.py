@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 from cex_tbot.decision_contracts import TradeProposal
 from cex_tbot.enums import TradeDirection
-from cex_tbot.rest_api import ProposalPayloadMapper, RestApiDependencyError, create_rest_app
+from cex_tbot.rest_api import ProposalPayloadMapper, RestApiDependencyError, RestAuth, RestErrorFactory, create_rest_app
 
 
 class ProposalPayloadMapperTests(unittest.TestCase):
@@ -55,6 +55,54 @@ class ProposalPayloadMapperTests(unittest.TestCase):
         self.assertEqual(proposal.direction, TradeDirection.LONG)
         self.assertEqual(len(proposal.entry_split), 1)
         self.assertEqual(proposal.status.value, "PENDING_APPROVAL")
+
+    def test_from_dict_generates_proposal_id_when_missing(self) -> None:
+        now = datetime(2026, 3, 26, 12, 0, tzinfo=UTC)
+        payload = {
+            "agent_name": "Luma",
+            "strategy_id": "breakout_reclaim",
+            "strategy_version": "v3",
+            "market_context_id": "ctx_demo_btc_20260326",
+            "symbol": "BTC_USDT",
+            "timeframe": "15m",
+            "direction": "LONG",
+            "entry_zone_min": 100.0,
+            "entry_zone_max": 101.0,
+            "entry_split": [
+                {
+                    "leg_number": 1,
+                    "planned_entry_price": 100.5,
+                    "allocation_pct": 100.0,
+                    "size_fraction": 1.0,
+                    "valid_until": (now + timedelta(minutes=10)).isoformat(),
+                }
+            ],
+            "stop_loss": 99.0,
+            "take_profit_1": 103.0,
+            "take_profit_2": 105.0,
+            "risk_percent": 0.5,
+            "risk_usd": 5.0,
+            "position_size": 10.0,
+            "confidence_score": 0.82,
+            "thesis": "breakout held",
+            "invalidity_condition": "reclaim fails",
+            "liquidity_check": "ok",
+            "data_freshness_ms": 5000,
+            "created_at": now.isoformat(),
+            "expires_at": (now + timedelta(minutes=15)).isoformat(),
+        }
+        proposal = ProposalPayloadMapper.from_dict(payload)
+        self.assertTrue(proposal.proposal_id.startswith("proposal_"))
+
+    def test_auth_and_error_helpers(self) -> None:
+        auth = RestAuth("secret")
+        self.assertTrue(auth.enabled)
+        self.assertTrue(auth.verify("secret"))
+        self.assertFalse(auth.verify("wrong"))
+        self.assertEqual(
+            RestErrorFactory.payload("X", "boom"),
+            {"error": {"code": "X", "message": "boom", "details": {}}},
+        )
 
     def test_create_rest_app_raises_when_fastapi_missing(self) -> None:
         with patch("builtins.__import__") as import_mock:
