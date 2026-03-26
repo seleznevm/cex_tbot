@@ -56,3 +56,4 @@
 - Expanded the SPA with a proposal modify flow (editable replacement JSON + change summary), richer detail/timeline rendering, status color-coding, loading states, and more polished operator UX.
 - Added submit-proposal and halt/unhalt controls to the SPA, plus matching REST endpoints for emergency halt management.
 - Added proposal filters/sorting, report mode switching (text/operator/telegram/compact), and localStorage-backed API key persistence for the SPA.
+- Replaced the raw JSON submit box with a field-by-field proposal editor, added simple client-side pagination/query controls, and upgraded the detail pane with report/timeline/raw tabs plus layout polish.

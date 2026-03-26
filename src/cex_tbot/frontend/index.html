@@ -11,23 +11,9 @@
       <aside class="sidebar">
         <h1>cex_tbot</h1>
         <p class="muted">Static SPA MVP</p>
-        <label class="field">
-          <span>API key</span>
-          <input id="api-key" type="password" placeholder="X-API-Key" />
-        </label>
-        <label class="field inline-toggle">
-          <input id="remember-api-key" type="checkbox" />
-          <span>Remember API key locally</span>
-        </label>
-        <label class="field">
-          <span>Auto refresh</span>
-          <select id="refresh-interval">
-            <option value="0">off</option>
-            <option value="3000">3s</option>
-            <option value="5000" selected>5s</option>
-            <option value="10000">10s</option>
-          </select>
-        </label>
+        <label class="field"><span>API key</span><input id="api-key" type="password" placeholder="X-API-Key" /></label>
+        <label class="field inline-toggle"><input id="remember-api-key" type="checkbox" /><span>Remember API key locally</span></label>
+        <label class="field"><span>Auto refresh</span><select id="refresh-interval"><option value="0">off</option><option value="3000">3s</option><option value="5000" selected>5s</option><option value="10000">10s</option></select></label>
         <nav class="nav">
           <button data-view="dashboard" class="nav-btn active">Dashboard</button>
           <button data-view="proposals" class="nav-btn">Proposals</button>
@@ -37,10 +23,7 @@
 
       <main class="main">
         <header class="topbar">
-          <div>
-            <h2 id="view-title">Dashboard</h2>
-            <p id="status-line" class="muted">Ready.</p>
-          </div>
+          <div><h2 id="view-title">Dashboard</h2><p id="status-line" class="muted">Ready.</p></div>
           <button id="refresh-now" class="ghost">Refresh now</button>
         </header>
 
@@ -49,25 +32,18 @@
         <section id="proposals-view" class="view">
           <div class="toolbar wrap">
             <input id="proposal-filter" type="text" placeholder="Filter by symbol / id / status" />
-            <select id="proposal-status-filter">
-              <option value="">All statuses</option>
-            </select>
-            <select id="proposal-sort">
-              <option value="proposal_id">Sort: proposal_id</option>
-              <option value="status">Sort: status</option>
-              <option value="symbol">Sort: symbol</option>
-            </select>
-            <label class="inline-toggle compact">
-              <input id="proposal-descending" type="checkbox" />
-              <span>Desc</span>
-            </label>
+            <select id="proposal-status-filter"><option value="">All statuses</option></select>
+            <select id="proposal-sort"><option value="proposal_id">Sort: proposal_id</option><option value="status">Sort: status</option><option value="symbol">Sort: symbol</option></select>
+            <label class="inline-toggle compact"><input id="proposal-descending" type="checkbox" /><span>Desc</span></label>
+            <select id="proposal-page-size"><option value="5">5 / page</option><option value="10" selected>10 / page</option><option value="20">20 / page</option></select>
           </div>
           <div id="proposal-submit" class="panel"></div>
           <div class="split">
-            <div id="proposal-list" class="panel"></div>
-            <div id="proposal-detail" class="panel detail-panel">
-              <p class="muted">Select a proposal.</p>
+            <div>
+              <div id="proposal-list" class="panel"></div>
+              <div id="proposal-pagination" class="pagination"></div>
             </div>
+            <div id="proposal-detail" class="panel detail-panel"><p class="muted">Select a proposal.</p></div>
           </div>
         </section>
 
