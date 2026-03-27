@@ -132,6 +132,8 @@ class RestHttpIntegrationTests(unittest.TestCase):
         self.assertIn("/system/halt", schema["paths"])
         self.assertIn("ProposalPayload", schema["components"]["schemas"])
         self.assertIn("TradeDetailPayload", schema["components"]["schemas"])
+        self.assertIn("DashboardPayload", schema["components"]["schemas"])
+        self.assertIn("DashboardUniversePayload", schema["components"]["schemas"])
 
     def test_halt_and_unhalt_controls(self) -> None:
         halted = self.client.post("/system/halt", json={"reason": "manual-stop"}, headers=self.headers)

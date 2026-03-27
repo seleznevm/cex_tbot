@@ -197,9 +197,29 @@ def render_trade_detail_text(detail: dict[str, object]) -> str:
 def render_dashboard_text(payload: dict[str, object]) -> str:
     lines = [
         "Dashboard",
-        f"- proposals={payload['kpis']['total_proposals']} no_trades={payload['kpis']['total_no_trade_decisions']} executed={payload['kpis']['executed_proposals']} rejected={payload['kpis']['rejected_proposals']}",
-        f"- commands={payload['kpis']['operator_commands']} approval_decisions={payload['risk']['approval_decisions']} execution_events={payload['risk']['execution_events']} halt={payload['risk']['emergency_halt_active']}",
+        "KPIs:",
+        f"- proposals={payload['kpis']['total_proposals']} pending_approvals={payload['kpis']['pending_approvals']} executed={payload['kpis']['executed_proposals']} rejected={payload['kpis']['rejected_proposals']} no_trades={payload['kpis']['total_no_trade_decisions']}",
+        f"- commands={payload['kpis']['operator_commands']}",
+        "Risk:",
+        f"- halt={payload['risk']['emergency_halt_active']} halt_reason={payload['risk'].get('halt_reason')}",
+        f"- max_open={payload['risk']['max_open_risk_percent']} active={payload['risk']['active_risk_percent']} reserved={payload['risk']['reserved_pending_risk_percent']} free={payload['risk']['free_risk_budget_percent']}",
+        "Universe:",
+        f"- snapshot={payload['universe'].get('snapshot_id')} eligible={payload['universe']['eligible_instruments']} ineligible={payload['universe']['ineligible_instruments']} stale={payload['universe']['stale_instruments']}",
     ]
+    alerts = payload.get("alerts", {}).get("items", [])
+    if alerts:
+        lines.append("Alerts:")
+        for item in alerts[:5]:
+            lines.append(f"- [{item['level']}] {item['code']}: {item['message']}")
+    else:
+        lines.append("Alerts: none")
+    activity = payload.get("operator_activity", {}).get("recent_items", [])
+    if activity:
+        lines.append("Operator activity:")
+        for item in activity[:5]:
+            lines.append(f"- {item['actor']} | {item['outcome']} | {item['raw_command']}")
+    else:
+        lines.append("Operator activity: none")
     latest = payload["latest_trades"]
     if latest:
         lines.append("Latest trades:")

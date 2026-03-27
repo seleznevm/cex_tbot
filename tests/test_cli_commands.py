@@ -68,6 +68,11 @@ class CliCommandTests(unittest.TestCase):
             self._run(tmp, "submit-demo", "--storage-dir", storage, "--format", "json")
             dashboard = self._run(tmp, "dashboard", "--storage-dir", storage)
             self.assertIn("Dashboard", dashboard.stdout)
+            self.assertIn("KPIs:", dashboard.stdout)
+            self.assertIn("Risk:", dashboard.stdout)
+            self.assertIn("Universe:", dashboard.stdout)
+            self.assertIn("Alerts:", dashboard.stdout)
+            self.assertIn("Operator activity:", dashboard.stdout)
             self.assertIn("Latest trades", dashboard.stdout)
 
 
