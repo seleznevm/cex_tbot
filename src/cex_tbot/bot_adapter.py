@@ -20,10 +20,11 @@ class BotReply:
 
 
 class BotCommandAdapter:
-    def __init__(self, backend: TradingBackendService, *, config: BotConfig | None = None, app: TradingApplication | None = None) -> None:
+    def __init__(self, backend: TradingBackendService, *, config: BotConfig | None = None, app: TradingApplication | None = None, write_arm_state=None) -> None:
         self.backend = backend
         self.config = config or BotConfig()
         self.app = app
+        self.write_arm_state = write_arm_state
 
     def handle_help(self) -> BotReply:
         return BotReply(
@@ -43,6 +44,8 @@ class BotCommandAdapter:
                     "/demo_open_orders — Gate demo open orders",
                     "/demo_order_status <order_id> — Gate demo order status",
                     "/demo_arm — arm demo write actions for a short window",
+                    "/demo_write_status — current write-arm status",
+                    "/demo_audit — recent demo write audit entries",
                     "/demo_place_test_order <contract> <buy|sell> — explicit tiny demo test order",
                     "/demo_cancel_order <order_id> — cancel demo order",
                     "/demo_smoke <contract> <buy|sell> — place/status/cancel-if-open demo smoke",
@@ -87,6 +90,35 @@ class BotCommandAdapter:
 
     def handle_post_analysis(self) -> BotReply:
         return BotReply(self.backend.get_post_analysis_text())
+
+    def handle_demo_write_status(self) -> BotReply:
+        if self.write_arm_state is None:
+            return BotReply("Demo write status\n- arm_state=unbound")
+        payload = self.write_arm_state.status()
+        return BotReply(
+            "\n".join(
+                [
+                    "Demo write status",
+                    f"- is_active={payload['is_active']}",
+                    f"- armed_sender_id={payload['armed_sender_id']}",
+                    f"- armed_until={payload['armed_until']}",
+                ]
+            )
+        )
+
+    def handle_demo_audit(self) -> BotReply:
+        entries = [
+            entry for entry in self.backend.session.operator_transcript.list_entries()
+            if entry.outcome.startswith("DEMO_") or entry.raw_command.startswith("DEMO_")
+        ]
+        if not entries:
+            return BotReply("Demo audit\n- no demo write activity yet")
+        lines = ["Demo audit"]
+        for entry in entries[-10:]:
+            lines.append(
+                f"- {entry.created_at.isoformat()} {entry.outcome} cmd={entry.raw_command} ref={entry.proposal_id}"
+            )
+        return BotReply("\n".join(lines))
 
     def handle_safety(self) -> BotReply:
         payload = self.backend.get_session_summary_payload()

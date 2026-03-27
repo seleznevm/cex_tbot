@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from cex_tbot.audit import AuditEntry, InMemoryOperatorTranscript
 from cex_tbot.bot_adapter import BotReply
 from cex_tbot.bot_dispatcher import BotCommandDispatcher
 from cex_tbot.write_safety import WriteActionArmState
@@ -43,12 +44,14 @@ class TransportCommandBridge:
         write_sender_policy: SenderPolicy | None = None,
         arm_state: WriteActionArmState | None = None,
         arm_ttl_seconds: int = 120,
+        audit_transcript: InMemoryOperatorTranscript | None = None,
     ) -> None:
         self.dispatcher = dispatcher
         self.sender_policy = sender_policy or SenderPolicy()
         self.write_sender_policy = write_sender_policy or self.sender_policy
         self.arm_state = arm_state or WriteActionArmState()
         self.arm_ttl_seconds = arm_ttl_seconds
+        self.audit_transcript = audit_transcript
 
     def handle_message(self, message: TransportMessage) -> BotReply:
         if not self.sender_policy.is_allowed(message.sender_id):
@@ -58,6 +61,8 @@ class TransportCommandBridge:
             return BotReply("Ignored non-command message.")
         if stripped.startswith('/demo_arm'):
             expires_at = self.arm_state.arm(message.sender_id, ttl_seconds=self.arm_ttl_seconds)
+            if self.audit_transcript is not None:
+                self.audit_transcript.append(AuditEntry(actor=message.sender_id, raw_command='DEMO_ARM', outcome='DEMO_ARMED'))
             return BotReply(f"Demo write actions armed until {expires_at.isoformat()}")
         command = stripped.split()[0]
         if command in _WRITE_COMMANDS:

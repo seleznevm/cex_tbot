@@ -27,3 +27,10 @@ class WriteActionArmState:
     def clear(self) -> None:
         self.armed_sender_id = None
         self.armed_until = None
+
+    def status(self) -> dict[str, object]:
+        return {
+            "armed_sender_id": self.armed_sender_id,
+            "armed_until": self.armed_until.isoformat() if self.armed_until is not None else None,
+            "is_active": bool(self.armed_sender_id and self.armed_until and utc_now() <= self.armed_until),
+        }

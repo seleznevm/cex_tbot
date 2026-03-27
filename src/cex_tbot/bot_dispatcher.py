@@ -32,6 +32,10 @@ class BotCommandDispatcher:
             return self.adapter.handle_dashboard()
         if parsed.name == "post_analysis":
             return self.adapter.handle_post_analysis()
+        if parsed.name == "demo_write_status":
+            return self.adapter.handle_demo_write_status()
+        if parsed.name == "demo_audit":
+            return self.adapter.handle_demo_audit()
         if parsed.name == "safety":
             return self.adapter.handle_safety()
         if parsed.name == "gate_demo_status":
