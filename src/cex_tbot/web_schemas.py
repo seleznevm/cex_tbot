@@ -216,6 +216,9 @@ class DashboardRiskPayload(BaseModel):
     execution_events: int
     emergency_halt_active: bool
     halt_reason: str | None = None
+    safety_state: str = "NORMAL"
+    block_new_trades: bool = False
+    block_reason: str | None = None
     max_open_risk_percent: float = 0.0
     reserved_pending_risk_percent: float = 0.0
     active_risk_percent: float = 0.0

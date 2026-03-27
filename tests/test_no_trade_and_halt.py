@@ -83,6 +83,8 @@ class NoTradeAndHaltTests(unittest.TestCase):
         self.assertEqual(summary["safety_state"], SafetyState.BLOCK_NEW_TRADES.value)
         self.assertTrue(summary["block_new_trades"])
         self.assertIn("daily drawdown limit reached", summary["block_reason"])
+        entries = service.session.operator_transcript.list_entries()
+        self.assertTrue(any(entry.outcome == "AUTO_BLOCK_ON" for entry in entries))
 
 
 if __name__ == "__main__":

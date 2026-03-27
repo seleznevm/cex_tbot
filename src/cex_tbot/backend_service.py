@@ -102,25 +102,33 @@ class TradingBackendService:
     def evaluate_stop_conditions(self, portfolio: PortfolioState) -> None:
         if self.session.system_state.emergency_halt_active:
             return
-        if portfolio.daily_drawdown_pct >= self.execution.risk_engine.config.max_daily_drawdown_percent:
+
+        previous_block = self.session.system_state.block_reason
+
+        def apply_block(reason: str) -> None:
             self.session.system_state.set_block(
-                f"daily drawdown limit reached: {portfolio.daily_drawdown_pct:.2f}%",
+                reason,
                 safety_state=SafetyState.BLOCK_NEW_TRADES,
             )
+            if previous_block != reason:
+                self.session.operator_transcript.append(
+                    AuditEntry(actor="system", raw_command=f"AUTO_BLOCK {reason}", outcome="AUTO_BLOCK_ON")
+                )
+
+        if portfolio.daily_drawdown_pct >= self.execution.risk_engine.config.max_daily_drawdown_percent:
+            apply_block(f"daily drawdown limit reached: {portfolio.daily_drawdown_pct:.2f}%")
             return
         if portfolio.open_positions_count >= self.execution.risk_engine.config.max_open_positions:
-            self.session.system_state.set_block(
-                f"max open positions reached: {portfolio.open_positions_count}",
-                safety_state=SafetyState.BLOCK_NEW_TRADES,
-            )
+            apply_block(f"max open positions reached: {portfolio.open_positions_count}")
             return
         projected_reserved = self.execution.risk_engine.pending_risk_book.total_reserved_risk_pct + portfolio.aggregate_open_risk_pct
         if projected_reserved >= self.execution.risk_engine.config.max_aggregate_open_risk_percent:
-            self.session.system_state.set_block(
-                f"aggregate open risk exhausted: {projected_reserved:.2f}%",
-                safety_state=SafetyState.BLOCK_NEW_TRADES,
-            )
+            apply_block(f"aggregate open risk exhausted: {projected_reserved:.2f}%")
             return
+        if self.session.system_state.block_new_trades:
+            self.session.operator_transcript.append(
+                AuditEntry(actor="system", raw_command="AUTO_BLOCK_CLEAR", outcome="AUTO_BLOCK_OFF")
+            )
         self.session.system_state.clear_block()
 
     def run_operator_command(

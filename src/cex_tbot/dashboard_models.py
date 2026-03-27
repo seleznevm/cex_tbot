@@ -29,6 +29,9 @@ class RiskWidget:
     execution_events: int
     emergency_halt_active: bool
     halt_reason: str | None = None
+    safety_state: str = "NORMAL"
+    block_new_trades: bool = False
+    block_reason: str | None = None
     max_open_risk_percent: float = 0.0
     reserved_pending_risk_percent: float = 0.0
     active_risk_percent: float = 0.0
@@ -123,6 +126,17 @@ class DashboardBuilder:
         pending_approvals = summary.proposal_status_breakdown.get("PENDING_APPROVAL", 0)
         if summary.emergency_halt_active:
             alerts.append(AlertItem(level="critical", code="HALT_ACTIVE", message=f"Emergency halt active: {summary.halt_reason or 'no reason provided'}"))
+        elif summary.block_new_trades:
+            block_reason = summary.block_reason or "safety policy active"
+            if "daily drawdown limit reached" in block_reason:
+                code = "STOP_DAILY_DRAWDOWN"
+            elif "max open positions reached" in block_reason:
+                code = "STOP_MAX_OPEN_POSITIONS"
+            elif "aggregate open risk exhausted" in block_reason:
+                code = "STOP_AGGREGATE_RISK"
+            else:
+                code = "STOP_CONDITION_ACTIVE"
+            alerts.append(AlertItem(level="critical", code=code, message=f"New trades blocked: {block_reason}"))
         if pending_approvals > 0:
             alerts.append(AlertItem(level="warning", code="PENDING_APPROVALS", message=f"{pending_approvals} proposal(s) waiting for approval"))
         if trades and free_risk <= 0.0:
@@ -166,6 +180,9 @@ class DashboardBuilder:
                 execution_events=summary.execution_events,
                 emergency_halt_active=summary.emergency_halt_active,
                 halt_reason=summary.halt_reason,
+                safety_state=summary.safety_state,
+                block_new_trades=summary.block_new_trades,
+                block_reason=summary.block_reason,
                 max_open_risk_percent=max_open_risk,
                 reserved_pending_risk_percent=reserved_risk,
                 active_risk_percent=active_risk,
