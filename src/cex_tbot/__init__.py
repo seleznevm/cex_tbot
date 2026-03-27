@@ -95,6 +95,7 @@ __all__ = [
     "RenderedResponse",
     "PostAnalysisBuilder",
     "PostAnalysisSummary",
+    "TopicProposalEmitter",
     "TradeQuery",
     "QueryService",
     "TradeListItem",
