@@ -94,6 +94,7 @@ class PostAnalysisWidget:
     recent_rejected_trades: int = 0
     recent_avg_confidence: float = 0.0
     trend_hint: str | None = None
+    recommendations: list[dict[str, str]] | None = None
     latest_hint: str | None = None
 
 
@@ -254,6 +255,7 @@ class DashboardBuilder:
                 recent_rejected_trades=analysis.recent_rejected_trades,
                 recent_avg_confidence=analysis.recent_avg_confidence,
                 trend_hint=analysis.trend_hint,
+                recommendations=analysis.recommendations[:3],
                 latest_hint=(analysis.calibration_hints[0] if analysis.calibration_hints else None),
             ),
         )

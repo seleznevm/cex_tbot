@@ -1,9 +1,17 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 
 from cex_tbot.read_models import QueryService
 from cex_tbot.session_store import TradeSessionStore
+
+
+@dataclass(frozen=True)
+class CalibrationRecommendation:
+    action: str
+    target: str
+    severity: str
+    reason: str
 
 
 @dataclass(frozen=True)
@@ -29,6 +37,7 @@ class PostAnalysisSummary:
     trend_hint: str | None
     trade_confidence_buckets: dict[str, int]
     no_trade_confidence_buckets: dict[str, int]
+    recommendations: list[dict[str, str]]
     calibration_hints: list[str]
 
     def to_text(self) -> str:
@@ -73,6 +82,10 @@ class PostAnalysisSummary:
             lines.append("No-trade confidence buckets:")
             for key, value in self.no_trade_confidence_buckets.items():
                 lines.append(f"- {key}: {value}")
+        if self.recommendations:
+            lines.append("Recommendations:")
+            for item in self.recommendations:
+                lines.append(f"- [{item['severity']}] {item['action']} {item['target']}: {item['reason']}")
         if self.calibration_hints:
             lines.append("Calibration hints:")
             for hint in self.calibration_hints:
@@ -160,6 +173,7 @@ class PostAnalysisBuilder:
                 trend_hint = "Recent trade confidence matches all-time average."
 
         hints: list[str] = []
+        recommendations: list[CalibrationRecommendation] = []
         if no_trade_reason_counts.get("CONFIDENCE_BELOW_THRESHOLD", 0) >= 3:
             hints.append("Review confidence threshold calibration: frequent low-confidence no-trades detected.")
         if rejected and len(rejected) >= max(3, len(trades) // 2 if trades else 3):
@@ -177,9 +191,17 @@ class PostAnalysisBuilder:
         weak_cells = [key for key, stats in outcome_matrix.items() if stats.get("rejected", 0) + stats.get("no_trade", 0) >= 2 and stats.get("executed", 0) == 0]
         if weak_cells:
             hints.append(f"Weak strategy/timeframe cells detected: {', '.join(sorted(weak_cells)[:3])}.")
+            for key in sorted(weak_cells)[:3]:
+                recommendations.append(CalibrationRecommendation(action="review_or_disable", target=key, severity="high", reason="Cell shows repeated rejection/no-trade outcomes without executions."))
         strong_cells = [key for key, stats in outcome_matrix.items() if stats.get("executed", 0) >= 1 and stats.get("rejected", 0) == 0 and stats.get("no_trade", 0) == 0]
         if strong_cells:
             hints.append(f"Strong strategy/timeframe cells worth monitoring: {', '.join(sorted(strong_cells)[:3])}.")
+            for key in sorted(strong_cells)[:3]:
+                recommendations.append(CalibrationRecommendation(action="keep_and_monitor", target=key, severity="medium", reason="Cell has executions without rejection/no-trade drag in current sample."))
+        if no_trade_reason_counts.get("CONFIDENCE_BELOW_THRESHOLD", 0) >= 2:
+            recommendations.append(CalibrationRecommendation(action="tighten_upstream_filtering", target="confidence_threshold", severity="medium", reason="Repeated low-confidence no-trade flow suggests weak upstream idea quality."))
+        if recent_avg_conf < avg_conf_all and recent_trades:
+            recommendations.append(CalibrationRecommendation(action="review_recent_quality", target="recent_window", severity="medium", reason="Recent confidence sits below all-time average."))
         if not hints:
             hints.append("Current sample looks balanced; continue collecting outcomes before major recalibration.")
 
@@ -205,5 +227,6 @@ class PostAnalysisBuilder:
             trend_hint=trend_hint,
             trade_confidence_buckets=dict(sorted(trade_confidence_buckets.items())),
             no_trade_confidence_buckets=dict(sorted(no_trade_confidence_buckets.items())),
+            recommendations=[asdict(item) for item in recommendations],
             calibration_hints=hints,
         )

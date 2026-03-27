@@ -260,6 +260,13 @@ class DashboardUniversePayload(BaseModel):
     eligible_symbols: list[str] = Field(default_factory=list)
 
 
+class CalibrationRecommendationPayload(BaseModel):
+    action: str
+    target: str
+    severity: str
+    reason: str
+
+
 class DashboardPostAnalysisPayload(BaseModel):
     total_trades: int = 0
     executed_trades: int = 0
@@ -274,6 +281,7 @@ class DashboardPostAnalysisPayload(BaseModel):
     recent_rejected_trades: int = 0
     recent_avg_confidence: float = 0.0
     trend_hint: str | None = None
+    recommendations: list[CalibrationRecommendationPayload] = Field(default_factory=list)
     latest_hint: str | None = None
 
 
@@ -309,6 +317,7 @@ class PostAnalysisPayload(BaseModel):
     trend_hint: str | None = None
     trade_confidence_buckets: dict[str, int] = Field(default_factory=dict)
     no_trade_confidence_buckets: dict[str, int] = Field(default_factory=dict)
+    recommendations: list[CalibrationRecommendationPayload] = Field(default_factory=list)
     calibration_hints: list[str] = Field(default_factory=list)
 
 

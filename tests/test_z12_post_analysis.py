@@ -134,6 +134,8 @@ class Z12PostAnalysisTests(unittest.TestCase):
         self.assertIn("all-time average", payload["trend_hint"])
         self.assertIn("ge_0_80", payload["trade_confidence_buckets"])
         self.assertIn("lt_0_40", payload["no_trade_confidence_buckets"])
+        self.assertGreater(len(payload["recommendations"]), 0)
+        self.assertTrue(any(item["action"] in {"keep_and_monitor", "review_or_disable", "tighten_upstream_filtering", "review_recent_quality"} for item in payload["recommendations"]))
         self.assertGreater(len(payload["calibration_hints"]), 0)
 
 
