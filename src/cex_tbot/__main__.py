@@ -7,10 +7,14 @@ from pathlib import Path
 
 from cex_tbot import build_app
 from cex_tbot.api_surface import CommandRequest, ProposalSubmitRequest, TradeListRequest
-from cex_tbot.decision_contracts import NoTradeDecision
+from cex_tbot.decision_contracts import EntrySplitLeg, NoTradeDecision, TradeProposal
 from cex_tbot.demo import build_demo_proposal, render_demo
-from cex_tbot.enums import NoTradeReasonCode
+from cex_tbot.enums import NoTradeReasonCode, ProposalStatus, TradeDirection
+from cex_tbot.openclaw_wrapper import OpenClawTopicWrapper
+from cex_tbot.proposal_emitter import TopicProposalEmitter
+from cex_tbot.proposal_workflow_glue import ProposalWorkflowGlue
 from cex_tbot.rest_api import RestApiDependencyError, create_rest_app
+from cex_tbot.shared import utc_now
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -143,6 +147,12 @@ def build_parser() -> argparse.ArgumentParser:
     emit_demo_proposal_parser.add_argument("--format", choices=("text", "json"), default="text", help="Output format")
     emit_demo_proposal_parser.add_argument("--chat-id", default="telegram:-1003832858724", help="Target chat id for rendered outbound payload")
     emit_demo_proposal_parser.add_argument("--thread-id", default="7", help="Target thread/topic id for rendered outbound payload")
+
+    submit_and_emit_parser = subparsers.add_parser("submit-and-emit-demo", help="Submit deterministic proposal through workflow glue and render same-topic approval request")
+    submit_and_emit_parser.add_argument("--storage-dir", type=Path, help="Optional base directory for file-backed session state")
+    submit_and_emit_parser.add_argument("--format", choices=("text", "json"), default="text", help="Output format")
+    submit_and_emit_parser.add_argument("--chat-id", default="telegram:-1003832858724", help="Target chat id for rendered outbound payload")
+    submit_and_emit_parser.add_argument("--thread-id", default="7", help="Target thread/topic id for rendered outbound payload")
 
     serve_rest_parser = subparsers.add_parser("serve-rest", help="Run optional FastAPI REST bridge")
     serve_rest_parser.add_argument("--storage-dir", type=Path, help="Optional base directory for file-backed session state")
@@ -522,12 +532,17 @@ def main() -> int:
         print(_print_payload({"report": rendered}, fmt) if fmt == "json" else rendered)
         return 0
 
-    if command == "emit-demo-proposal":
+    if command in {"emit-demo-proposal", "submit-and-emit-demo"}:
         proposal, chat_id, thread_id = build_demo_topic_proposal(args.chat_id, args.thread_id)
         wrapper = OpenClawTopicWrapper(api.bridge if hasattr(api, 'bridge') else None, default_chat_id=chat_id, default_thread_id=thread_id)
         glue = ProposalWorkflowGlue(app.backend, TopicProposalEmitter(wrapper))
         outbound = glue.submit_and_emit_proposal(proposal)
-        payload = {"chat_id": outbound.chat_id, "thread_id": outbound.thread_id, "text": outbound.text}
+        payload = {
+            "proposal_id": proposal.proposal_id,
+            "chat_id": outbound.chat_id,
+            "thread_id": outbound.thread_id,
+            "text": outbound.text,
+        }
         print(_print_payload(payload, fmt) if fmt == "json" else outbound.text)
         return 0
 

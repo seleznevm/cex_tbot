@@ -91,6 +91,15 @@ class CliCommandTests(unittest.TestCase):
             self.assertIn("BTC_USDT LONG · 15m", result.stdout)
             self.assertIn("/approve proposal_topic_demo_btc", result.stdout)
 
+    def test_submit_and_emit_demo_command(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            storage = str(Path(tmp) / "runtime")
+            result = self._run(tmp, "submit-and-emit-demo", "--storage-dir", storage, "--format", "json")
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["proposal_id"], "proposal_topic_demo_btc")
+            self.assertEqual(payload["thread_id"], "7")
+            self.assertIn("Trade approval request", payload["text"])
+
 
 if __name__ == "__main__":
     unittest.main()
