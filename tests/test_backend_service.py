@@ -147,6 +147,8 @@ class BackendServiceTests(unittest.TestCase):
         self.assertTrue(any(item["code"] == "HALT_ACTIVE" for item in payload["alerts"]["items"]))
         self.assertIn("latest_outcomes", payload["operator_activity"])
         self.assertIsInstance(payload["operator_activity"]["latest_outcomes"], list)
+        self.assertIn("recent_items", payload["operator_activity"])
+        self.assertIsInstance(payload["operator_activity"]["recent_items"], list)
 
 
 if __name__ == "__main__":

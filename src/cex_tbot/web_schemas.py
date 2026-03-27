@@ -219,9 +219,18 @@ class DashboardRiskPayload(BaseModel):
     free_risk_budget_percent: float = 0.0
 
 
+class DashboardOperatorActivityItemPayload(BaseModel):
+    actor: str
+    raw_command: str
+    outcome: str
+    proposal_id: str | None = None
+    created_at: datetime
+
+
 class DashboardOperatorActivityPayload(BaseModel):
     command_count: int
     latest_outcomes: list[str]
+    recent_items: list[DashboardOperatorActivityItemPayload] = Field(default_factory=list)
 
 
 class DashboardAlertItemPayload(BaseModel):

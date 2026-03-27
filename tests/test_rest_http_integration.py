@@ -148,6 +148,7 @@ class RestHttpIntegrationTests(unittest.TestCase):
         self.assertIn("free_risk_budget_percent", dashboard.json()["risk"])
         self.assertIn("alerts", dashboard.json())
         self.assertTrue(any(item["code"] == "HALT_ACTIVE" for item in dashboard.json()["alerts"]["items"]))
+        self.assertIn("recent_items", dashboard.json()["operator_activity"])
 
         unhalted = self.client.post("/system/unhalt", json={}, headers=self.headers)
         self.assertEqual(unhalted.status_code, 200)

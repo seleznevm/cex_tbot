@@ -35,9 +35,19 @@ class RiskWidget:
 
 
 @dataclass(frozen=True)
+class OperatorActivityItem:
+    actor: str
+    raw_command: str
+    outcome: str
+    proposal_id: str | None
+    created_at: str
+
+
+@dataclass(frozen=True)
 class OperatorActivityWidget:
     command_count: int
     latest_outcomes: list[str]
+    recent_items: list[OperatorActivityItem]
 
 
 @dataclass(frozen=True)
@@ -131,6 +141,16 @@ class DashboardBuilder:
             operator_activity=OperatorActivityWidget(
                 command_count=len(operator_entries),
                 latest_outcomes=[entry.outcome for entry in operator_entries[-5:]],
+                recent_items=[
+                    OperatorActivityItem(
+                        actor=entry.actor,
+                        raw_command=entry.raw_command,
+                        outcome=entry.outcome,
+                        proposal_id=entry.proposal_id,
+                        created_at=entry.created_at.isoformat(),
+                    )
+                    for entry in operator_entries[-5:]
+                ],
             ),
             alerts=AlertsWidget(items=alerts),
         )

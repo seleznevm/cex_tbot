@@ -269,6 +269,10 @@ class TradingBackendService:
             "kpis": dashboard.kpis.__dict__.copy(),
             "risk": dashboard.risk.__dict__.copy(),
             "latest_trades": [self.serializer.trade_list_item(item) for item in dashboard.latest_trades],
-            "operator_activity": dashboard.operator_activity.__dict__.copy(),
+            "operator_activity": {
+                "command_count": dashboard.operator_activity.command_count,
+                "latest_outcomes": list(dashboard.operator_activity.latest_outcomes),
+                "recent_items": [item.__dict__.copy() for item in dashboard.operator_activity.recent_items],
+            },
             "alerts": {"items": [item.__dict__.copy() for item in dashboard.alerts.items]},
         }

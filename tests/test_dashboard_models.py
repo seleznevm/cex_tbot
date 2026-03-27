@@ -67,6 +67,8 @@ class DashboardModelTests(unittest.TestCase):
         self.assertEqual(dashboard.kpis.executed_proposals, 1)
         self.assertEqual(dashboard.kpis.status_breakdown["EXECUTED"], 1)
         self.assertEqual(dashboard.operator_activity.command_count, 1)
+        self.assertEqual(dashboard.operator_activity.recent_items[0].actor, "Mike")
+        self.assertEqual(dashboard.operator_activity.recent_items[0].proposal_id, "proposal_1")
         self.assertEqual(len(dashboard.latest_trades), 1)
         self.assertEqual(dashboard.latest_trades[0].created_at, proposal.created_at.isoformat())
         self.assertTrue(dashboard.risk.emergency_halt_active)
