@@ -302,6 +302,7 @@ class TradingBackendService:
             },
             "alerts": {"items": [item.__dict__.copy() for item in dashboard.alerts.items]},
             "universe": dashboard.universe.__dict__.copy(),
+            "post_analysis": dashboard.post_analysis.__dict__.copy(),
         }
 
     def get_post_analysis(self) -> PostAnalysisSummary:

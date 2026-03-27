@@ -260,6 +260,20 @@ class DashboardUniversePayload(BaseModel):
     eligible_symbols: list[str] = Field(default_factory=list)
 
 
+class DashboardPostAnalysisPayload(BaseModel):
+    total_trades: int = 0
+    executed_trades: int = 0
+    no_trade_decisions: int = 0
+    avg_confidence_all: float = 0.0
+    top_rejection_status: str | None = None
+    top_no_trade_reason: str | None = None
+    top_strategy: str | None = None
+    top_timeframe: str | None = None
+    recent_trade_count: int = 0
+    recent_avg_confidence: float = 0.0
+    latest_hint: str | None = None
+
+
 class DashboardPayload(BaseModel):
     kpis: DashboardKpisPayload
     risk: DashboardRiskPayload
@@ -267,6 +281,7 @@ class DashboardPayload(BaseModel):
     operator_activity: DashboardOperatorActivityPayload
     alerts: DashboardAlertsPayload
     universe: DashboardUniversePayload
+    post_analysis: DashboardPostAnalysisPayload
 
 
 class PostAnalysisPayload(BaseModel):

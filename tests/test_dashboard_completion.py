@@ -85,6 +85,7 @@ class DashboardCompletionTests(unittest.TestCase):
         self.assertIn("operator_activity", payload)
         self.assertIn("latest_trades", payload)
         self.assertIn("universe", payload)
+        self.assertIn("post_analysis", payload)
         self.assertEqual(payload["kpis"]["pending_approvals"], 1)
         self.assertTrue(payload["risk"]["emergency_halt_active"])
         self.assertEqual(payload["risk"]["safety_state"], "HALTED")
@@ -95,6 +96,8 @@ class DashboardCompletionTests(unittest.TestCase):
         self.assertEqual(payload["latest_trades"][0]["proposal_id"], "proposal_dashboard_1")
         self.assertEqual(payload["universe"]["snapshot_id"], "universe_dashboard_1")
         self.assertEqual(payload["universe"]["eligible_symbols"], ["BTC_USDT"])
+        self.assertEqual(payload["post_analysis"]["total_trades"], 1)
+        self.assertEqual(payload["post_analysis"]["top_strategy"], "pullback")
 
 
 if __name__ == "__main__":

@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from cex_tbot.config import BotConfig
+from cex_tbot.post_analysis import PostAnalysisBuilder
 from cex_tbot.read_models import QueryService, TradeListItem
 from cex_tbot.risk_engine import PendingRiskBook
 from cex_tbot.session_store import TradeSessionStore
@@ -79,6 +80,21 @@ class UniverseWidget:
 
 
 @dataclass(frozen=True)
+class PostAnalysisWidget:
+    total_trades: int = 0
+    executed_trades: int = 0
+    no_trade_decisions: int = 0
+    avg_confidence_all: float = 0.0
+    top_rejection_status: str | None = None
+    top_no_trade_reason: str | None = None
+    top_strategy: str | None = None
+    top_timeframe: str | None = None
+    recent_trade_count: int = 0
+    recent_avg_confidence: float = 0.0
+    latest_hint: str | None = None
+
+
+@dataclass(frozen=True)
 class DashboardView:
     kpis: KpiWidget
     risk: RiskWidget
@@ -86,6 +102,7 @@ class DashboardView:
     operator_activity: OperatorActivityWidget
     alerts: AlertsWidget
     universe: UniverseWidget
+    post_analysis: PostAnalysisWidget
 
 
 class DashboardBuilder:
@@ -101,6 +118,7 @@ class DashboardBuilder:
         self.session = session
         self.query_service = query_service
         self.summary_builder = SessionSummaryBuilder()
+        self.post_analysis_builder = PostAnalysisBuilder(session, query_service)
         self.config = config or BotConfig()
         self.pending_risk_book = pending_risk_book or PendingRiskBook()
         self.universe_repository = universe_repository or InMemoryUniverseSnapshotRepository()
@@ -156,6 +174,9 @@ class DashboardBuilder:
             alerts.append(AlertItem(level="warning", code="LOW_FREE_RISK", message=f"Free risk budget is low: {free_risk}% remaining"))
         if not trades and summary.total_no_trade_decisions == 0:
             alerts.append(AlertItem(level="info", code="EMPTY_STATE", message="No proposals or no-trade decisions recorded yet"))
+        analysis = self.post_analysis_builder.build()
+        recent_trade_slice = latest_trades[:3]
+        recent_avg_conf = round(sum(item.confidence_score for item in recent_trade_slice) / len(recent_trade_slice), 4) if recent_trade_slice else 0.0
         latest_universe = self.universe_repository.latest()
         if latest_universe is None:
             universe = UniverseWidget(eligible_symbols=[])
@@ -216,4 +237,17 @@ class DashboardBuilder:
             ),
             alerts=AlertsWidget(items=alerts),
             universe=universe,
+            post_analysis=PostAnalysisWidget(
+                total_trades=analysis.total_trades,
+                executed_trades=analysis.executed_trades,
+                no_trade_decisions=analysis.no_trade_decisions,
+                avg_confidence_all=analysis.avg_confidence_all,
+                top_rejection_status=next(iter(analysis.top_rejection_statuses), None),
+                top_no_trade_reason=next(iter(analysis.no_trade_reason_counts), None),
+                top_strategy=next(iter(analysis.strategy_activity), None),
+                top_timeframe=next(iter(analysis.timeframe_activity), None),
+                recent_trade_count=len(recent_trade_slice),
+                recent_avg_confidence=recent_avg_conf,
+                latest_hint=(analysis.calibration_hints[0] if analysis.calibration_hints else None),
+            ),
         )
