@@ -40,6 +40,12 @@ class BotCommandDispatcher:
             return self.adapter.handle_demo_health()
         if parsed.name == "demo_account_status":
             return self.adapter.handle_demo_account_status()
+        if parsed.name == "demo_balance":
+            return self.adapter.handle_demo_balance()
+        if parsed.name == "demo_positions":
+            return self.adapter.handle_demo_positions()
+        if parsed.name == "demo_account_overview":
+            return self.adapter.handle_demo_account_overview()
         if parsed.name == "demo_capabilities":
             return self.adapter.handle_demo_capabilities()
         if parsed.name == "runtime_status":

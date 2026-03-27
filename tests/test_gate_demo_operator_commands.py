@@ -38,6 +38,12 @@ class _HealthyDemoClient:
     def account_status(self) -> dict[str, object]:
         return {"ok": True, "endpoint": "https://demo.gate/futures/usdt/accounts", "currency": "USDT", "available": "1000", "total": "1000"}
 
+    def balance_snapshot(self) -> dict[str, object]:
+        return {"currency": "USDT", "available": "1000", "total": "1000"}
+
+    def positions_snapshot(self) -> list[dict[str, object]]:
+        return [{"contract": "BTC_USDT", "size": 1, "entry_price": "100", "mark_price": "101", "unrealised_pnl": "1"}]
+
 
 class GateDemoOperatorCommandTests(unittest.TestCase):
     def test_runtime_and_session_commands(self) -> None:
@@ -76,6 +82,9 @@ class GateDemoOperatorCommandTests(unittest.TestCase):
         self.assertIn("contracts_seen=1", dispatcher.dispatch("/demo_health").text)
         self.assertIn("Gate demo account status", dispatcher.dispatch("/demo_account_status").text)
         self.assertIn("available=1000", dispatcher.dispatch("/demo_account_status").text)
+        self.assertIn("Gate demo balance", dispatcher.dispatch("/demo_balance").text)
+        self.assertIn("Gate demo positions", dispatcher.dispatch("/demo_positions").text)
+        self.assertIn("BTC_USDT", dispatcher.dispatch("/demo_account_overview").text)
         self.assertIn("Gate demo capabilities", dispatcher.dispatch("/demo_capabilities").text)
 
 

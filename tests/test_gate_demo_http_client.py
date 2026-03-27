@@ -59,6 +59,23 @@ class GateDemoHttpClientTests(unittest.TestCase):
         with self.assertRaisesRegex(Exception, "GATE_DEMO_KEY and GATE_DEMO_SECRET"):
             client.account_status()
 
+    def test_httpx_gate_demo_client_positions_snapshot_maps_payload(self) -> None:
+        httpx = __import__("httpx")
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if str(request.url).endswith("/futures/usdt/positions"):
+                return httpx.Response(200, json=[{"contract": "BTC_USDT", "size": 1, "entry_price": "100", "mark_price": "101", "unrealised_pnl": "1", "leverage": "5", "mode": "single"}])
+            return httpx.Response(200, json={"currency": "USDT", "available": "1000", "total": "1000"})
+
+        transport = httpx.MockTransport(handler)
+        client = HttpxGateDemoInstrumentClient("https://demo.gate", transport=transport, gate_demo_key="k", gate_demo_secret="s")
+
+        positions = client.positions_snapshot()
+
+        self.assertEqual(len(positions), 1)
+        self.assertEqual(positions[0]["contract"], "BTC_USDT")
+        self.assertEqual(positions[0]["unrealised_pnl"], "1")
+
 
 if __name__ == "__main__":
     unittest.main()

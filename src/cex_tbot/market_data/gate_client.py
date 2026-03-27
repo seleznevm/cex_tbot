@@ -32,6 +32,12 @@ class GateDemoInstrumentClient(Protocol):
     def account_status(self) -> dict[str, object]:
         ...
 
+    def balance_snapshot(self) -> dict[str, object]:
+        ...
+
+    def positions_snapshot(self) -> list[dict[str, object]]:
+        ...
+
 
 @dataclass(frozen=True)
 class StaticGateInstrumentFetcher:
@@ -88,6 +94,16 @@ class UnimplementedGateDemoInstrumentClient:
     def account_status(self) -> dict[str, object]:
         raise NotImplementedError(
             "Gate demo account boundary is wired, but no concrete authenticated demo client is installed."
+        )
+
+    def balance_snapshot(self) -> dict[str, object]:
+        raise NotImplementedError(
+            "Gate demo balance boundary is wired, but no concrete authenticated demo client is installed."
+        )
+
+    def positions_snapshot(self) -> list[dict[str, object]]:
+        raise NotImplementedError(
+            "Gate demo positions boundary is wired, but no concrete authenticated demo client is installed."
         )
 
 
@@ -174,6 +190,34 @@ class HttpxGateDemoInstrumentClient:
             "available": payload.get("available"),
             "total": payload.get("total"),
         }
+
+    def balance_snapshot(self) -> dict[str, object]:
+        return self.account_status()
+
+    def positions_snapshot(self) -> list[dict[str, object]]:
+        if not self.gate_demo_key or not self.gate_demo_secret:
+            raise MissingGateDemoCredentialsError(
+                "GATE_DEMO_KEY and GATE_DEMO_SECRET are required for demo positions snapshot."
+            )
+        payload = self._get_json("/futures/usdt/positions", error_prefix="Gate demo positions failed")
+        if not isinstance(payload, list):
+            raise GateDemoTransportError("Gate demo positions returned non-list payload")
+        snapshots: list[dict[str, object]] = []
+        for item in payload:
+            if not isinstance(item, dict):
+                continue
+            snapshots.append(
+                {
+                    "contract": item.get("contract") or item.get("name"),
+                    "size": item.get("size"),
+                    "entry_price": item.get("entry_price"),
+                    "mark_price": item.get("mark_price"),
+                    "unrealised_pnl": item.get("unrealised_pnl") or item.get("unrealized_pnl"),
+                    "leverage": item.get("leverage"),
+                    "mode": item.get("mode"),
+                }
+            )
+        return snapshots
 
     def _get_json(self, path: str, *, error_prefix: str) -> Any:
         try:

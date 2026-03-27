@@ -37,6 +37,9 @@ class BotCommandAdapter:
                     "/gate_demo_status — Gate demo transport status",
                     "/demo_health — Gate demo metadata endpoint health",
                     "/demo_account_status — Gate demo account status snapshot",
+                    "/demo_balance — Gate demo balance snapshot",
+                    "/demo_positions — Gate demo positions snapshot",
+                    "/demo_account_overview — Gate demo account + positions overview",
                     "/demo_capabilities — Gate demo runtime capabilities",
                     "/runtime_status — runtime/storage/fetcher status",
                     "/session_paths — session storage paths",
@@ -142,12 +145,55 @@ class BotCommandAdapter:
             )
         )
 
+    def handle_demo_balance(self) -> BotReply:
+        if self.app is None or not hasattr(self.app.instrument_fetcher, "client"):
+            return BotReply("Gate demo balance unavailable: no demo client bound.")
+        client = self.app.instrument_fetcher.client
+        try:
+            payload = client.balance_snapshot()
+        except (NotImplementedError, GateDemoTransportError, MissingGateDemoCredentialsError) as exc:
+            return BotReply(f"Gate demo balance unavailable: {exc}")
+        return BotReply(
+            "\n".join(
+                [
+                    "Gate demo balance",
+                    f"- currency={payload.get('currency')}",
+                    f"- available={payload.get('available')}",
+                    f"- total={payload.get('total')}",
+                ]
+            )
+        )
+
+    def handle_demo_positions(self) -> BotReply:
+        if self.app is None or not hasattr(self.app.instrument_fetcher, "client"):
+            return BotReply("Gate demo positions unavailable: no demo client bound.")
+        client = self.app.instrument_fetcher.client
+        try:
+            positions = client.positions_snapshot()
+        except (NotImplementedError, GateDemoTransportError, MissingGateDemoCredentialsError) as exc:
+            return BotReply(f"Gate demo positions unavailable: {exc}")
+        if not positions:
+            return BotReply("Gate demo positions\n- none")
+        lines = ["Gate demo positions"]
+        for item in positions[:10]:
+            lines.append(
+                f"- {item.get('contract')} size={item.get('size')} entry={item.get('entry_price')} mark={item.get('mark_price')} upnl={item.get('unrealised_pnl')}"
+            )
+        return BotReply("\n".join(lines))
+
+    def handle_demo_account_overview(self) -> BotReply:
+        account = self.handle_demo_account_status().text
+        positions = self.handle_demo_positions().text
+        return BotReply(account + "\n\n" + positions)
+
     def handle_demo_capabilities(self) -> BotReply:
         lines = [
             "Gate demo capabilities",
             f"- execution_mode={self.config.execution_mode}",
             f"- metadata_fetch={'yes' if self.config.execution_mode == 'gate_demo' else 'available via static/local fetchers only'}",
             f"- account_status={'yes' if bool(self.config.gate_demo_key and self.config.gate_demo_secret) else 'credentials_missing'}",
+            f"- balance_snapshot={'yes' if bool(self.config.gate_demo_key and self.config.gate_demo_secret) else 'credentials_missing'}",
+            f"- positions_snapshot={'yes' if bool(self.config.gate_demo_key and self.config.gate_demo_secret) else 'credentials_missing'}",
             "- live_trading=no",
             "- order_placement=no",
             "- account_sync=read_only_boundary",
