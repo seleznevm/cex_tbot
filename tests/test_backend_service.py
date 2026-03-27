@@ -124,5 +124,18 @@ class BackendServiceTests(unittest.TestCase):
         self.assertIn("\n\nTimeline events:", text)
 
 
+    def test_dashboard_payload_exposes_halt_reason(self) -> None:
+        session = TradeSessionStore()
+        service = TradingBackendService.from_session(session)
+        session.system_state.activate_halt("manual-stop")
+
+        payload = service.get_dashboard_payload()
+
+        self.assertTrue(payload["risk"]["emergency_halt_active"])
+        self.assertEqual(payload["risk"]["halt_reason"], "manual-stop")
+        self.assertIn("latest_outcomes", payload["operator_activity"])
+        self.assertIsInstance(payload["operator_activity"]["latest_outcomes"], list)
+
+
 if __name__ == "__main__":
     unittest.main()

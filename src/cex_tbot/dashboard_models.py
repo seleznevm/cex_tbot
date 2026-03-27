@@ -23,6 +23,7 @@ class RiskWidget:
     approval_decisions: int
     execution_events: int
     emergency_halt_active: bool
+    halt_reason: str | None = None
 
 
 @dataclass(frozen=True)
@@ -65,6 +66,7 @@ class DashboardBuilder:
                 approval_decisions=summary.approval_decisions,
                 execution_events=summary.execution_events,
                 emergency_halt_active=summary.emergency_halt_active,
+                halt_reason=summary.halt_reason,
             ),
             latest_trades=latest_trades,
             operator_activity=OperatorActivityWidget(

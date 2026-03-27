@@ -58,11 +58,14 @@ class DashboardModelTests(unittest.TestCase):
         router = OperatorCommandRouter(workflow, approval, transcript=session.operator_transcript)
         router.route("Mike", "APPROVE proposal_1", PortfolioState(equity=1000.0), now=now)
         query = QueryService(session, TradeTimelineBuilder(session.execution_journal, session.execution_state))
+        session.system_state.activate_halt("manual-stop")
         dashboard = DashboardBuilder(session, query).build()
         self.assertEqual(dashboard.kpis.total_proposals, 1)
         self.assertEqual(dashboard.kpis.executed_proposals, 1)
         self.assertEqual(dashboard.operator_activity.command_count, 1)
         self.assertEqual(len(dashboard.latest_trades), 1)
+        self.assertTrue(dashboard.risk.emergency_halt_active)
+        self.assertEqual(dashboard.risk.halt_reason, "manual-stop")
 
 
 if __name__ == "__main__":

@@ -138,9 +138,19 @@ class RestHttpIntegrationTests(unittest.TestCase):
         self.assertEqual(halted.status_code, 200)
         self.assertTrue(halted.json()["emergency_halt_active"])
 
+        dashboard = self.client.get("/dashboard", headers=self.headers)
+        self.assertEqual(dashboard.status_code, 200)
+        self.assertTrue(dashboard.json()["risk"]["emergency_halt_active"])
+        self.assertEqual(dashboard.json()["risk"]["halt_reason"], "manual-stop")
+
         unhalted = self.client.post("/system/unhalt", json={}, headers=self.headers)
         self.assertEqual(unhalted.status_code, 200)
         self.assertFalse(unhalted.json()["emergency_halt_active"])
+
+        dashboard_after = self.client.get("/dashboard", headers=self.headers)
+        self.assertEqual(dashboard_after.status_code, 200)
+        self.assertFalse(dashboard_after.json()["risk"]["emergency_halt_active"])
+        self.assertIsNone(dashboard_after.json()["risk"]["halt_reason"])
 
 
 if __name__ == "__main__":

@@ -112,6 +112,14 @@ class TradeListItemPayload(BaseModel):
     snapshot_count: int
 
 
+class TradeListPagePayload(BaseModel):
+    items: list[TradeListItemPayload]
+    total: int
+    limit: int
+    offset: int
+    has_more: bool
+
+
 class TradeDetailPayload(BaseModel):
     proposal_id: str
     proposal_version: int
@@ -203,8 +211,8 @@ class DashboardRiskPayload(BaseModel):
 
 
 class DashboardOperatorActivityPayload(BaseModel):
-    recent_commands: list[str]
     command_count: int
+    latest_outcomes: list[str]
 
 
 class DashboardPayload(BaseModel):
