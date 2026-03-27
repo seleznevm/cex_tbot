@@ -421,8 +421,8 @@ Current limits:
 
 - no real Telegram transport in this repo yet
 - no real exchange live trading transport
-- no full post-analysis/calibration loop yet
-- no full auto-stop policy engine yet
+- no production-grade historical analytics warehouse yet (current review snapshots are file-based)
+- no production-grade policy automation beyond current MVP warning/block/halt stack
 - demo proposal timestamps are deterministic, so delayed execution can legitimately fail pre-exec checks
 
 That last point is not a bug — it proves guardrails are alive.
@@ -431,28 +431,27 @@ That last point is not a bug — it proves guardrails are alive.
 
 ## 14. Current milestone status
 
-### Done
+### Done (MVP)
 
 - Z-01 Architecture and boundaries
 - Z-02 Universe / whitelist logic
 - Z-03 Risk engine and guardrails
 - Z-04 Proposal schema
+- Z-05 Confidence + no-trade logic
 - Z-06 Split-entry logic
 - Z-07 Semi-auto approval flow
 - Z-08 Paper/test execution layer
-
-### Strong partial
-
-- Z-05 Confidence + no-trade logic
 - Z-09 Journal of trades and no-trade decisions
 - Z-10 Dashboard and reporting
 - Z-11 Stop conditions and auto-blocks
-
-### Next
-
 - Z-12 Post-analysis and calibration
+
+### Remaining beyond current MVP
+
 - real transport integration on top of bot adapter
-- richer stop policy automation
+- richer execution realism / paper-trading operational loop
+- stronger historical analytics and review automation
+- production-grade policy automation and deployment hardening
 
 ---
 

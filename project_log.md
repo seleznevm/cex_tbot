@@ -57,3 +57,6 @@
 - Added submit-proposal and halt/unhalt controls to the SPA, plus matching REST endpoints for emergency halt management.
 - Added proposal filters/sorting, report mode switching (text/operator/telegram/compact), and localStorage-backed API key persistence for the SPA.
 - Replaced the raw JSON submit box with a field-by-field proposal editor, added simple client-side pagination/query controls, and upgraded the detail pane with report/timeline/raw tabs plus layout polish.
+- Closed Z-10 at MVP level by completing dashboard payload consistency, risk-budget metrics, pending approvals/status breakdown, alerts/health signals, operator activity feed, universe status, CLI dashboard rendering, and completion-oriented coverage.
+- Closed Z-11 at MVP level by introducing a dedicated `SafetyController`, warning/block/halt safety states, execute-path hardening, dashboard/REST/UI visibility, audit entries, and manual clear-safety controls.
+- Advanced and then closed Z-12 at MVP level with post-analysis summary builders, confidence buckets, strategy/timeframe breakdowns, outcome matrix, recent-vs-all-time trends, structured calibration recommendations, dashboard widget integration, export/diff workflows, and completion coverage.

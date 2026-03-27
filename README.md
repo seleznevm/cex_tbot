@@ -293,12 +293,13 @@ PYTHONPATH=src python3 -m cex_tbot command "APPROVE proposal_demo_btc_breakout" 
 PYTHONPATH=src python3 -m cex_tbot execute proposal_demo_btc_breakout --storage-dir .runtime/session
 ```
 
-Inspect detail/report/dashboard views:
+Inspect detail/report/dashboard/post-analysis views:
 
 ```bash
 PYTHONPATH=src python3 -m cex_tbot detail proposal_demo_btc_breakout --storage-dir .runtime/session
 PYTHONPATH=src python3 -m cex_tbot report proposal_demo_btc_breakout --storage-dir .runtime/session --render-mode telegram
 PYTHONPATH=src python3 -m cex_tbot dashboard --storage-dir .runtime/session
+PYTHONPATH=src python3 -m cex_tbot post-analysis --storage-dir .runtime/session
 ```
 
 Available render modes for operator output:
@@ -319,6 +320,7 @@ What it exposes:
 - `GET /health`
 - `GET /session/summary`
 - `GET /dashboard`
+- `GET /post-analysis`
 - `GET /proposals` (alias: `GET /trades`)
 - `GET /proposals/{proposal_id}` (alias: `GET /trades/{proposal_id}`)
 - `GET /trades/{proposal_id}/report`
@@ -370,9 +372,10 @@ Activate and clear emergency halt:
 ```bash
 PYTHONPATH=src python3 -m cex_tbot halt "manual-safety-stop" --storage-dir .runtime/session --format json
 PYTHONPATH=src python3 -m cex_tbot unhalt --storage-dir .runtime/session --format json
+PYTHONPATH=src python3 -m cex_tbot clear-safety --storage-dir .runtime/session --format json
 ```
 
-When halt is active, operator commands and explicit execution requests return a blocked response instead of mutating trade state.
+When halt is active, operator commands and explicit execution requests return a blocked response instead of mutating trade state. The runtime also supports warning/block safety states, dashboard visibility for those states, and a manual `clear-safety` control for non-halt safety conditions.
 
 ## Bot-facing adapter layer
 
@@ -399,11 +402,24 @@ The adapter returns simple `BotReply(text, parse_mode)` objects, so a messaging 
 
 This is an integration layer, not a network bot by itself. That is intentional: messaging transport stays outside the core repo logic.
 
+## Current roadmap state
+
+MVP-closed layers:
+
+- dashboard and reporting (Z-10)
+- stop conditions and auto-blocks (Z-11)
+- post-analysis and calibration (Z-12)
+
+The project now has:
+
+- dashboard UI + REST + CLI surfaces
+- safety controller with warning/block/halt logic
+- post-analysis summaries, recommendations, export, and snapshot diffing
+
 ## Next steps
 
 - richer partial-close accounting per target leg
-- auto-stop policy layer beyond manual halt
-- post-analysis / calibration layer
+- deeper paper-trading / execution realism
 - real Telegram/OpenClaw message transport binding on top of the bot adapter
+- stronger historical analytics / periodic review automation
 - production-ready FastAPI dependency wiring + auth/rate-limit layer for the REST bridge
-- higher-level dashboard/UI views
