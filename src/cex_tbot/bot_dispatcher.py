@@ -36,6 +36,12 @@ class BotCommandDispatcher:
             return self.adapter.handle_safety()
         if parsed.name == "gate_demo_status":
             return self.adapter.handle_gate_demo_status()
+        if parsed.name == "runtime_status":
+            return self.adapter.handle_runtime_status()
+        if parsed.name == "session_paths":
+            return self.adapter.handle_session_paths()
+        if parsed.name == "refresh_universe":
+            return self.adapter.handle_refresh_universe()
         if parsed.name == "list":
             limit = self._parse_limit(parsed.args)
             return self.adapter.handle_list(limit=limit)

@@ -68,6 +68,7 @@ class TradingApplication:
     universe_orchestrator: UniverseRefreshOrchestrator
     proposal_validator: ProposalValidator
     instrument_fetcher: GateInstrumentFetcher
+    storage_dir: str | Path | None = None
 
 
 def build_app(
@@ -167,6 +168,7 @@ def build_app(
         universe_orchestrator=universe_orchestrator,
         proposal_validator=proposal_validator,
         instrument_fetcher=resolved_instrument_fetcher,
+        storage_dir=str(storage_dir) if storage_dir is not None else None,
     )
 
 

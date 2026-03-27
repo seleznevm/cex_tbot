@@ -3,10 +3,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from cex_tbot.backend_service import TradingBackendService
+from cex_tbot.bootstrap import TradingApplication
 from cex_tbot.config import BotConfig
 from cex_tbot.decision_contracts import NoTradeDecision, TradeProposal
 from cex_tbot.query_params import TradeQuery
 from cex_tbot.risk_engine import PortfolioState
+from cex_tbot.shared import utc_now
 
 
 @dataclass(frozen=True)
@@ -16,9 +18,10 @@ class BotReply:
 
 
 class BotCommandAdapter:
-    def __init__(self, backend: TradingBackendService, *, config: BotConfig | None = None) -> None:
+    def __init__(self, backend: TradingBackendService, *, config: BotConfig | None = None, app: TradingApplication | None = None) -> None:
         self.backend = backend
         self.config = config or BotConfig()
+        self.app = app
 
     def handle_help(self) -> BotReply:
         return BotReply(
@@ -31,6 +34,9 @@ class BotCommandAdapter:
                     "/post_analysis — post-analysis and calibration snapshot",
                     "/safety — current safety state",
                     "/gate_demo_status — Gate demo transport status",
+                    "/runtime_status — runtime/storage/fetcher status",
+                    "/session_paths — session storage paths",
+                    "/refresh_universe — refresh whitelist/universe snapshot",
                     "/list — latest trades",
                     "/detail <proposal_id> — trade detail",
                     "/report <proposal_id> — telegram-ready trade report",
@@ -89,7 +95,40 @@ class BotCommandAdapter:
         if self.config.execution_mode != "gate_demo":
             lines.append("- transport=inactive (runtime not in gate_demo mode)")
         else:
-            lines.append("- transport=demo boundary enabled")
+            lines.append(f"- transport=demo boundary enabled via {type(self.app.instrument_fetcher).__name__ if self.app is not None else 'unknown fetcher'}")
+        return BotReply("\n".join(lines))
+
+    def handle_runtime_status(self) -> BotReply:
+        lines = [
+            "Runtime status",
+            f"- execution_mode={self.config.execution_mode}",
+            f"- fetcher={type(self.app.instrument_fetcher).__name__ if self.app is not None else 'unknown'}",
+            f"- storage_dir={self.app.storage_dir if self.app is not None else None}",
+        ]
+        return BotReply("\n".join(lines))
+
+    def handle_session_paths(self) -> BotReply:
+        return BotReply(f"Session paths\n- storage_dir={self.app.storage_dir if self.app is not None else None}")
+
+    def handle_refresh_universe(self) -> BotReply:
+        if self.app is None:
+            return BotReply("Universe refresh unavailable: adapter has no application context.")
+        snapshot_id = f"operator_refresh_{utc_now().strftime('%Y%m%dT%H%M%SZ')}"
+        try:
+            result = self.app.universe_orchestrator.refresh_from_fetcher(
+                self.app.instrument_fetcher,
+                snapshot_id=snapshot_id,
+                refresh_reason="operator_refresh",
+            )
+        except NotImplementedError as exc:
+            return BotReply(f"Universe refresh unavailable: {exc}")
+        lines = [
+            "Universe refresh complete",
+            f"- snapshot_id={result.snapshot_id}",
+            f"- eligible={result.eligible_count}",
+            f"- rejected={result.rejected_count}",
+            f"- whitelist={', '.join(result.top_whitelist_symbols) if result.top_whitelist_symbols else 'none'}",
+        ]
         return BotReply("\n".join(lines))
 
     def handle_submit_proposal(self, proposal: TradeProposal) -> BotReply:
