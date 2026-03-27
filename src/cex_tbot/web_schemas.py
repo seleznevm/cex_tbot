@@ -204,10 +204,16 @@ class DashboardKpisPayload(BaseModel):
 
 
 class DashboardRiskPayload(BaseModel):
+    active_trades: int
+    avg_confidence_score: float
     approval_decisions: int
     execution_events: int
     emergency_halt_active: bool
     halt_reason: str | None = None
+    max_open_risk_percent: float = 0.0
+    reserved_pending_risk_percent: float = 0.0
+    active_risk_percent: float = 0.0
+    free_risk_budget_percent: float = 0.0
 
 
 class DashboardOperatorActivityPayload(BaseModel):

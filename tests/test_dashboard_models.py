@@ -10,7 +10,7 @@ from cex_tbot.execution import ExecutionOrchestrator, InMemoryExecutionJournal, 
 from cex_tbot.handoff import ApprovalExecutionHandoff
 from cex_tbot.operator_router import OperatorCommandRouter
 from cex_tbot.read_models import QueryService
-from cex_tbot.risk_engine import PortfolioState, RiskEngine
+from cex_tbot.risk_engine import PendingRiskBook, PortfolioState, RiskEngine
 from cex_tbot.session_store import TradeSessionStore
 from cex_tbot.simulator import SimulatorService
 from cex_tbot.workflow import TradeWorkflowService
@@ -58,14 +58,20 @@ class DashboardModelTests(unittest.TestCase):
         router = OperatorCommandRouter(workflow, approval, transcript=session.operator_transcript)
         router.route("Mike", "APPROVE proposal_1", PortfolioState(equity=1000.0), now=now)
         query = QueryService(session, TradeTimelineBuilder(session.execution_journal, session.execution_state))
+        pending_risk_book = PendingRiskBook()
+        pending_risk_book.reserve("proposal_pending", 0.2)
         session.system_state.activate_halt("manual-stop")
-        dashboard = DashboardBuilder(session, query).build()
+        dashboard = DashboardBuilder(session, query, config=BotConfig(max_aggregate_open_risk_percent=1.0), pending_risk_book=pending_risk_book).build()
         self.assertEqual(dashboard.kpis.total_proposals, 1)
         self.assertEqual(dashboard.kpis.executed_proposals, 1)
         self.assertEqual(dashboard.operator_activity.command_count, 1)
         self.assertEqual(len(dashboard.latest_trades), 1)
         self.assertTrue(dashboard.risk.emergency_halt_active)
         self.assertEqual(dashboard.risk.halt_reason, "manual-stop")
+        self.assertEqual(dashboard.risk.max_open_risk_percent, 1.0)
+        self.assertEqual(dashboard.risk.reserved_pending_risk_percent, 0.2)
+        self.assertEqual(dashboard.risk.active_risk_percent, 0.5)
+        self.assertEqual(dashboard.risk.free_risk_budget_percent, 0.3)
 
 
 if __name__ == "__main__":

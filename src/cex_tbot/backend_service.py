@@ -72,7 +72,12 @@ class TradingBackendService:
             timeline_builder=timeline_builder,
             query_service=QueryService(session, timeline_builder),
             serializer=ApiSerializer(),
-            dashboard_builder=DashboardBuilder(session, QueryService(session, timeline_builder)),
+            dashboard_builder=DashboardBuilder(
+                session,
+                QueryService(session, timeline_builder),
+                config=(risk_engine.config if risk_engine is not None else BotConfig()),
+                pending_risk_book=((risk_engine.pending_risk_book) if risk_engine is not None else None),
+            ),
         )
 
     def submit_proposal(self, proposal: TradeProposal) -> TradeProposal:
@@ -231,6 +236,20 @@ class TradingBackendService:
 
     def list_trades_payload(self, query: TradeQuery | None = None) -> list[dict[str, object]]:
         return [self.serializer.trade_list_item(item) for item in self.list_trades(query)]
+
+    def list_trades_page_payload(self, query: TradeQuery | None = None) -> dict[str, object]:
+        query = query or TradeQuery()
+        items = self.list_trades_payload(query)
+        total = self.query_service.count_trades(query)
+        limit = query.limit if query.limit is not None else total
+        offset = max(query.offset, 0)
+        return {
+            "items": items,
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+            "has_more": offset + len(items) < total,
+        }
 
     def get_trade_detail_payload(self, proposal_id: str) -> dict[str, object]:
         return self.serializer.trade_detail(self.get_trade_detail(proposal_id))

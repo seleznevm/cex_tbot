@@ -2,9 +2,10 @@ from datetime import UTC, datetime, timedelta
 import unittest
 
 from cex_tbot.backend_service import TradingBackendService
+from cex_tbot.config import BotConfig
 from cex_tbot.decision_contracts import EntrySplitLeg, TradeProposal
 from cex_tbot.enums import ProposalStatus, TradeDirection
-from cex_tbot.risk_engine import PortfolioState
+from cex_tbot.risk_engine import PendingRiskBook, PortfolioState, RiskEngine
 from cex_tbot.session_store import TradeSessionStore
 
 
@@ -126,13 +127,20 @@ class BackendServiceTests(unittest.TestCase):
 
     def test_dashboard_payload_exposes_halt_reason(self) -> None:
         session = TradeSessionStore()
-        service = TradingBackendService.from_session(session)
+        pending_risk_book = PendingRiskBook()
+        risk_engine = RiskEngine(BotConfig(max_aggregate_open_risk_percent=1.0), pending_risk_book)
+        service = TradingBackendService.from_session(session, risk_engine=risk_engine)
         session.system_state.activate_halt("manual-stop")
+        pending_risk_book.reserve("proposal_pending", 0.2)
 
         payload = service.get_dashboard_payload()
 
         self.assertTrue(payload["risk"]["emergency_halt_active"])
         self.assertEqual(payload["risk"]["halt_reason"], "manual-stop")
+        self.assertEqual(payload["risk"]["max_open_risk_percent"], 1.0)
+        self.assertEqual(payload["risk"]["reserved_pending_risk_percent"], 0.2)
+        self.assertEqual(payload["risk"]["active_risk_percent"], 0.0)
+        self.assertEqual(payload["risk"]["free_risk_budget_percent"], 0.8)
         self.assertIn("latest_outcomes", payload["operator_activity"])
         self.assertIsInstance(payload["operator_activity"]["latest_outcomes"], list)
 
