@@ -45,13 +45,14 @@ class GateDemoOperatorCommandTests(unittest.TestCase):
         self.assertIn("Universe refresh complete", reply.text)
         self.assertIn("snapshot_id=operator_refresh_", reply.text)
 
-    def test_refresh_universe_reports_unavailable_for_unimplemented_gate_demo_client(self) -> None:
+    def test_refresh_universe_reports_transport_failure_cleanly_in_gate_demo_mode(self) -> None:
         app = build_app(config=BotConfig(execution_mode="gate_demo", gate_demo_api="https://demo.gate"))
         dispatcher = BotCommandDispatcher(BotCommandAdapter(app.backend, config=app.config, app=app))
 
         reply = dispatcher.dispatch("/refresh_universe")
 
         self.assertIn("Universe refresh unavailable", reply.text)
+        self.assertIn("Gate demo metadata fetch failed", reply.text)
 
 
 if __name__ == "__main__":

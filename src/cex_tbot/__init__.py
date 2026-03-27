@@ -15,6 +15,7 @@ from .market_data import (
     GateDemoInstrumentFetcher,
     GateInstrumentFetcher,
     GateInstrumentRecord,
+    HttpxGateDemoInstrumentClient,
     StaticGateInstrumentFetcher,
     UnimplementedGateDemoInstrumentClient,
 )
@@ -63,6 +64,7 @@ __all__ = [
     "GateInstrumentFetcher",
     "GateDemoInstrumentClient",
     "GateDemoInstrumentFetcher",
+    "HttpxGateDemoInstrumentClient",
     "GateDemoTransportError",
     "GateLiveModeBlockedError",
     "MissingGateDemoApiError",

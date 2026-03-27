@@ -15,6 +15,7 @@ from cex_tbot.market_data.gate_client import (
     GateDemoInstrumentClient,
     GateDemoInstrumentFetcher,
     GateInstrumentFetcher,
+    HttpxGateDemoInstrumentClient,
     StaticGateInstrumentFetcher,
     UnimplementedGateDemoInstrumentClient,
 )
@@ -184,6 +185,6 @@ def _build_default_instrument_fetcher(
     gate_demo_client: GateDemoInstrumentClient | None,
 ) -> GateInstrumentFetcher:
     if config.execution_mode == "gate_demo":
-        client = gate_demo_client or UnimplementedGateDemoInstrumentClient(config.gate_demo_api)
+        client = gate_demo_client or HttpxGateDemoInstrumentClient(config.gate_demo_api)
         return GateDemoInstrumentFetcher(client)
     return StaticGateInstrumentFetcher()

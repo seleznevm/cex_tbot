@@ -11,3 +11,7 @@ class MissingGateDemoApiError(GateDemoTransportError):
 
 class GateLiveModeBlockedError(GateDemoTransportError):
     """Raised when a caller attempts to enable an unsupported live Gate mode."""
+
+
+class GateDemoDependencyError(GateDemoTransportError):
+    """Raised when optional HTTP client dependencies for demo transport are unavailable."""

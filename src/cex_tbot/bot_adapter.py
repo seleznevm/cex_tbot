@@ -6,6 +6,7 @@ from cex_tbot.backend_service import TradingBackendService
 from cex_tbot.bootstrap import TradingApplication
 from cex_tbot.config import BotConfig
 from cex_tbot.decision_contracts import NoTradeDecision, TradeProposal
+from cex_tbot.exceptions import GateDemoTransportError
 from cex_tbot.query_params import TradeQuery
 from cex_tbot.risk_engine import PortfolioState
 from cex_tbot.shared import utc_now
@@ -120,7 +121,7 @@ class BotCommandAdapter:
                 snapshot_id=snapshot_id,
                 refresh_reason="operator_refresh",
             )
-        except NotImplementedError as exc:
+        except (NotImplementedError, GateDemoTransportError) as exc:
             return BotReply(f"Universe refresh unavailable: {exc}")
         lines = [
             "Universe refresh complete",

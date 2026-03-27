@@ -4,6 +4,7 @@ from .gate_client import (
     GateDemoInstrumentClient,
     GateDemoInstrumentFetcher,
     GateInstrumentFetcher,
+    HttpxGateDemoInstrumentClient,
     StaticGateInstrumentFetcher,
     UnimplementedGateDemoInstrumentClient,
 )
@@ -21,6 +22,7 @@ __all__ = [
     "GateInstrumentFetcher",
     "GateDemoInstrumentClient",
     "GateDemoInstrumentFetcher",
+    "HttpxGateDemoInstrumentClient",
     "GateDemoTransportError",
     "GateLiveModeBlockedError",
     "MissingGateDemoApiError",

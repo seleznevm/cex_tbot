@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Protocol
+from typing import Any, Protocol
 
-from cex_tbot.exceptions import GateDemoTransportError, GateLiveModeBlockedError, MissingGateDemoApiError
+from cex_tbot.exceptions import GateDemoDependencyError, GateDemoTransportError, GateLiveModeBlockedError, MissingGateDemoApiError
 from cex_tbot.market_data.gate_metadata import GateInstrumentRecord
 
 
@@ -72,3 +72,73 @@ class UnimplementedGateDemoInstrumentClient:
             "Gate demo transport boundary is wired, but no concrete demo client is installed. "
             "Inject GateDemoInstrumentClient explicitly; live transport remains blocked."
         )
+
+
+@dataclass(frozen=True)
+class HttpxGateDemoInstrumentClient:
+    """Minimal HTTP client for Gate demo/public metadata reads.
+
+    This client only fetches contract metadata needed by the Phase 2 universe pipeline.
+    It does not place orders and does not enable any live trading path.
+    """
+
+    gate_demo_api: str
+    path: str = "/futures/usdt/contracts"
+    timeout_seconds: float = 10.0
+    transport: Any | None = None
+
+    def __post_init__(self) -> None:
+        if not self.gate_demo_api.strip():
+            raise MissingGateDemoApiError(
+                "GATE_DEMO_API is required when CEX_TBOT_EXECUTION_MODE=gate_demo"
+            )
+
+    def list_instruments(self) -> list[GateInstrumentRecord]:
+        try:
+            import httpx
+        except ImportError as exc:  # pragma: no cover - depends on optional env
+            raise GateDemoDependencyError(
+                "httpx is required for HttpxGateDemoInstrumentClient. Install cex-tbot[dev] or add httpx."
+            ) from exc
+
+        url = self.gate_demo_api.rstrip("/") + self.path
+        try:
+            with httpx.Client(timeout=self.timeout_seconds, transport=self.transport) as client:
+                response = client.get(url, headers={"Accept": "application/json"})
+                response.raise_for_status()
+                payload = response.json()
+        except Exception as exc:  # pragma: no cover - thin wrapper
+            raise GateDemoTransportError(f"Gate demo metadata fetch failed: {exc}") from exc
+
+        if not isinstance(payload, list):
+            raise GateDemoTransportError("Gate demo metadata fetch returned non-list payload")
+
+        records: list[GateInstrumentRecord] = []
+        for item in payload:
+            if not isinstance(item, dict):
+                continue
+            records.append(
+                GateInstrumentRecord(
+                    name=str(item.get("name") or item.get("contract") or ""),
+                    in_delisting=bool(item.get("in_delisting", False)),
+                    trade_status=str(item.get("trade_status") or item.get("status") or "tradable"),
+                    quanto_multiplier=float(item.get("quanto_multiplier") or 0.0),
+                    order_size_min=float(item.get("order_size_min") or 0.0),
+                    mark_price_round=str(item.get("mark_price_round") or "0.01"),
+                    ref_rebate_rate=str(item.get("ref_rebate_rate") or "0"),
+                    funding_rate_indicative=str(item.get("funding_rate_indicative") or "0"),
+                    leverage_min=str(item.get("leverage_min") or "1"),
+                    leverage_max=str(item.get("leverage_max") or "20"),
+                    maker_fee_rate=str(item.get("maker_fee_rate") or "0"),
+                    taker_fee_rate=str(item.get("taker_fee_rate") or "0"),
+                    risk_limit_base=str(item.get("risk_limit_base") or "0"),
+                    is_new_listing=bool(item.get("is_new_listing", False)),
+                    listing_age_hours=int(item.get("listing_age_hours") or 0),
+                    quote_asset=str(item.get("quote_asset") or "USDT"),
+                    volume_24h=float(item.get("volume_24h") or item.get("volume_24h_quote") or 0.0),
+                    open_interest=float(item.get("open_interest") or 0.0),
+                    spread_bps=float(item.get("spread_bps") or 0.0),
+                    top_book_depth=float(item.get("top_book_depth") or 0.0),
+                )
+            )
+        return [item for item in records if item.name]
