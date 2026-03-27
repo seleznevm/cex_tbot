@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from datetime import datetime, UTC, timedelta
 
 
 class CliCommandTests(unittest.TestCase):
@@ -99,6 +100,49 @@ class CliCommandTests(unittest.TestCase):
             self.assertEqual(payload["proposal_id"], "proposal_topic_demo_btc")
             self.assertEqual(payload["thread_id"], "7")
             self.assertIn("Trade approval request", payload["text"])
+
+    def test_submit_and_emit_from_json_command(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            storage = str(Path(tmp) / "runtime")
+            proposal_path = Path(tmp) / "proposal.json"
+            now = datetime.now(UTC)
+            proposal_path.write_text(json.dumps({
+                "proposal_id": "proposal_file_live_1",
+                "agent_name": "Luma",
+                "strategy_id": "pullback",
+                "strategy_version": "v1",
+                "market_context_id": "ctx_file_live_1",
+                "symbol": "BTC_USDT",
+                "timeframe": "15m",
+                "direction": "LONG",
+                "entry_zone_min": 99.0,
+                "entry_zone_max": 100.0,
+                "entry_split": [{
+                    "leg_number": 1,
+                    "planned_entry_price": 100.0,
+                    "allocation_pct": 100.0,
+                    "size_fraction": 1.0,
+                    "valid_until": (now + timedelta(minutes=10)).isoformat(),
+                }],
+                "stop_loss": 98.5,
+                "take_profit_1": 101.5,
+                "take_profit_2": 103.0,
+                "risk_percent": 0.5,
+                "risk_usd": 5.0,
+                "position_size": 10.0,
+                "confidence_score": 0.81,
+                "thesis": "clean reclaim after pullback",
+                "invalidity_condition": "support fails",
+                "liquidity_check": "ok",
+                "data_freshness_ms": 100,
+                "created_at": now.isoformat(),
+                "expires_at": (now + timedelta(minutes=15)).isoformat(),
+                "status": "PENDING_APPROVAL"
+            }), encoding="utf-8")
+            result = self._run(tmp, "submit-and-emit", str(proposal_path), "--storage-dir", storage, "--format", "json")
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["proposal_id"], "proposal_file_live_1")
+            self.assertIn("/approve proposal_file_live_1", payload["text"])
 
 
 if __name__ == "__main__":

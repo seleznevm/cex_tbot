@@ -153,6 +153,13 @@ def build_parser() -> argparse.ArgumentParser:
     submit_and_emit_parser.add_argument("--chat-id", default="telegram:-1003832858724", help="Target chat id for rendered outbound payload")
     submit_and_emit_parser.add_argument("--thread-id", default="7", help="Target thread/topic id for rendered outbound payload")
 
+    submit_and_emit_file_parser = subparsers.add_parser("submit-and-emit", help="Submit proposal JSON through same-topic producer")
+    submit_and_emit_file_parser.add_argument("proposal_file", type=Path, help="Path to proposal JSON file")
+    submit_and_emit_file_parser.add_argument("--storage-dir", type=Path, help="Optional base directory for file-backed session state")
+    submit_and_emit_file_parser.add_argument("--format", choices=("text", "json"), default="text", help="Output format")
+    submit_and_emit_file_parser.add_argument("--chat-id", default="telegram:-1003832858724", help="Target chat id for rendered outbound payload")
+    submit_and_emit_file_parser.add_argument("--thread-id", default="7", help="Target thread/topic id for rendered outbound payload")
+
     serve_rest_parser = subparsers.add_parser("serve-rest", help="Run optional FastAPI REST bridge")
     serve_rest_parser.add_argument("--storage-dir", type=Path, help="Optional base directory for file-backed session state")
     serve_rest_parser.add_argument("--host", default="127.0.0.1")
@@ -284,6 +291,47 @@ def render_demo_audit_report(app) -> str:
 
     adapter = BotCommandAdapter(app.backend, config=app.config, app=app)
     return adapter.handle_demo_audit().text
+
+
+def load_proposal_from_json(path: Path) -> TradeProposal:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    entry_split = [
+        EntrySplitLeg(
+            leg_number=int(item["leg_number"]),
+            planned_entry_price=float(item["planned_entry_price"]),
+            allocation_pct=float(item["allocation_pct"]),
+            size_fraction=float(item["size_fraction"]),
+            valid_until=datetime.fromisoformat(item["valid_until"]),
+        )
+        for item in payload["entry_split"]
+    ]
+    return TradeProposal(
+        proposal_id=payload["proposal_id"],
+        agent_name=payload["agent_name"],
+        strategy_id=payload["strategy_id"],
+        strategy_version=payload["strategy_version"],
+        market_context_id=payload["market_context_id"],
+        symbol=payload["symbol"],
+        timeframe=payload["timeframe"],
+        direction=TradeDirection(payload["direction"]),
+        entry_zone_min=float(payload["entry_zone_min"]),
+        entry_zone_max=float(payload["entry_zone_max"]),
+        entry_split=entry_split,
+        stop_loss=float(payload["stop_loss"]),
+        take_profit_1=float(payload["take_profit_1"]),
+        take_profit_2=float(payload["take_profit_2"]),
+        risk_percent=float(payload["risk_percent"]),
+        risk_usd=float(payload["risk_usd"]),
+        position_size=float(payload["position_size"]),
+        confidence_score=float(payload["confidence_score"]),
+        thesis=payload["thesis"],
+        invalidity_condition=payload["invalidity_condition"],
+        liquidity_check=payload["liquidity_check"],
+        data_freshness_ms=int(payload["data_freshness_ms"]),
+        created_at=datetime.fromisoformat(payload["created_at"]),
+        expires_at=datetime.fromisoformat(payload["expires_at"]),
+        status=ProposalStatus(payload.get("status", ProposalStatus.PENDING_APPROVAL.value)),
+    )
 
 
 def build_demo_topic_proposal(chat_id: str, thread_id: str):
@@ -531,8 +579,13 @@ def main() -> int:
         print(_print_payload({"report": rendered}, fmt) if fmt == "json" else rendered)
         return 0
 
-    if command in {"emit-demo-proposal", "submit-and-emit-demo"}:
-        proposal, chat_id, thread_id = build_demo_topic_proposal(args.chat_id, args.thread_id)
+    if command in {"emit-demo-proposal", "submit-and-emit-demo", "submit-and-emit"}:
+        if command == "submit-and-emit":
+            proposal = load_proposal_from_json(args.proposal_file)
+            chat_id = args.chat_id
+            thread_id = args.thread_id
+        else:
+            proposal, chat_id, thread_id = build_demo_topic_proposal(args.chat_id, args.thread_id)
         wrapper = OpenClawTopicWrapper(api.bridge if hasattr(api, 'bridge') else None, default_chat_id=chat_id, default_thread_id=thread_id)
         producer = TopicProposalProducer(app.backend, wrapper)
         outbound = producer.submit_and_emit(proposal)
