@@ -15,7 +15,9 @@ class KpiWidget:
     total_no_trade_decisions: int
     executed_proposals: int
     rejected_proposals: int
+    pending_approvals: int
     operator_commands: int
+    status_breakdown: dict[str, int]
 
 
 @dataclass(frozen=True)
@@ -64,7 +66,7 @@ class DashboardBuilder:
     def build(self, latest_limit: int = 5) -> DashboardView:
         summary = self.summary_builder.build(self.session)
         trades = self.query_service.list_trades()
-        latest_trades = sorted(trades, key=lambda item: item.proposal_id, reverse=True)[:latest_limit]
+        latest_trades = sorted(trades, key=lambda item: item.created_at, reverse=True)[:latest_limit]
         avg_conf = round(sum(item.confidence_score for item in trades) / len(trades), 4) if trades else 0.0
         operator_entries = self.session.operator_transcript.list_entries()
         active_risk = round(
@@ -84,7 +86,9 @@ class DashboardBuilder:
                 total_no_trade_decisions=summary.total_no_trade_decisions,
                 executed_proposals=summary.executed_proposals,
                 rejected_proposals=summary.rejected_proposals,
+                pending_approvals=summary.proposal_status_breakdown.get("PENDING_APPROVAL", 0),
                 operator_commands=summary.operator_commands,
+                status_breakdown=summary.proposal_status_breakdown,
             ),
             risk=RiskWidget(
                 active_trades=sum(1 for item in trades if item.status not in {"EXECUTED", "REJECTED_BY_HUMAN", "REJECTED_PRE_EXECUTION", "SUPERSEDED"}),

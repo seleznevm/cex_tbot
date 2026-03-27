@@ -63,6 +63,7 @@ class ReadModelTests(unittest.TestCase):
 
         self.assertEqual(len(listing), 1)
         self.assertEqual(listing[0].status, "EXECUTED")
+        self.assertEqual(listing[0].created_at, proposal.created_at.isoformat())
         self.assertEqual(detail.proposal_id, "proposal_1")
         self.assertGreaterEqual(detail.timeline.event_count, 3)
         self.assertEqual(detail.operator_command_count, 1)

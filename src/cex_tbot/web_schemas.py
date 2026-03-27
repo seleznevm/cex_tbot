@@ -108,6 +108,7 @@ class TradeListItemPayload(BaseModel):
     timeframe: str
     status: str
     confidence_score: float
+    created_at: datetime
     event_count: int
     snapshot_count: int
 
@@ -200,7 +201,9 @@ class DashboardKpisPayload(BaseModel):
     total_no_trade_decisions: int
     executed_proposals: int
     rejected_proposals: int
+    pending_approvals: int
     operator_commands: int
+    status_breakdown: dict[str, int] = Field(default_factory=dict)
 
 
 class DashboardRiskPayload(BaseModel):

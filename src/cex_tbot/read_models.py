@@ -15,6 +15,7 @@ class TradeListItem:
     timeframe: str
     status: str
     confidence_score: float
+    created_at: str
     event_count: int
     snapshot_count: int
 
@@ -56,7 +57,7 @@ class QueryService:
         self.session = session
         self.timeline_builder = timeline_builder
 
-    def list_trades(self, query: TradeQuery | None = None) -> list[TradeListItem]:
+    def _filtered_items(self, query: TradeQuery | None = None) -> list[TradeListItem]:
         query = query or TradeQuery()
         items: list[TradeListItem] = []
         for proposal in self.session.proposals._proposals.values():
@@ -69,6 +70,7 @@ class QueryService:
                     timeframe=proposal.timeframe,
                     status=proposal.status.value,
                     confidence_score=proposal.confidence_score,
+                    created_at=proposal.created_at.isoformat(),
                     event_count=timeline.event_count,
                     snapshot_count=timeline.snapshot_count,
                 )
@@ -79,9 +81,17 @@ class QueryService:
             items = [item for item in items if item.symbol == query.symbol]
         if query.direction is not None:
             items = [item for item in items if item.direction == query.direction]
-        if query.sort_by not in {"proposal_id", "confidence_score", "status", "symbol"}:
+        if query.sort_by not in {"proposal_id", "confidence_score", "status", "symbol", "created_at"}:
             raise ValueError(f"unsupported sort_by={query.sort_by}")
         items.sort(key=lambda item: getattr(item, query.sort_by), reverse=query.descending)
+        return items
+
+    def count_trades(self, query: TradeQuery | None = None) -> int:
+        return len(self._filtered_items(query))
+
+    def list_trades(self, query: TradeQuery | None = None) -> list[TradeListItem]:
+        query = query or TradeQuery()
+        items = self._filtered_items(query)
         start = max(query.offset, 0)
         end = None if query.limit is None else start + max(query.limit, 0)
         return items[start:end]

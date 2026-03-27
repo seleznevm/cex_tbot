@@ -91,6 +91,7 @@ function renderDashboard() {
   els.dashboardView.innerHTML = `
     <div class="cards">
       <div class="card"><h3>Proposals</h3><div class="metric">${d.kpis.total_proposals}</div></div>
+      <div class="card"><h3>Pending approvals</h3><div class="metric">${d.kpis.pending_approvals}</div></div>
       <div class="card"><h3>Executed</h3><div class="metric">${d.kpis.executed_proposals}</div></div>
       <div class="card"><h3>Rejected</h3><div class="metric">${d.kpis.rejected_proposals}</div></div>
       <div class="card"><h3>No-trades</h3><div class="metric">${d.kpis.total_no_trade_decisions}</div></div>
@@ -98,7 +99,9 @@ function renderDashboard() {
       <div class="card"><h3>Halt</h3><div class="metric ${d.risk.emergency_halt_active ? 'danger-text' : 'success-text'}">${d.risk.emergency_halt_active ? 'ON' : 'OFF'}</div></div>
     </div>
     <div class="panel nested-panel"><div class="detail-header"><div><h3>System controls</h3><p class="muted">Emergency halt for operator flows.</p></div></div><label class="field"><span>Halt reason</span><input id="halt-reason" type="text" value="manual-safety-stop" /></label><div class="actions wrap"><button id="halt-btn" class="danger">Halt</button><button id="unhalt-btn">Unhalt</button>${d.risk.halt_reason ? `<span class="muted">Current reason: ${d.risk.halt_reason}</span>` : ''}</div></div>
-    <div class="panel nested-panel"><h3>Latest trades</h3>${d.latest_trades.length ? d.latest_trades.map(item => `<div class="proposal-item quick-open" data-proposal-id="${item.proposal_id}"><strong>${item.proposal_id}</strong><br><span class="muted">${item.symbol} ${item.direction} · ${item.timeframe}</span><br><span class="badge ${badgeClass(item.status)}">${item.status}</span></div>`).join('') : '<p class="muted">No trades yet.</p>'}</div>`;
+    <div class="panel nested-panel"><h3>Risk budget</h3><div class="detail-grid"><div><span class="muted">Max open risk</span><div>${d.risk.max_open_risk_percent}%</div></div><div><span class="muted">Active risk</span><div>${d.risk.active_risk_percent}%</div></div><div><span class="muted">Reserved pending</span><div>${d.risk.reserved_pending_risk_percent}%</div></div><div><span class="muted">Free budget</span><div>${d.risk.free_risk_budget_percent}%</div></div></div></div>
+    <div class="panel nested-panel"><h3>Status breakdown</h3>${Object.keys(d.kpis.status_breakdown || {}).length ? `<div class="detail-grid">${Object.entries(d.kpis.status_breakdown).map(([status, count]) => `<div><span class="muted">${status}</span><div>${count}</div></div>`).join('')}</div>` : '<p class="muted">No status data yet.</p>'}</div>
+    <div class="panel nested-panel"><h3>Latest trades</h3>${d.latest_trades.length ? d.latest_trades.map(item => `<div class="proposal-item quick-open" data-proposal-id="${item.proposal_id}"><strong>${item.proposal_id}</strong><br><span class="muted">${item.symbol} ${item.direction} · ${item.timeframe}</span><br><span class="muted">${new Date(item.created_at).toLocaleString()}</span><br><span class="badge ${badgeClass(item.status)}">${item.status}</span></div>`).join('') : '<p class="muted">No trades yet.</p>'}</div>`;
   document.getElementById('halt-btn')?.addEventListener('click', haltSystem);
   document.getElementById('unhalt-btn')?.addEventListener('click', unhaltSystem);
   els.dashboardView.querySelectorAll('.quick-open').forEach(node => node.addEventListener('click', async () => { switchView('proposals'); state.selectedProposalId = node.dataset.proposalId; renderProposalList(); await loadProposalDetail(state.selectedProposalId); }));
