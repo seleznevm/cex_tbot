@@ -21,6 +21,7 @@ from .config import BotConfig, load_config
 from .dashboard_models import DashboardBuilder, DashboardView, KpiWidget, OperatorActivityWidget, RiskWidget
 from .handoff import ApprovalExecutionHandoff, ApprovalExecutionResult
 from .operator_router import OperatorCommandRouter, RenderedResponse
+from .post_analysis import PostAnalysisBuilder, PostAnalysisSummary
 from .proposal_store import InMemoryProposalStore
 from .query_params import TradeQuery
 from .read_models import QueryService, TradeDetailView, TradeListItem
@@ -78,6 +79,8 @@ __all__ = [
     "InMemoryProposalStore",
     "OperatorCommandRouter",
     "RenderedResponse",
+    "PostAnalysisBuilder",
+    "PostAnalysisSummary",
     "TradeQuery",
     "QueryService",
     "TradeListItem",

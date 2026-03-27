@@ -7,6 +7,7 @@ from typing import Any
 
 from cex_tbot.decision_contracts import NoTradeDecision
 from cex_tbot.operator_router import RenderedResponse
+from cex_tbot.post_analysis import PostAnalysisSummary
 from cex_tbot.read_models import TradeDetailView, TradeListItem
 from cex_tbot.reporting import TradeReport
 from cex_tbot.session_summary import SessionSummary
@@ -63,3 +64,6 @@ class ApiSerializer:
 
     def rendered_response(self, response: RenderedResponse) -> dict[str, object]:
         return self._json_ready(asdict(response))
+
+    def post_analysis(self, summary: PostAnalysisSummary) -> dict[str, object]:
+        return self._json_ready(asdict(summary))

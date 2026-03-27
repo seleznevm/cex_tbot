@@ -21,6 +21,7 @@ from cex_tbot.market_data.gate_client import (
 from cex_tbot.market_data.provider import StaticMarketDataProvider
 from cex_tbot.market_data.service import MarketDataService
 from cex_tbot.operator_router import OperatorCommandRouter
+from cex_tbot.post_analysis import PostAnalysisBuilder
 from cex_tbot.read_models import QueryService
 from cex_tbot.reporting import TradeReportBuilder
 from cex_tbot.review_cards import ReviewCardBuilder
@@ -109,6 +110,7 @@ def build_app(
     )
     summary_builder = SessionSummaryBuilder()
     safety_controller = SafetyController(resolved_session.system_state, resolved_session.operator_transcript, risk_engine)
+    post_analysis_builder = PostAnalysisBuilder(resolved_session, query_service)
     backend = TradingBackendService(
         session=resolved_session,
         approval_flow=approval_flow,
@@ -123,6 +125,7 @@ def build_app(
         serializer=serializer,
         dashboard_builder=dashboard_builder,
         safety_controller=safety_controller,
+        post_analysis_builder=post_analysis_builder,
     )
     api = ApiSurface(backend)
     market_data_service = MarketDataService()

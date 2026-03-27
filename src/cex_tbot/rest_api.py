@@ -16,6 +16,7 @@ from cex_tbot.web_schemas import (
     DashboardPayload,
     ErrorEnvelope,
     HaltPayload,
+    PostAnalysisPayload,
     HealthPayload,
     ModifyProposalPayload,
     NoTradeDecisionPayload,
@@ -197,6 +198,10 @@ def create_rest_app(*, storage_dir: str | Path | None = None, api_token: str | N
     @app.get("/dashboard", dependencies=[Depends(require_auth)], response_model=DashboardPayload, responses={401: {"model": ErrorEnvelope}})
     def dashboard() -> DashboardPayload:
         return DashboardPayload.model_validate(api.dashboard())
+
+    @app.get("/post-analysis", dependencies=[Depends(require_auth)], response_model=PostAnalysisPayload, responses={401: {"model": ErrorEnvelope}})
+    def post_analysis() -> PostAnalysisPayload:
+        return PostAnalysisPayload.model_validate(api.post_analysis())
 
     @app.get("/proposals", dependencies=[Depends(require_auth)], response_model=TradeListPagePayload, responses={401: {"model": ErrorEnvelope}})
     @app.get("/trades", dependencies=[Depends(require_auth)], response_model=TradeListPagePayload, responses={401: {"model": ErrorEnvelope}})

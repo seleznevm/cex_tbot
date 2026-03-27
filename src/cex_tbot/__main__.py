@@ -94,6 +94,10 @@ def build_parser() -> argparse.ArgumentParser:
     dashboard_parser.add_argument("--storage-dir", type=Path, help="Optional base directory for file-backed session state")
     dashboard_parser.add_argument("--format", choices=("text", "json"), default="text", help="Output format")
 
+    post_analysis_parser = subparsers.add_parser("post-analysis", help="Show post-analysis and calibration summary")
+    post_analysis_parser.add_argument("--storage-dir", type=Path, help="Optional base directory for file-backed session state")
+    post_analysis_parser.add_argument("--format", choices=("text", "json"), default="text", help="Output format")
+
     no_trade_parser = subparsers.add_parser("no-trade-demo", help="Store a deterministic no-trade decision")
     no_trade_parser.add_argument("--storage-dir", type=Path, help="Optional base directory for file-backed session state")
     no_trade_parser.add_argument("--format", choices=("text", "json"), default="text", help="Output format")
@@ -315,6 +319,11 @@ def main() -> int:
     if command == "dashboard":
         payload = api.dashboard()
         print(_print_payload(payload, fmt) if fmt == "json" else render_dashboard_text(payload))
+        return 0
+
+    if command == "post-analysis":
+        payload = api.post_analysis()
+        print(_print_payload(payload, fmt) if fmt == "json" else app.backend.get_post_analysis_text())
         return 0
 
     if command == "no-trade-demo":

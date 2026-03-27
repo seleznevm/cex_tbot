@@ -269,6 +269,21 @@ class DashboardPayload(BaseModel):
     universe: DashboardUniversePayload
 
 
+class PostAnalysisPayload(BaseModel):
+    total_trades: int
+    executed_trades: int
+    rejected_trades: int
+    pending_trades: int
+    no_trade_decisions: int
+    avg_confidence_all: float
+    avg_confidence_executed: float
+    avg_confidence_no_trade: float
+    top_rejection_statuses: dict[str, int] = Field(default_factory=dict)
+    no_trade_reason_counts: dict[str, int] = Field(default_factory=dict)
+    symbol_activity: dict[str, int] = Field(default_factory=dict)
+    calibration_hints: list[str] = Field(default_factory=list)
+
+
 class HaltPayload(BaseModel):
     reason: str
 

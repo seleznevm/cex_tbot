@@ -11,6 +11,7 @@ from cex_tbot.decision_contracts import NoTradeDecision, TradeProposal
 from cex_tbot.execution import ExecutionOrchestrator, TradeTimelineBuilder
 from cex_tbot.handoff import ApprovalExecutionHandoff
 from cex_tbot.operator_router import OperatorCommandRouter, RenderedResponse
+from cex_tbot.post_analysis import PostAnalysisBuilder, PostAnalysisSummary
 from cex_tbot.query_params import TradeQuery
 from cex_tbot.enums import ProposalStatus, SafetyState
 from cex_tbot.read_models import QueryService, TradeDetailView, TradeListItem
@@ -41,6 +42,7 @@ class TradingBackendService:
     serializer: ApiSerializer
     dashboard_builder: DashboardBuilder
     safety_controller: SafetyController
+    post_analysis_builder: PostAnalysisBuilder
 
     @classmethod
     def from_session(
@@ -63,6 +65,7 @@ class TradingBackendService:
         workflow = TradeWorkflowService(approval_flow, ApprovalExecutionHandoff(approval_flow, execution), timeline_builder, report_builder, review_cards)
         router = OperatorCommandRouter(workflow, approval_flow, transcript=session.operator_transcript)
         safety_controller = SafetyController(session.system_state, session.operator_transcript, execution.risk_engine)
+        post_analysis_builder = PostAnalysisBuilder(session, QueryService(session, timeline_builder))
         return cls(
             session=session,
             approval_flow=approval_flow,
@@ -82,6 +85,7 @@ class TradingBackendService:
                 pending_risk_book=((risk_engine.pending_risk_book) if risk_engine is not None else None),
             ),
             safety_controller=safety_controller,
+            post_analysis_builder=post_analysis_builder,
         )
 
     def submit_proposal(self, proposal: TradeProposal) -> TradeProposal:
@@ -299,3 +303,12 @@ class TradingBackendService:
             "alerts": {"items": [item.__dict__.copy() for item in dashboard.alerts.items]},
             "universe": dashboard.universe.__dict__.copy(),
         }
+
+    def get_post_analysis(self) -> PostAnalysisSummary:
+        return self.post_analysis_builder.build()
+
+    def get_post_analysis_payload(self) -> dict[str, object]:
+        return self.serializer.post_analysis(self.get_post_analysis())
+
+    def get_post_analysis_text(self) -> str:
+        return self.get_post_analysis().to_text()
