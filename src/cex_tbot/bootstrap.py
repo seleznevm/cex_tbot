@@ -11,6 +11,7 @@ from cex_tbot.dashboard_models import DashboardBuilder
 from cex_tbot.decision_contracts.validator import ProposalValidator
 from cex_tbot.execution import ExecutionOrchestrator, TradeTimelineBuilder
 from cex_tbot.handoff import ApprovalExecutionHandoff
+from cex_tbot.gate_demo_sdk_client import GateDemoSdkClient
 from cex_tbot.market_data.gate_client import (
     GateDemoInstrumentClient,
     GateDemoInstrumentFetcher,
@@ -185,7 +186,7 @@ def _build_default_instrument_fetcher(
     gate_demo_client: GateDemoInstrumentClient | None,
 ) -> GateInstrumentFetcher:
     if config.execution_mode == "gate_demo":
-        client = gate_demo_client or HttpxGateDemoInstrumentClient(
+        client = gate_demo_client or GateDemoSdkClient(
             config.gate_demo_api,
             gate_demo_key=config.gate_demo_key,
             gate_demo_secret=config.gate_demo_secret,

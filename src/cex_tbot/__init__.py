@@ -10,6 +10,7 @@ from .audit import AuditEntry, InMemoryOperatorTranscript
 from .backend_service import TradingBackendService
 from .bootstrap import TradingApplication, build_app
 from .exceptions import GateDemoTransportError, GateLiveModeBlockedError, MissingGateDemoApiError
+from .gate_demo_sdk_client import GateDemoSdkClient
 from .market_data import (
     GateDemoInstrumentClient,
     GateDemoInstrumentFetcher,
@@ -64,6 +65,7 @@ __all__ = [
     "GateInstrumentFetcher",
     "GateDemoInstrumentClient",
     "GateDemoInstrumentFetcher",
+    "GateDemoSdkClient",
     "HttpxGateDemoInstrumentClient",
     "GateDemoTransportError",
     "GateLiveModeBlockedError",
