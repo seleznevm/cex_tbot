@@ -124,6 +124,10 @@ class Z12PostAnalysisTests(unittest.TestCase):
         self.assertIn("REJECTED_PRE_EXECUTION", payload["top_rejection_statuses"])
         self.assertIn("CONFIDENCE_BELOW_THRESHOLD", payload["no_trade_reason_counts"])
         self.assertIn("BTC_USDT", payload["symbol_activity"])
+        self.assertIn("15m", payload["timeframe_activity"])
+        self.assertIn("pullback", payload["strategy_activity"])
+        self.assertIn("ge_0_80", payload["trade_confidence_buckets"])
+        self.assertIn("lt_0_40", payload["no_trade_confidence_buckets"])
         self.assertGreater(len(payload["calibration_hints"]), 0)
 
 

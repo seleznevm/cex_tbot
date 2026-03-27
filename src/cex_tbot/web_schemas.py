@@ -281,6 +281,10 @@ class PostAnalysisPayload(BaseModel):
     top_rejection_statuses: dict[str, int] = Field(default_factory=dict)
     no_trade_reason_counts: dict[str, int] = Field(default_factory=dict)
     symbol_activity: dict[str, int] = Field(default_factory=dict)
+    timeframe_activity: dict[str, int] = Field(default_factory=dict)
+    strategy_activity: dict[str, int] = Field(default_factory=dict)
+    trade_confidence_buckets: dict[str, int] = Field(default_factory=dict)
+    no_trade_confidence_buckets: dict[str, int] = Field(default_factory=dict)
     calibration_hints: list[str] = Field(default_factory=list)
 
 
