@@ -12,6 +12,7 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(cfg.gate_demo_api, "")
         self.assertEqual(cfg.gate_demo_key, "")
         self.assertEqual(cfg.gate_demo_secret, "")
+        self.assertEqual(cfg.gate_demo_test_order_size, 1.0)
 
     def test_env_override(self) -> None:
         cfg = load_config(
@@ -21,6 +22,7 @@ class ConfigTests(unittest.TestCase):
                 "GATE_DEMO_API": "demo-secret-placeholder",
                 "GATE_DEMO_KEY": "demo-key",
                 "GATE_DEMO_SECRET": "demo-secret",
+                "GATE_DEMO_TEST_ORDER_SIZE": "0.25",
             }
         )
         self.assertEqual(cfg.whitelist_size, 10)
@@ -28,6 +30,7 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(cfg.gate_demo_api, "demo-secret-placeholder")
         self.assertEqual(cfg.gate_demo_key, "demo-key")
         self.assertEqual(cfg.gate_demo_secret, "demo-secret")
+        self.assertEqual(cfg.gate_demo_test_order_size, 0.25)
 
     def test_gate_demo_requires_demo_api(self) -> None:
         with self.assertRaisesRegex(MissingGateDemoApiError, "GATE_DEMO_API"):

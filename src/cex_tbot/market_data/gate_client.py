@@ -44,6 +44,12 @@ class GateDemoInstrumentClient(Protocol):
     def order_status(self, order_id: str) -> dict[str, object]:
         ...
 
+    def place_test_order(self, contract: str, *, size: float, side: str) -> dict[str, object]:
+        ...
+
+    def cancel_order(self, order_id: str) -> dict[str, object]:
+        ...
+
 
 @dataclass(frozen=True)
 class StaticGateInstrumentFetcher:
@@ -120,6 +126,16 @@ class UnimplementedGateDemoInstrumentClient:
     def order_status(self, order_id: str) -> dict[str, object]:
         raise NotImplementedError(
             "Gate demo order-status boundary is wired, but no concrete authenticated demo client is installed."
+        )
+
+    def place_test_order(self, contract: str, *, size: float, side: str) -> dict[str, object]:
+        raise NotImplementedError(
+            "Gate demo place-order boundary is wired, but no concrete authenticated demo client is installed."
+        )
+
+    def cancel_order(self, order_id: str) -> dict[str, object]:
+        raise NotImplementedError(
+            "Gate demo cancel-order boundary is wired, but no concrete authenticated demo client is installed."
         )
 
 
@@ -276,6 +292,20 @@ class HttpxGateDemoInstrumentClient:
             "left": payload.get("left"),
             "fill_price": payload.get("fill_price"),
         }
+
+    def place_test_order(self, contract: str, *, size: float, side: str) -> dict[str, object]:
+        if not self.gate_demo_key or not self.gate_demo_secret:
+            raise MissingGateDemoCredentialsError(
+                "GATE_DEMO_KEY and GATE_DEMO_SECRET are required for demo test orders."
+            )
+        raise NotImplementedError("Gate demo write trading is not enabled in HttpxGateDemoInstrumentClient yet.")
+
+    def cancel_order(self, order_id: str) -> dict[str, object]:
+        if not self.gate_demo_key or not self.gate_demo_secret:
+            raise MissingGateDemoCredentialsError(
+                "GATE_DEMO_KEY and GATE_DEMO_SECRET are required for demo cancel order."
+            )
+        raise NotImplementedError("Gate demo write trading is not enabled in HttpxGateDemoInstrumentClient yet.")
 
     def _get_json(self, path: str, *, error_prefix: str) -> Any:
         try:

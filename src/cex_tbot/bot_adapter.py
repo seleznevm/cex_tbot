@@ -41,6 +41,8 @@ class BotCommandAdapter:
                     "/demo_positions — Gate demo positions snapshot",
                     "/demo_open_orders — Gate demo open orders",
                     "/demo_order_status <order_id> — Gate demo order status",
+                    "/demo_place_test_order <contract> <buy|sell> — explicit tiny demo test order",
+                    "/demo_cancel_order <order_id> — cancel demo order",
                     "/demo_account_overview — Gate demo account + positions overview",
                     "/demo_capabilities — Gate demo runtime capabilities",
                     "/runtime_status — runtime/storage/fetcher status",
@@ -219,6 +221,49 @@ class BotCommandAdapter:
                     f"- status={item.get('status')}",
                     f"- left={item.get('left')}",
                     f"- fill_price={item.get('fill_price')}",
+                ]
+            )
+        )
+
+    def handle_demo_place_test_order(self, contract: str, side: str) -> BotReply:
+        if self.config.execution_mode != "gate_demo":
+            return BotReply("Demo test order rejected: runtime is not in gate_demo mode.")
+        if side.lower() not in {"buy", "sell"}:
+            return BotReply("Demo test order rejected: side must be buy or sell.")
+        if self.app is None or not hasattr(self.app.instrument_fetcher, "client"):
+            return BotReply("Demo test order unavailable: no demo client bound.")
+        client = self.app.instrument_fetcher.client
+        try:
+            payload = client.place_test_order(contract, size=self.config.gate_demo_test_order_size, side=side.lower())
+        except (NotImplementedError, GateDemoTransportError, MissingGateDemoCredentialsError) as exc:
+            return BotReply(f"Demo test order unavailable: {exc}")
+        return BotReply(
+            "\n".join(
+                [
+                    "Gate demo test order",
+                    f"- id={payload.get('id')}",
+                    f"- contract={payload.get('contract')}",
+                    f"- side={payload.get('side')}",
+                    f"- size={payload.get('size')}",
+                    f"- status={payload.get('status')}",
+                ]
+            )
+        )
+
+    def handle_demo_cancel_order(self, order_id: str) -> BotReply:
+        if self.app is None or not hasattr(self.app.instrument_fetcher, "client"):
+            return BotReply("Demo cancel order unavailable: no demo client bound.")
+        client = self.app.instrument_fetcher.client
+        try:
+            payload = client.cancel_order(order_id)
+        except (NotImplementedError, GateDemoTransportError, MissingGateDemoCredentialsError) as exc:
+            return BotReply(f"Demo cancel order unavailable: {exc}")
+        return BotReply(
+            "\n".join(
+                [
+                    "Gate demo cancel order",
+                    f"- id={payload.get('id')}",
+                    f"- status={payload.get('status')}",
                 ]
             )
         )

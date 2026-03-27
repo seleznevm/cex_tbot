@@ -85,6 +85,12 @@ class GateDemoHttpClientTests(unittest.TestCase):
         self.assertEqual(orders[0]["id"], "42")
         self.assertEqual(order["status"], "open")
 
+    def test_httpx_gate_demo_client_place_test_order_not_enabled_yet(self) -> None:
+        client = HttpxGateDemoInstrumentClient("https://demo.gate", gate_demo_key="k", gate_demo_secret="s")
+
+        with self.assertRaisesRegex(NotImplementedError, "write trading is not enabled"):
+            client.place_test_order("BTC_USDT", size=1.0, side="buy")
+
 
 if __name__ == "__main__":
     unittest.main()

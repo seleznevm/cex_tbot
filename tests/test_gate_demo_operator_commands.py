@@ -50,6 +50,12 @@ class _HealthyDemoClient:
     def order_status(self, order_id: str) -> dict[str, object]:
         return {"id": order_id, "contract": "BTC_USDT", "size": 1, "price": "100", "status": "open", "left": 1, "fill_price": None}
 
+    def place_test_order(self, contract: str, *, size: float, side: str) -> dict[str, object]:
+        return {"id": "99", "contract": contract, "side": side, "size": size, "status": "open"}
+
+    def cancel_order(self, order_id: str) -> dict[str, object]:
+        return {"id": order_id, "status": "cancelled"}
+
 
 class GateDemoOperatorCommandTests(unittest.TestCase):
     def test_runtime_and_session_commands(self) -> None:
@@ -92,6 +98,8 @@ class GateDemoOperatorCommandTests(unittest.TestCase):
         self.assertIn("Gate demo positions", dispatcher.dispatch("/demo_positions").text)
         self.assertIn("Gate demo open orders", dispatcher.dispatch("/demo_open_orders").text)
         self.assertIn("Gate demo order status", dispatcher.dispatch("/demo_order_status 42").text)
+        self.assertIn("Gate demo test order", dispatcher.dispatch("/demo_place_test_order BTC_USDT buy").text)
+        self.assertIn("Gate demo cancel order", dispatcher.dispatch("/demo_cancel_order 42").text)
         self.assertIn("BTC_USDT", dispatcher.dispatch("/demo_account_overview").text)
         self.assertIn("Gate demo capabilities", dispatcher.dispatch("/demo_capabilities").text)
 
