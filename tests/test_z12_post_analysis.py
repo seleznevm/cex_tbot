@@ -126,6 +126,8 @@ class Z12PostAnalysisTests(unittest.TestCase):
         self.assertIn("BTC_USDT", payload["symbol_activity"])
         self.assertIn("15m", payload["timeframe_activity"])
         self.assertIn("pullback", payload["strategy_activity"])
+        self.assertIn("pullback|15m", payload["outcome_matrix"])
+        self.assertEqual(payload["outcome_matrix"]["pullback|15m"]["executed"], 1)
         self.assertIn("ge_0_80", payload["trade_confidence_buckets"])
         self.assertIn("lt_0_40", payload["no_trade_confidence_buckets"])
         self.assertGreater(len(payload["calibration_hints"]), 0)

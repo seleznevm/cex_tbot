@@ -298,6 +298,7 @@ class PostAnalysisPayload(BaseModel):
     symbol_activity: dict[str, int] = Field(default_factory=dict)
     timeframe_activity: dict[str, int] = Field(default_factory=dict)
     strategy_activity: dict[str, int] = Field(default_factory=dict)
+    outcome_matrix: dict[str, dict[str, int]] = Field(default_factory=dict)
     trade_confidence_buckets: dict[str, int] = Field(default_factory=dict)
     no_trade_confidence_buckets: dict[str, int] = Field(default_factory=dict)
     calibration_hints: list[str] = Field(default_factory=list)

@@ -21,6 +21,7 @@ class PostAnalysisSummary:
     symbol_activity: dict[str, int]
     timeframe_activity: dict[str, int]
     strategy_activity: dict[str, int]
+    outcome_matrix: dict[str, dict[str, int]]
     trade_confidence_buckets: dict[str, int]
     no_trade_confidence_buckets: dict[str, int]
     calibration_hints: list[str]
@@ -51,6 +52,10 @@ class PostAnalysisSummary:
         if self.strategy_activity:
             lines.append("Strategy activity:")
             for key, value in self.strategy_activity.items():
+                lines.append(f"- {key}: {value}")
+        if self.outcome_matrix:
+            lines.append("Outcome matrix:")
+            for key, value in self.outcome_matrix.items():
                 lines.append(f"- {key}: {value}")
         if self.trade_confidence_buckets:
             lines.append("Trade confidence buckets:")
@@ -93,6 +98,7 @@ class PostAnalysisBuilder:
         symbol_activity: dict[str, int] = {}
         timeframe_activity: dict[str, int] = {}
         strategy_activity: dict[str, int] = {}
+        outcome_matrix: dict[str, dict[str, int]] = {}
         trade_confidence_buckets: dict[str, int] = {}
         proposal_map = self.session.proposals._proposals
         for item in trades:
@@ -102,6 +108,15 @@ class PostAnalysisBuilder:
             proposal = proposal_map.get(item.proposal_id)
             if proposal is not None:
                 strategy_activity[proposal.strategy_id] = strategy_activity.get(proposal.strategy_id, 0) + 1
+                matrix_key = f"{proposal.strategy_id}|{proposal.timeframe}"
+                if matrix_key not in outcome_matrix:
+                    outcome_matrix[matrix_key] = {"executed": 0, "rejected": 0, "pending": 0, "no_trade": 0}
+                if item.status == "EXECUTED":
+                    outcome_matrix[matrix_key]["executed"] += 1
+                elif item.status in {"PENDING_APPROVAL", "APPROVED_PENDING_EXECUTION_CHECK", "EXECUTION_READY"}:
+                    outcome_matrix[matrix_key]["pending"] += 1
+                elif "REJECT" in item.status or item.status in {"INVALIDATED", "EXPIRED", "CANCELLED"}:
+                    outcome_matrix[matrix_key]["rejected"] += 1
             if item in rejected:
                 top_rejection_statuses[item.status] = top_rejection_statuses.get(item.status, 0) + 1
 
@@ -113,6 +128,10 @@ class PostAnalysisBuilder:
             symbol_activity[item.symbol] = symbol_activity.get(item.symbol, 0) + 1
             timeframe_activity[item.timeframe] = timeframe_activity.get(item.timeframe, 0) + 1
             strategy_activity[item.strategy_id] = strategy_activity.get(item.strategy_id, 0) + 1
+            matrix_key = f"{item.strategy_id}|{item.timeframe}"
+            if matrix_key not in outcome_matrix:
+                outcome_matrix[matrix_key] = {"executed": 0, "rejected": 0, "pending": 0, "no_trade": 0}
+            outcome_matrix[matrix_key]["no_trade"] += 1
             no_trade_confidence_buckets[self._bucket(item.confidence_score)] = no_trade_confidence_buckets.get(self._bucket(item.confidence_score), 0) + 1
 
         avg_conf_all = round(sum(item.confidence_score for item in trades) / len(trades), 4) if trades else 0.0
@@ -134,6 +153,12 @@ class PostAnalysisBuilder:
             hints.append("No executions recorded yet; gather more samples before changing thresholds aggressively.")
         if not trades and no_trades:
             hints.append("Only no-trade decisions recorded so far; inspect whether filters are too restrictive.")
+        weak_cells = [key for key, stats in outcome_matrix.items() if stats.get("rejected", 0) + stats.get("no_trade", 0) >= 2 and stats.get("executed", 0) == 0]
+        if weak_cells:
+            hints.append(f"Weak strategy/timeframe cells detected: {', '.join(sorted(weak_cells)[:3])}.")
+        strong_cells = [key for key, stats in outcome_matrix.items() if stats.get("executed", 0) >= 1 and stats.get("rejected", 0) == 0 and stats.get("no_trade", 0) == 0]
+        if strong_cells:
+            hints.append(f"Strong strategy/timeframe cells worth monitoring: {', '.join(sorted(strong_cells)[:3])}.")
         if not hints:
             hints.append("Current sample looks balanced; continue collecting outcomes before major recalibration.")
 
@@ -151,6 +176,7 @@ class PostAnalysisBuilder:
             symbol_activity=dict(sorted(symbol_activity.items(), key=lambda item: (-item[1], item[0]))[:10]),
             timeframe_activity=dict(sorted(timeframe_activity.items(), key=lambda item: (-item[1], item[0]))[:10]),
             strategy_activity=dict(sorted(strategy_activity.items(), key=lambda item: (-item[1], item[0]))[:10]),
+            outcome_matrix=dict(sorted(outcome_matrix.items(), key=lambda item: item[0])[:20]),
             trade_confidence_buckets=dict(sorted(trade_confidence_buckets.items())),
             no_trade_confidence_buckets=dict(sorted(no_trade_confidence_buckets.items())),
             calibration_hints=hints,
