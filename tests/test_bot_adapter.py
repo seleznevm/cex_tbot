@@ -75,8 +75,9 @@ class BotAdapterTests(unittest.TestCase):
         no_trades = adapter.handle_no_trades()
 
         self.assertEqual(approved.parse_mode, "Markdown")
-        self.assertIn("Trade Report", approved.text)
+        self.assertIn("Approval processed for proposal_1", approved.text)
         self.assertEqual(report.parse_mode, "Markdown")
+        self.assertIn("Report for proposal_1", report.text)
         self.assertIn("**Trade Report", report.text)
         self.assertIn("Trade detail", detail.text)
         self.assertIn("Post-analysis and calibration review snapshot", post_analysis.text)
