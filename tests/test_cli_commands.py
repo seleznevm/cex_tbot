@@ -83,6 +83,13 @@ class CliCommandTests(unittest.TestCase):
             self.assertIn("Gate demo capabilities", status.stdout)
             self.assertIn("Demo audit", audit.stdout)
 
+    def test_emit_demo_proposal_command(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            storage = str(Path(tmp) / "runtime")
+            result = self._run(tmp, "emit-demo-proposal", "--storage-dir", storage)
+            self.assertIn("Trade approval request", result.stdout)
+            self.assertIn("/approve proposal_topic_demo_btc", result.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

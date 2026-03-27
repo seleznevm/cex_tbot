@@ -138,6 +138,12 @@ def build_parser() -> argparse.ArgumentParser:
     demo_audit_report_parser.add_argument("--storage-dir", type=Path, help="Optional base directory for file-backed session state")
     demo_audit_report_parser.add_argument("--format", choices=("text", "json"), default="text", help="Output format")
 
+    emit_demo_proposal_parser = subparsers.add_parser("emit-demo-proposal", help="Persist a deterministic proposal and render same-topic approval request")
+    emit_demo_proposal_parser.add_argument("--storage-dir", type=Path, help="Optional base directory for file-backed session state")
+    emit_demo_proposal_parser.add_argument("--format", choices=("text", "json"), default="text", help="Output format")
+    emit_demo_proposal_parser.add_argument("--chat-id", default="telegram:-1003832858724", help="Target chat id for rendered outbound payload")
+    emit_demo_proposal_parser.add_argument("--thread-id", default="7", help="Target thread/topic id for rendered outbound payload")
+
     serve_rest_parser = subparsers.add_parser("serve-rest", help="Run optional FastAPI REST bridge")
     serve_rest_parser.add_argument("--storage-dir", type=Path, help="Optional base directory for file-backed session state")
     serve_rest_parser.add_argument("--host", default="127.0.0.1")
@@ -269,6 +275,38 @@ def render_demo_audit_report(app) -> str:
 
     adapter = BotCommandAdapter(app.backend, config=app.config, app=app)
     return adapter.handle_demo_audit().text
+
+
+def build_demo_topic_proposal(chat_id: str, thread_id: str):
+    now = utc_now()
+    proposal = TradeProposal(
+        proposal_id="proposal_topic_demo_btc",
+        agent_name="Luma",
+        strategy_id="pullback",
+        strategy_version="v1",
+        market_context_id="ctx_topic_demo",
+        symbol="BTC_USDT",
+        timeframe="15m",
+        direction=TradeDirection.LONG,
+        entry_zone_min=66000.0,
+        entry_zone_max=66100.0,
+        entry_split=[EntrySplitLeg(1, 66050.0, 100.0, 1.0, now)],
+        stop_loss=65750.0,
+        take_profit_1=66400.0,
+        take_profit_2=66750.0,
+        risk_percent=0.5,
+        risk_usd=5.0,
+        position_size=1.0,
+        confidence_score=0.78,
+        thesis="Demo pullback reclaim with contained risk.",
+        invalidity_condition="Local support fails and reclaim is lost.",
+        liquidity_check="ok",
+        data_freshness_ms=100,
+        created_at=now,
+        expires_at=now,
+        status=ProposalStatus.PENDING_APPROVAL,
+    )
+    return proposal, chat_id, thread_id
 
 
 def _default_post_analysis_export_path(storage_dir: Path | None, fmt: str) -> Path:
@@ -482,6 +520,15 @@ def main() -> int:
     if command == "demo-audit-report":
         rendered = render_demo_audit_report(app)
         print(_print_payload({"report": rendered}, fmt) if fmt == "json" else rendered)
+        return 0
+
+    if command == "emit-demo-proposal":
+        proposal, chat_id, thread_id = build_demo_topic_proposal(args.chat_id, args.thread_id)
+        wrapper = OpenClawTopicWrapper(api.bridge if hasattr(api, 'bridge') else None, default_chat_id=chat_id, default_thread_id=thread_id)
+        glue = ProposalWorkflowGlue(app.backend, TopicProposalEmitter(wrapper))
+        outbound = glue.submit_and_emit_proposal(proposal)
+        payload = {"chat_id": outbound.chat_id, "thread_id": outbound.thread_id, "text": outbound.text}
+        print(_print_payload(payload, fmt) if fmt == "json" else outbound.text)
         return 0
 
     if command == "serve-rest":
