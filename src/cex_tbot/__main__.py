@@ -11,8 +11,7 @@ from cex_tbot.decision_contracts import EntrySplitLeg, NoTradeDecision, TradePro
 from cex_tbot.demo import build_demo_proposal, render_demo
 from cex_tbot.enums import NoTradeReasonCode, ProposalStatus, TradeDirection
 from cex_tbot.openclaw_wrapper import OpenClawTopicWrapper
-from cex_tbot.proposal_emitter import TopicProposalEmitter
-from cex_tbot.proposal_workflow_glue import ProposalWorkflowGlue
+from cex_tbot.topic_producer import TopicProposalProducer
 from cex_tbot.rest_api import RestApiDependencyError, create_rest_app
 from cex_tbot.shared import utc_now
 
@@ -535,8 +534,8 @@ def main() -> int:
     if command in {"emit-demo-proposal", "submit-and-emit-demo"}:
         proposal, chat_id, thread_id = build_demo_topic_proposal(args.chat_id, args.thread_id)
         wrapper = OpenClawTopicWrapper(api.bridge if hasattr(api, 'bridge') else None, default_chat_id=chat_id, default_thread_id=thread_id)
-        glue = ProposalWorkflowGlue(app.backend, TopicProposalEmitter(wrapper))
-        outbound = glue.submit_and_emit_proposal(proposal)
+        producer = TopicProposalProducer(app.backend, wrapper)
+        outbound = producer.submit_and_emit(proposal)
         payload = {
             "proposal_id": proposal.proposal_id,
             "chat_id": outbound.chat_id,
