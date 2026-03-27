@@ -96,6 +96,7 @@ __all__ = [
     "PostAnalysisBuilder",
     "PostAnalysisSummary",
     "TopicProposalEmitter",
+    "ProposalWorkflowGlue",
     "TradeQuery",
     "QueryService",
     "TradeListItem",
