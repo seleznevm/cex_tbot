@@ -4,6 +4,7 @@ from .api_surface import ApiSurface, CommandRequest, ExecuteRequest, ProposalSub
 from .bot_adapter import BotCommandAdapter, BotReply
 from .bot_dispatcher import BotCommandDispatcher, ParsedBotCommand
 from .transport_bridge import SenderPolicy, TransportCommandBridge, TransportMessage
+from .write_safety import WriteActionArmState
 from .demo import DemoArtifacts, build_demo_proposal, render_demo, run_demo
 from .approval_flow import ApprovalFlow
 from .audit import AuditEntry, InMemoryOperatorTranscript
@@ -54,6 +55,7 @@ __all__ = [
     "SenderPolicy",
     "TransportCommandBridge",
     "TransportMessage",
+    "WriteActionArmState",
     "DemoArtifacts",
     "build_demo_proposal",
     "render_demo",

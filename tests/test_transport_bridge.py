@@ -73,6 +73,32 @@ class TransportBridgeTests(unittest.TestCase):
 
         self.assertIn("Trade detail", reply.text)
 
+    def test_bridge_requires_arm_for_demo_write_actions(self) -> None:
+        service = TradingBackendService.from_session(TradeSessionStore())
+        bridge = TransportCommandBridge(
+            BotCommandDispatcher(BotCommandAdapter(service, config=BotConfig(execution_mode='gate_demo', gate_demo_api='https://api-testnet.gateapi.io/api/v4'))),
+            sender_policy=SenderPolicy(allowed_sender_ids=frozenset({"125619710"}), allow_empty_policy=False),
+            write_sender_policy=SenderPolicy(allowed_sender_ids=frozenset({"125619710"}), allow_empty_policy=False),
+        )
+
+        rejected = bridge.handle_message(TransportMessage(sender_id="125619710", text="/demo_place_test_order BTC_USDT buy"))
+        armed = bridge.handle_message(TransportMessage(sender_id="125619710", text="/demo_arm"))
+
+        self.assertIn("send /demo_arm first", rejected.text)
+        self.assertIn("armed until", armed.text)
+
+    def test_bridge_blocks_unauthorized_writer_sender(self) -> None:
+        service = TradingBackendService.from_session(TradeSessionStore())
+        bridge = TransportCommandBridge(
+            BotCommandDispatcher(BotCommandAdapter(service, config=BotConfig(execution_mode='gate_demo', gate_demo_api='https://api-testnet.gateapi.io/api/v4'))),
+            sender_policy=SenderPolicy(allowed_sender_ids=frozenset({"125619710", "999"}), allow_empty_policy=False),
+            write_sender_policy=SenderPolicy(allowed_sender_ids=frozenset({"125619710"}), allow_empty_policy=False),
+        )
+
+        reply = bridge.handle_message(TransportMessage(sender_id="999", text="/demo_place_test_order BTC_USDT buy"))
+
+        self.assertIn("Unauthorized writer", reply.text)
+
 
 if __name__ == "__main__":
     unittest.main()

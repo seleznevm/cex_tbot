@@ -42,6 +42,7 @@ class BotCommandAdapter:
                     "/demo_positions — Gate demo positions snapshot",
                     "/demo_open_orders — Gate demo open orders",
                     "/demo_order_status <order_id> — Gate demo order status",
+                    "/demo_arm — arm demo write actions for a short window",
                     "/demo_place_test_order <contract> <buy|sell> — explicit tiny demo test order",
                     "/demo_cancel_order <order_id> — cancel demo order",
                     "/demo_smoke <contract> <buy|sell> — place/status/cancel-if-open demo smoke",
