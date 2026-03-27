@@ -9,9 +9,9 @@ from cex_tbot.config import BotConfig
 from cex_tbot.decision_contracts import NoTradeDecision, TradeProposal
 from cex_tbot.exceptions import GateDemoTransportError, MissingGateDemoCredentialsError
 from cex_tbot.query_params import TradeQuery
+from cex_tbot.enums import ProposalStatus
 from cex_tbot.risk_engine import PortfolioState
 from cex_tbot.shared import utc_now
-from cex_tbot.enums import ProposalStatus
 
 
 @dataclass(frozen=True)
@@ -413,6 +413,18 @@ class BotCommandAdapter:
         lines = ["Latest trades:"]
         for item in trades:
             lines.append(f"- {item['proposal_id']} | {item['symbol']} {item['direction']} | {item['status']}")
+        return BotReply("\n".join(lines))
+
+    def handle_pending(self, *, limit: int = 10) -> BotReply:
+        trades = self.backend.list_trades_payload(TradeQuery(limit=limit))
+        pending = [item for item in trades if item["status"] == ProposalStatus.PENDING_APPROVAL.value]
+        if not pending:
+            return BotReply("Pending proposals: none")
+        lines = ["Pending proposals:"]
+        for item in pending:
+            lines.append(
+                f"- {item['proposal_id']} | {item['symbol']} {item['direction']} {item['timeframe']} | conf={item['confidence_score']:.2f}"
+            )
         return BotReply("\n".join(lines))
 
     def handle_detail(self, proposal_id: str) -> BotReply:

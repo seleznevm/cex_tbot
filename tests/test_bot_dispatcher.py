@@ -56,6 +56,7 @@ class BotDispatcherTests(unittest.TestCase):
         )
         service.submit_proposal(proposal)
 
+        self.assertIn("Pending proposals", dispatcher.dispatch("/pending").text)
         self.assertIn("Trade detail", dispatcher.dispatch("/detail proposal_dispatch").text)
         self.assertIn("Approval processed for proposal_dispatch", dispatcher.dispatch("/approve_only proposal_dispatch").text)
         self.assertIn("Report for proposal_dispatch", dispatcher.dispatch("/report proposal_dispatch").text)

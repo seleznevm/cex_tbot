@@ -81,6 +81,9 @@ class BotCommandDispatcher:
         if parsed.name == "list":
             limit = self._parse_limit(parsed.args)
             return self.adapter.handle_list(limit=limit)
+        if parsed.name == "pending":
+            limit = self._parse_limit(parsed.args) if parsed.args else 10
+            return self.adapter.handle_pending(limit=limit)
         if parsed.name == "detail":
             if not parsed.args:
                 return BotReply("Usage: /detail <proposal_id>")
