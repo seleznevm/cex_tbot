@@ -36,6 +36,10 @@ class BotCommandDispatcher:
             return self.adapter.handle_safety()
         if parsed.name == "gate_demo_status":
             return self.adapter.handle_gate_demo_status()
+        if parsed.name == "demo_health":
+            return self.adapter.handle_demo_health()
+        if parsed.name == "demo_capabilities":
+            return self.adapter.handle_demo_capabilities()
         if parsed.name == "runtime_status":
             return self.adapter.handle_runtime_status()
         if parsed.name == "session_paths":

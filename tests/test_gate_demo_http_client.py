@@ -38,6 +38,21 @@ class GateDemoHttpClientTests(unittest.TestCase):
         self.assertEqual(records[0].trade_status, "tradable")
         self.assertEqual(records[0].volume_24h, 2000000)
 
+    def test_httpx_gate_demo_client_healthcheck(self) -> None:
+        httpx = __import__("httpx")
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json=[{"name": "BTC_USDT"}, {"name": "ETH_USDT"}])
+
+        transport = httpx.MockTransport(handler)
+        client = HttpxGateDemoInstrumentClient("https://demo.gate", transport=transport)
+
+        payload = client.healthcheck()
+
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["contracts_seen"], 2)
+        self.assertIn("/futures/usdt/contracts", payload["endpoint"])
+
 
 if __name__ == "__main__":
     unittest.main()

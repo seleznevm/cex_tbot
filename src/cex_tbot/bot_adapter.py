@@ -35,6 +35,8 @@ class BotCommandAdapter:
                     "/post_analysis — post-analysis and calibration snapshot",
                     "/safety — current safety state",
                     "/gate_demo_status — Gate demo transport status",
+                    "/demo_health — Gate demo metadata endpoint health",
+                    "/demo_capabilities — Gate demo runtime capabilities",
                     "/runtime_status — runtime/storage/fetcher status",
                     "/session_paths — session storage paths",
                     "/refresh_universe — refresh whitelist/universe snapshot",
@@ -97,6 +99,36 @@ class BotCommandAdapter:
             lines.append("- transport=inactive (runtime not in gate_demo mode)")
         else:
             lines.append(f"- transport=demo boundary enabled via {type(self.app.instrument_fetcher).__name__ if self.app is not None else 'unknown fetcher'}")
+        return BotReply("\n".join(lines))
+
+    def handle_demo_health(self) -> BotReply:
+        if self.app is None or not hasattr(self.app.instrument_fetcher, "client"):
+            return BotReply("Gate demo health unavailable: no demo client bound.")
+        client = self.app.instrument_fetcher.client
+        try:
+            payload = client.healthcheck()
+        except (NotImplementedError, GateDemoTransportError) as exc:
+            return BotReply(f"Gate demo health unavailable: {exc}")
+        return BotReply(
+            "\n".join(
+                [
+                    "Gate demo health",
+                    f"- ok={payload.get('ok')}",
+                    f"- endpoint={payload.get('endpoint')}",
+                    f"- contracts_seen={payload.get('contracts_seen')}",
+                ]
+            )
+        )
+
+    def handle_demo_capabilities(self) -> BotReply:
+        lines = [
+            "Gate demo capabilities",
+            f"- execution_mode={self.config.execution_mode}",
+            f"- metadata_fetch={'yes' if self.config.execution_mode == 'gate_demo' else 'available via static/local fetchers only'}",
+            "- live_trading=no",
+            "- order_placement=no",
+            "- account_sync=no",
+        ]
         return BotReply("\n".join(lines))
 
     def handle_runtime_status(self) -> BotReply:

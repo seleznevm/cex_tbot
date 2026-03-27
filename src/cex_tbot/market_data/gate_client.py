@@ -26,6 +26,9 @@ class GateDemoInstrumentClient(Protocol):
     def list_instruments(self) -> list[GateInstrumentRecord]:
         ...
 
+    def healthcheck(self) -> dict[str, object]:
+        ...
+
 
 @dataclass(frozen=True)
 class StaticGateInstrumentFetcher:
@@ -73,6 +76,12 @@ class UnimplementedGateDemoInstrumentClient:
             "Inject GateDemoInstrumentClient explicitly; live transport remains blocked."
         )
 
+    def healthcheck(self) -> dict[str, object]:
+        raise NotImplementedError(
+            "Gate demo transport boundary is wired, but no concrete demo client is installed. "
+            "Inject GateDemoInstrumentClient explicitly; live transport remains blocked."
+        )
+
 
 @dataclass(frozen=True)
 class HttpxGateDemoInstrumentClient:
@@ -94,6 +103,52 @@ class HttpxGateDemoInstrumentClient:
             )
 
     def list_instruments(self) -> list[GateInstrumentRecord]:
+        payload = self._get_json(self.path, error_prefix="Gate demo metadata fetch failed")
+
+        if not isinstance(payload, list):
+            raise GateDemoTransportError("Gate demo metadata fetch returned non-list payload")
+
+        records: list[GateInstrumentRecord] = []
+        for item in payload:
+            if not isinstance(item, dict):
+                continue
+            records.append(
+                GateInstrumentRecord(
+                    name=str(item.get("name") or item.get("contract") or ""),
+                    in_delisting=bool(item.get("in_delisting", False)),
+                    trade_status=str(item.get("trade_status") or item.get("status") or "tradable"),
+                    quanto_multiplier=float(item.get("quanto_multiplier") or 0.0),
+                    order_size_min=float(item.get("order_size_min") or 0.0),
+                    mark_price_round=str(item.get("mark_price_round") or "0.01"),
+                    ref_rebate_rate=str(item.get("ref_rebate_rate") or "0"),
+                    funding_rate_indicative=str(item.get("funding_rate_indicative") or "0"),
+                    leverage_min=str(item.get("leverage_min") or "1"),
+                    leverage_max=str(item.get("leverage_max") or "20"),
+                    maker_fee_rate=str(item.get("maker_fee_rate") or "0"),
+                    taker_fee_rate=str(item.get("taker_fee_rate") or "0"),
+                    risk_limit_base=str(item.get("risk_limit_base") or "0"),
+                    is_new_listing=bool(item.get("is_new_listing", False)),
+                    listing_age_hours=int(item.get("listing_age_hours") or 0),
+                    quote_asset=str(item.get("quote_asset") or "USDT"),
+                    volume_24h=float(item.get("volume_24h") or item.get("volume_24h_quote") or 0.0),
+                    open_interest=float(item.get("open_interest") or 0.0),
+                    spread_bps=float(item.get("spread_bps") or 0.0),
+                    top_book_depth=float(item.get("top_book_depth") or 0.0),
+                )
+            )
+        return [item for item in records if item.name]
+
+    def healthcheck(self) -> dict[str, object]:
+        payload = self._get_json(self.path, error_prefix="Gate demo healthcheck failed")
+        if not isinstance(payload, list):
+            raise GateDemoTransportError("Gate demo healthcheck returned non-list payload")
+        return {
+            "ok": True,
+            "endpoint": self.gate_demo_api.rstrip("/") + self.path,
+            "contracts_seen": len(payload),
+        }
+
+    def _get_json(self, path: str, *, error_prefix: str) -> Any:
         try:
             import httpx
         except ImportError as exc:  # pragma: no cover - depends on optional env
@@ -101,14 +156,15 @@ class HttpxGateDemoInstrumentClient:
                 "httpx is required for HttpxGateDemoInstrumentClient. Install cex-tbot[dev] or add httpx."
             ) from exc
 
-        url = self.gate_demo_api.rstrip("/") + self.path
+        url = self.gate_demo_api.rstrip("/") + path
         try:
             with httpx.Client(timeout=self.timeout_seconds, transport=self.transport) as client:
                 response = client.get(url, headers={"Accept": "application/json"})
                 response.raise_for_status()
-                payload = response.json()
+                return response.json()
         except Exception as exc:  # pragma: no cover - thin wrapper
-            raise GateDemoTransportError(f"Gate demo metadata fetch failed: {exc}") from exc
+            raise GateDemoTransportError(f"{error_prefix}: {exc}") from exc
+
 
         if not isinstance(payload, list):
             raise GateDemoTransportError("Gate demo metadata fetch returned non-list payload")
