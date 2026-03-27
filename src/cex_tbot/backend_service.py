@@ -99,6 +99,21 @@ class TradingBackendService:
             AuditEntry(actor="system", raw_command=f"UNHALT {previous_reason}", outcome="HALT_OFF")
         )
 
+    def clear_safety_controls(self) -> None:
+        if self.session.system_state.emergency_halt_active:
+            self.session.operator_transcript.append(
+                AuditEntry(actor="system", raw_command="CLEAR_SAFETY_SKIPPED", outcome="CLEAR_SAFETY_SKIPPED")
+            )
+            return
+        had_block = self.session.system_state.block_new_trades
+        had_warning = self.session.system_state.safety_state == SafetyState.WARNING
+        self.session.system_state.clear_block()
+        self.session.system_state.clear_warning()
+        if had_block or had_warning:
+            self.session.operator_transcript.append(
+                AuditEntry(actor="system", raw_command="CLEAR_SAFETY", outcome="CLEAR_SAFETY")
+            )
+
     def evaluate_stop_conditions(self, portfolio: PortfolioState) -> None:
         if self.session.system_state.emergency_halt_active:
             return

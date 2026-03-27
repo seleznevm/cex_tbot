@@ -117,3 +117,7 @@ class ApiSurface:
 
     def dashboard(self) -> dict[str, object]:
         return self.backend.get_dashboard_payload()
+
+    def clear_safety(self) -> dict[str, object]:
+        self.backend.clear_safety_controls()
+        return self.backend.get_session_summary_payload()

@@ -76,6 +76,27 @@ class CliHaltNoTradeTests(unittest.TestCase):
             blocked_payload = json.loads(blocked.stdout)
             self.assertIn("New trades blocked", blocked_payload["text"])
 
+    def test_clear_safety_command_clears_warning_state(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            storage = str(Path(tmp) / "runtime")
+            submit = self._run("submit-demo", "--storage-dir", storage, "--format", "json")
+            proposal_id = json.loads(submit.stdout)["proposal_id"]
+            self._run(
+                "command",
+                f"APPROVE {proposal_id}",
+                "--approve-only",
+                "--storage-dir",
+                storage,
+                "--format",
+                "json",
+                "--daily-drawdown-pct",
+                "1.7",
+            )
+            cleared = self._run("clear-safety", "--storage-dir", storage, "--format", "json")
+            cleared_payload = json.loads(cleared.stdout)
+            self.assertEqual(cleared_payload["safety_state"], "NORMAL")
+            self.assertFalse(cleared_payload["block_new_trades"])
+
 
 if __name__ == "__main__":
     unittest.main()

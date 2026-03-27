@@ -26,6 +26,7 @@ from cex_tbot.web_schemas import (
     SessionSummaryPayload,
     TradeDetailPayload,
     TradeListItemPayload,
+    TradeListPagePayload,
     TradeReportPayload,
 )
 
@@ -197,18 +198,18 @@ def create_rest_app(*, storage_dir: str | Path | None = None, api_token: str | N
     def dashboard() -> DashboardPayload:
         return DashboardPayload.model_validate(api.dashboard())
 
-    @app.get("/proposals", dependencies=[Depends(require_auth)], response_model=list[TradeListItemPayload], responses={401: {"model": ErrorEnvelope}})
-    @app.get("/trades", dependencies=[Depends(require_auth)], response_model=list[TradeListItemPayload], responses={401: {"model": ErrorEnvelope}})
+    @app.get("/proposals", dependencies=[Depends(require_auth)], response_model=TradeListPagePayload, responses={401: {"model": ErrorEnvelope}})
+    @app.get("/trades", dependencies=[Depends(require_auth)], response_model=TradeListPagePayload, responses={401: {"model": ErrorEnvelope}})
     def list_trades(
         status: str | None = None,
         symbol: str | None = None,
         direction: str | None = None,
         sort_by: str = "proposal_id",
         descending: bool = False,
-        limit: int | None = None,
+        limit: int | None = 10,
         offset: int = 0,
-    ) -> list[TradeListItemPayload]:
-        items = api.list_trades(
+    ) -> TradeListPagePayload:
+        payload = trading_app.backend.list_trades_page_payload(
             TradeListRequest(
                 status=status,
                 symbol=symbol,
@@ -219,7 +220,7 @@ def create_rest_app(*, storage_dir: str | Path | None = None, api_token: str | N
                 offset=offset,
             )
         )
-        return [TradeListItemPayload.model_validate(item) for item in items]
+        return TradeListPagePayload.model_validate(payload)
 
     @app.get("/proposals/{proposal_id}", dependencies=[Depends(require_auth)], response_model=TradeDetailPayload, responses={401: {"model": ErrorEnvelope}, 404: {"model": ErrorEnvelope}})
     @app.get("/trades/{proposal_id}", dependencies=[Depends(require_auth)], response_model=TradeDetailPayload, responses={401: {"model": ErrorEnvelope}, 404: {"model": ErrorEnvelope}})
@@ -249,6 +250,10 @@ def create_rest_app(*, storage_dir: str | Path | None = None, api_token: str | N
     def unhalt_system() -> SessionSummaryPayload:
         trading_app.backend.clear_emergency_halt()
         return SessionSummaryPayload.model_validate(api.session_summary())
+
+    @app.post("/system/clear-safety", dependencies=[Depends(require_auth)], response_model=SessionSummaryPayload, responses={401: {"model": ErrorEnvelope}})
+    def clear_safety() -> SessionSummaryPayload:
+        return SessionSummaryPayload.model_validate(api.clear_safety())
 
     @app.post("/proposals", dependencies=[Depends(require_auth)], response_model=ProposalStoredResponse, responses={401: {"model": ErrorEnvelope}, 400: {"model": ErrorEnvelope}})
     def submit_proposal(payload: ProposalPayload) -> ProposalStoredResponse:

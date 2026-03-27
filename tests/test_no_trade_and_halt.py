@@ -127,6 +127,54 @@ class NoTradeAndHaltTests(unittest.TestCase):
         self.assertIn("New trades blocked", rendered.text)
         self.assertEqual(service.session.proposals.require("proposal_exec_block").status, ProposalStatus.APPROVED_PENDING_EXECUTION_CHECK)
 
+    def test_clear_safety_controls_clears_warning_without_unhalt(self) -> None:
+        service = TradingBackendService.from_session(TradeSessionStore())
+        now = datetime.now(UTC)
+        proposal = TradeProposal(
+            proposal_id="proposal_warn_clear",
+            agent_name="Luma",
+            strategy_id="pullback",
+            strategy_version="v1",
+            market_context_id="ctx_1",
+            symbol="BTC_USDT",
+            timeframe="15m",
+            direction=TradeDirection.LONG,
+            entry_zone_min=99.0,
+            entry_zone_max=100.0,
+            entry_split=[EntrySplitLeg(1, 100.0, 100.0, 1.0, now + timedelta(minutes=10))],
+            stop_loss=99.0,
+            take_profit_1=101.0,
+            take_profit_2=102.0,
+            risk_percent=0.5,
+            risk_usd=5.0,
+            position_size=10.0,
+            confidence_score=0.8,
+            thesis="structure intact",
+            invalidity_condition="swing low breaks",
+            liquidity_check="ok",
+            data_freshness_ms=100,
+            created_at=now,
+            expires_at=now + timedelta(minutes=15),
+            status=ProposalStatus.PENDING_APPROVAL,
+        )
+        service.submit_proposal(proposal)
+        service.run_operator_command(
+            "Mike",
+            "APPROVE proposal_warn_clear",
+            PortfolioState(equity=1000.0, daily_drawdown_pct=1.7),
+            execute_on_approve=False,
+            now=now,
+        )
+        self.assertEqual(service.get_session_summary_payload()["safety_state"], SafetyState.WARNING.value)
+
+        service.clear_safety_controls()
+
+        summary = service.get_session_summary_payload()
+        self.assertEqual(summary["safety_state"], SafetyState.NORMAL.value)
+        self.assertFalse(summary["block_new_trades"])
+        self.assertIsNone(summary["block_reason"])
+        self.assertTrue(any(entry.outcome == "CLEAR_SAFETY" for entry in service.session.operator_transcript.list_entries()))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -111,6 +111,10 @@ def build_parser() -> argparse.ArgumentParser:
     unhalt_parser.add_argument("--storage-dir", type=Path, help="Optional base directory for file-backed session state")
     unhalt_parser.add_argument("--format", choices=("text", "json"), default="text", help="Output format")
 
+    clear_safety_parser = subparsers.add_parser("clear-safety", help="Clear warning/block safety state without touching halt")
+    clear_safety_parser.add_argument("--storage-dir", type=Path, help="Optional base directory for file-backed session state")
+    clear_safety_parser.add_argument("--format", choices=("text", "json"), default="text", help="Output format")
+
     serve_rest_parser = subparsers.add_parser("serve-rest", help="Run optional FastAPI REST bridge")
     serve_rest_parser.add_argument("--storage-dir", type=Path, help="Optional base directory for file-backed session state")
     serve_rest_parser.add_argument("--host", default="127.0.0.1")
@@ -346,6 +350,12 @@ def main() -> int:
 
     if command == "unhalt":
         app.backend.clear_emergency_halt()
+        payload = app.backend.get_session_summary_payload()
+        print(_print_payload(payload, fmt))
+        return 0
+
+    if command == "clear-safety":
+        app.backend.clear_safety_controls()
         payload = app.backend.get_session_summary_payload()
         print(_print_payload(payload, fmt))
         return 0

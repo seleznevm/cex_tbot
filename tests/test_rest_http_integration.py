@@ -196,6 +196,32 @@ class RestHttpIntegrationTests(unittest.TestCase):
         self.assertEqual(detail.status_code, 200)
         self.assertEqual(detail.json()["status"], "APPROVED_PENDING_EXECUTION_CHECK")
 
+    def test_clear_safety_endpoint_clears_warning_state(self) -> None:
+        response = self.client.post("/proposals", json=self.proposal_payload, headers=self.headers)
+        self.assertEqual(response.status_code, 200)
+
+        warned = self.client.post(
+            "/proposals/proposal_http_1/approve",
+            json={
+                "actor": "Mike",
+                "portfolio_equity": 1000.0,
+                "daily_drawdown_pct": 1.7,
+                "execute_on_approve": False,
+                "now": self.now.isoformat(),
+            },
+            headers=self.headers,
+        )
+        self.assertEqual(warned.status_code, 200)
+
+        summary_before = self.client.get("/session/summary", headers=self.headers)
+        self.assertEqual(summary_before.status_code, 200)
+        self.assertEqual(summary_before.json()["safety_state"], "WARNING")
+
+        cleared = self.client.post("/system/clear-safety", json={}, headers=self.headers)
+        self.assertEqual(cleared.status_code, 200)
+        self.assertEqual(cleared.json()["safety_state"], "NORMAL")
+        self.assertFalse(cleared.json()["block_new_trades"])
+
 
 if __name__ == "__main__":
     unittest.main()
