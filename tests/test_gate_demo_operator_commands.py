@@ -44,6 +44,12 @@ class _HealthyDemoClient:
     def positions_snapshot(self) -> list[dict[str, object]]:
         return [{"contract": "BTC_USDT", "size": 1, "entry_price": "100", "mark_price": "101", "unrealised_pnl": "1"}]
 
+    def open_orders(self) -> list[dict[str, object]]:
+        return [{"id": "42", "contract": "BTC_USDT", "size": 1, "price": "100", "status": "open", "tif": "gtc"}]
+
+    def order_status(self, order_id: str) -> dict[str, object]:
+        return {"id": order_id, "contract": "BTC_USDT", "size": 1, "price": "100", "status": "open", "left": 1, "fill_price": None}
+
 
 class GateDemoOperatorCommandTests(unittest.TestCase):
     def test_runtime_and_session_commands(self) -> None:
@@ -84,6 +90,8 @@ class GateDemoOperatorCommandTests(unittest.TestCase):
         self.assertIn("available=1000", dispatcher.dispatch("/demo_account_status").text)
         self.assertIn("Gate demo balance", dispatcher.dispatch("/demo_balance").text)
         self.assertIn("Gate demo positions", dispatcher.dispatch("/demo_positions").text)
+        self.assertIn("Gate demo open orders", dispatcher.dispatch("/demo_open_orders").text)
+        self.assertIn("Gate demo order status", dispatcher.dispatch("/demo_order_status 42").text)
         self.assertIn("BTC_USDT", dispatcher.dispatch("/demo_account_overview").text)
         self.assertIn("Gate demo capabilities", dispatcher.dispatch("/demo_capabilities").text)
 

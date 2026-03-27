@@ -39,6 +39,8 @@ class BotCommandAdapter:
                     "/demo_account_status — Gate demo account status snapshot",
                     "/demo_balance — Gate demo balance snapshot",
                     "/demo_positions — Gate demo positions snapshot",
+                    "/demo_open_orders — Gate demo open orders",
+                    "/demo_order_status <order_id> — Gate demo order status",
                     "/demo_account_overview — Gate demo account + positions overview",
                     "/demo_capabilities — Gate demo runtime capabilities",
                     "/runtime_status — runtime/storage/fetcher status",
@@ -181,10 +183,51 @@ class BotCommandAdapter:
             )
         return BotReply("\n".join(lines))
 
+    def handle_demo_open_orders(self) -> BotReply:
+        if self.app is None or not hasattr(self.app.instrument_fetcher, "client"):
+            return BotReply("Gate demo open orders unavailable: no demo client bound.")
+        client = self.app.instrument_fetcher.client
+        try:
+            orders = client.open_orders()
+        except (NotImplementedError, GateDemoTransportError, MissingGateDemoCredentialsError) as exc:
+            return BotReply(f"Gate demo open orders unavailable: {exc}")
+        if not orders:
+            return BotReply("Gate demo open orders\n- none")
+        lines = ["Gate demo open orders"]
+        for item in orders[:10]:
+            lines.append(
+                f"- {item.get('id')} {item.get('contract')} size={item.get('size')} price={item.get('price')} status={item.get('status')}"
+            )
+        return BotReply("\n".join(lines))
+
+    def handle_demo_order_status(self, order_id: str) -> BotReply:
+        if self.app is None or not hasattr(self.app.instrument_fetcher, "client"):
+            return BotReply("Gate demo order status unavailable: no demo client bound.")
+        client = self.app.instrument_fetcher.client
+        try:
+            item = client.order_status(order_id)
+        except (NotImplementedError, GateDemoTransportError, MissingGateDemoCredentialsError) as exc:
+            return BotReply(f"Gate demo order status unavailable: {exc}")
+        return BotReply(
+            "\n".join(
+                [
+                    "Gate demo order status",
+                    f"- id={item.get('id')}",
+                    f"- contract={item.get('contract')}",
+                    f"- size={item.get('size')}",
+                    f"- price={item.get('price')}",
+                    f"- status={item.get('status')}",
+                    f"- left={item.get('left')}",
+                    f"- fill_price={item.get('fill_price')}",
+                ]
+            )
+        )
+
     def handle_demo_account_overview(self) -> BotReply:
         account = self.handle_demo_account_status().text
         positions = self.handle_demo_positions().text
-        return BotReply(account + "\n\n" + positions)
+        orders = self.handle_demo_open_orders().text
+        return BotReply(account + "\n\n" + positions + "\n\n" + orders)
 
     def handle_demo_capabilities(self) -> BotReply:
         lines = [

@@ -63,18 +63,27 @@ class GateDemoHttpClientTests(unittest.TestCase):
         httpx = __import__("httpx")
 
         def handler(request: httpx.Request) -> httpx.Response:
-            if str(request.url).endswith("/futures/usdt/positions"):
+            url = str(request.url)
+            if url.endswith("/futures/usdt/positions"):
                 return httpx.Response(200, json=[{"contract": "BTC_USDT", "size": 1, "entry_price": "100", "mark_price": "101", "unrealised_pnl": "1", "leverage": "5", "mode": "single"}])
+            if url.endswith("/futures/usdt/orders"):
+                return httpx.Response(200, json=[{"id": "42", "contract": "BTC_USDT", "size": 1, "price": "100", "status": "open", "tif": "gtc"}])
+            if url.endswith("/futures/usdt/orders/42"):
+                return httpx.Response(200, json={"id": "42", "contract": "BTC_USDT", "size": 1, "price": "100", "status": "open", "left": 1, "fill_price": None})
             return httpx.Response(200, json={"currency": "USDT", "available": "1000", "total": "1000"})
 
         transport = httpx.MockTransport(handler)
         client = HttpxGateDemoInstrumentClient("https://demo.gate", transport=transport, gate_demo_key="k", gate_demo_secret="s")
 
         positions = client.positions_snapshot()
+        orders = client.open_orders()
+        order = client.order_status("42")
 
         self.assertEqual(len(positions), 1)
         self.assertEqual(positions[0]["contract"], "BTC_USDT")
         self.assertEqual(positions[0]["unrealised_pnl"], "1")
+        self.assertEqual(orders[0]["id"], "42")
+        self.assertEqual(order["status"], "open")
 
 
 if __name__ == "__main__":

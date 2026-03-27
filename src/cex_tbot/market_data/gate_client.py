@@ -38,6 +38,12 @@ class GateDemoInstrumentClient(Protocol):
     def positions_snapshot(self) -> list[dict[str, object]]:
         ...
 
+    def open_orders(self) -> list[dict[str, object]]:
+        ...
+
+    def order_status(self, order_id: str) -> dict[str, object]:
+        ...
+
 
 @dataclass(frozen=True)
 class StaticGateInstrumentFetcher:
@@ -104,6 +110,16 @@ class UnimplementedGateDemoInstrumentClient:
     def positions_snapshot(self) -> list[dict[str, object]]:
         raise NotImplementedError(
             "Gate demo positions boundary is wired, but no concrete authenticated demo client is installed."
+        )
+
+    def open_orders(self) -> list[dict[str, object]]:
+        raise NotImplementedError(
+            "Gate demo open-orders boundary is wired, but no concrete authenticated demo client is installed."
+        )
+
+    def order_status(self, order_id: str) -> dict[str, object]:
+        raise NotImplementedError(
+            "Gate demo order-status boundary is wired, but no concrete authenticated demo client is installed."
         )
 
 
@@ -218,6 +234,48 @@ class HttpxGateDemoInstrumentClient:
                 }
             )
         return snapshots
+
+    def open_orders(self) -> list[dict[str, object]]:
+        if not self.gate_demo_key or not self.gate_demo_secret:
+            raise MissingGateDemoCredentialsError(
+                "GATE_DEMO_KEY and GATE_DEMO_SECRET are required for demo open orders."
+            )
+        payload = self._get_json("/futures/usdt/orders", error_prefix="Gate demo open orders failed")
+        if not isinstance(payload, list):
+            raise GateDemoTransportError("Gate demo open orders returned non-list payload")
+        orders: list[dict[str, object]] = []
+        for item in payload:
+            if not isinstance(item, dict):
+                continue
+            orders.append(
+                {
+                    "id": item.get("id") or item.get("order_id"),
+                    "contract": item.get("contract") or item.get("name"),
+                    "size": item.get("size"),
+                    "price": item.get("price"),
+                    "status": item.get("status"),
+                    "tif": item.get("tif"),
+                }
+            )
+        return orders
+
+    def order_status(self, order_id: str) -> dict[str, object]:
+        if not self.gate_demo_key or not self.gate_demo_secret:
+            raise MissingGateDemoCredentialsError(
+                "GATE_DEMO_KEY and GATE_DEMO_SECRET are required for demo order status."
+            )
+        payload = self._get_json(f"/futures/usdt/orders/{order_id}", error_prefix="Gate demo order status failed")
+        if not isinstance(payload, dict):
+            raise GateDemoTransportError("Gate demo order status returned non-dict payload")
+        return {
+            "id": payload.get("id") or payload.get("order_id"),
+            "contract": payload.get("contract") or payload.get("name"),
+            "size": payload.get("size"),
+            "price": payload.get("price"),
+            "status": payload.get("status"),
+            "left": payload.get("left"),
+            "fill_price": payload.get("fill_price"),
+        }
 
     def _get_json(self, path: str, *, error_prefix: str) -> Any:
         try:

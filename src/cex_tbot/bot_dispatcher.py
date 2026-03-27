@@ -44,6 +44,12 @@ class BotCommandDispatcher:
             return self.adapter.handle_demo_balance()
         if parsed.name == "demo_positions":
             return self.adapter.handle_demo_positions()
+        if parsed.name == "demo_open_orders":
+            return self.adapter.handle_demo_open_orders()
+        if parsed.name == "demo_order_status":
+            if not parsed.args:
+                return BotReply("Usage: /demo_order_status <order_id>")
+            return self.adapter.handle_demo_order_status(parsed.args[0])
         if parsed.name == "demo_account_overview":
             return self.adapter.handle_demo_account_overview()
         if parsed.name == "demo_capabilities":
