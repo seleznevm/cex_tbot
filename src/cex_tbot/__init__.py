@@ -3,6 +3,7 @@
 from .api_surface import ApiSurface, CommandRequest, ExecuteRequest, ProposalSubmitRequest, TradeListRequest
 from .bot_adapter import BotCommandAdapter, BotReply
 from .bot_dispatcher import BotCommandDispatcher, ParsedBotCommand
+from .openclaw_wrapper import OpenClawInboundMessage, OpenClawOutboundMessage, OpenClawTopicWrapper
 from .transport_bridge import SenderPolicy, TransportCommandBridge, TransportMessage
 from .write_safety import WriteActionArmState
 from .demo import DemoArtifacts, build_demo_proposal, render_demo, run_demo
@@ -52,6 +53,9 @@ __all__ = [
     "BotReply",
     "BotCommandDispatcher",
     "ParsedBotCommand",
+    "OpenClawInboundMessage",
+    "OpenClawOutboundMessage",
+    "OpenClawTopicWrapper",
     "SenderPolicy",
     "TransportCommandBridge",
     "TransportMessage",
