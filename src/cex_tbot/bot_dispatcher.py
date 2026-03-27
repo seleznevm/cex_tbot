@@ -30,6 +30,12 @@ class BotCommandDispatcher:
             return self.adapter.handle_status()
         if parsed.name == "dashboard":
             return self.adapter.handle_dashboard()
+        if parsed.name == "post_analysis":
+            return self.adapter.handle_post_analysis()
+        if parsed.name == "safety":
+            return self.adapter.handle_safety()
+        if parsed.name == "gate_demo_status":
+            return self.adapter.handle_gate_demo_status()
         if parsed.name == "list":
             limit = self._parse_limit(parsed.args)
             return self.adapter.handle_list(limit=limit)
@@ -59,6 +65,8 @@ class BotCommandDispatcher:
             return self.adapter.handle_halt(" ".join(parsed.args))
         if parsed.name == "unhalt":
             return self.adapter.handle_unhalt()
+        if parsed.name == "clear_safety":
+            return self.adapter.handle_clear_safety()
         if parsed.name == "no_trades":
             return self.adapter.handle_no_trades()
         if parsed.name == "seed_demo":
