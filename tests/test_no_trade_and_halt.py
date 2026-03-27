@@ -5,7 +5,7 @@ import unittest
 
 from cex_tbot.backend_service import TradingBackendService
 from cex_tbot.decision_contracts import EntrySplitLeg, NoTradeDecision, TradeProposal
-from cex_tbot.enums import NoTradeReasonCode, ProposalStatus, TradeDirection
+from cex_tbot.enums import NoTradeReasonCode, ProposalStatus, SafetyState, TradeDirection
 from cex_tbot.risk_engine import PortfolioState
 from cex_tbot.session_store import TradeSessionStore
 
@@ -65,7 +65,24 @@ class NoTradeAndHaltTests(unittest.TestCase):
         service.activate_emergency_halt("manual safety stop")
         rendered = service.run_operator_command("Mike", "APPROVE proposal_1", PortfolioState(equity=1000.0), now=now)
         self.assertIn("Emergency halt active", rendered.text)
-        self.assertTrue(service.get_session_summary_payload()["emergency_halt_active"])
+        summary = service.get_session_summary_payload()
+        self.assertTrue(summary["emergency_halt_active"])
+        self.assertEqual(summary["safety_state"], SafetyState.HALTED.value)
+        self.assertTrue(summary["block_new_trades"])
+        self.assertEqual(summary["block_reason"], "manual safety stop")
+
+    def test_auto_block_new_trades_when_daily_drawdown_limit_reached(self) -> None:
+        service = TradingBackendService.from_session(TradeSessionStore())
+        rendered = service.run_operator_command(
+            "Mike",
+            "APPROVE proposal_missing",
+            PortfolioState(equity=1000.0, daily_drawdown_pct=2.0),
+        )
+        self.assertIn("New trades blocked", rendered.text)
+        summary = service.get_session_summary_payload()
+        self.assertEqual(summary["safety_state"], SafetyState.BLOCK_NEW_TRADES.value)
+        self.assertTrue(summary["block_new_trades"])
+        self.assertIn("daily drawdown limit reached", summary["block_reason"])
 
 
 if __name__ == "__main__":

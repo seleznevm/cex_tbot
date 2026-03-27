@@ -17,6 +17,9 @@ class SessionSummary:
     operator_commands: int
     emergency_halt_active: bool
     halt_reason: str | None
+    safety_state: str
+    block_new_trades: bool
+    block_reason: str | None
     proposal_status_breakdown: dict[str, int]
 
     def to_text(self) -> str:
@@ -35,6 +38,10 @@ class SessionSummary:
         ]
         if self.halt_reason:
             lines.append(f"Halt reason: {self.halt_reason}")
+        lines.append(f"Safety state: {self.safety_state}")
+        lines.append(f"Block new trades: {self.block_new_trades}")
+        if self.block_reason:
+            lines.append(f"Block reason: {self.block_reason}")
         for status, count in sorted(self.proposal_status_breakdown.items()):
             lines.append(f"- {status}: {count}")
         return "\n".join(lines)
@@ -60,5 +67,8 @@ class SessionSummaryBuilder:
             operator_commands=len(session.operator_transcript.list_entries()),
             emergency_halt_active=session.system_state.emergency_halt_active,
             halt_reason=session.system_state.halt_reason,
+            safety_state=session.system_state.safety_state.value,
+            block_new_trades=session.system_state.block_new_trades,
+            block_reason=session.system_state.block_reason,
             proposal_status_breakdown=status_breakdown,
         )

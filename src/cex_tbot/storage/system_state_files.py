@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from cex_tbot.enums import SafetyState
 from cex_tbot.system_state import SystemState
 
 
@@ -22,12 +23,26 @@ class FileSystemState(SystemState):
         super().clear_halt()
         self._save()
 
+    def set_block(self, reason: str, *, safety_state=None) -> None:
+        if safety_state is None:
+            super().set_block(reason)
+        else:
+            super().set_block(reason, safety_state=safety_state)
+        self._save()
+
+    def clear_block(self) -> None:
+        super().clear_block()
+        self._save()
+
     def _save(self) -> None:
         self.path.write_text(
             json.dumps(
                 {
                     "emergency_halt_active": self.emergency_halt_active,
                     "halt_reason": self.halt_reason,
+                    "safety_state": self.safety_state.value,
+                    "block_new_trades": self.block_new_trades,
+                    "block_reason": self.block_reason,
                 },
                 ensure_ascii=False,
             ),
@@ -38,3 +53,6 @@ class FileSystemState(SystemState):
         raw = json.loads(self.path.read_text(encoding="utf-8"))
         self.emergency_halt_active = bool(raw.get("emergency_halt_active", False))
         self.halt_reason = raw.get("halt_reason")
+        self.safety_state = SafetyState(raw.get("safety_state", SafetyState.NORMAL.value))
+        self.block_new_trades = bool(raw.get("block_new_trades", False))
+        self.block_reason = raw.get("block_reason")

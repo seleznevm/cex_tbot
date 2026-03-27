@@ -36,6 +36,8 @@ class CliHaltNoTradeTests(unittest.TestCase):
             halted = self._run("halt", "manual-safety-stop", "--storage-dir", storage, "--format", "json")
             halted_payload = json.loads(halted.stdout)
             self.assertTrue(halted_payload["emergency_halt_active"])
+            self.assertTrue(halted_payload["block_new_trades"])
+            self.assertEqual(halted_payload["safety_state"], "HALTED")
 
             submit = self._run("submit-demo", "--storage-dir", storage, "--format", "json")
             proposal_id = json.loads(submit.stdout)["proposal_id"]

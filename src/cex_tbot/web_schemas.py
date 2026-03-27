@@ -193,6 +193,9 @@ class SessionSummaryPayload(BaseModel):
     operator_commands: int
     emergency_halt_active: bool = False
     halt_reason: str | None = None
+    safety_state: str = "NORMAL"
+    block_new_trades: bool = False
+    block_reason: str | None = None
     proposal_status_breakdown: dict[str, int] = Field(default_factory=dict)
 
 

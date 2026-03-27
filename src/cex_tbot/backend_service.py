@@ -12,7 +12,7 @@ from cex_tbot.execution import ExecutionOrchestrator, TradeTimelineBuilder
 from cex_tbot.handoff import ApprovalExecutionHandoff
 from cex_tbot.operator_router import OperatorCommandRouter, RenderedResponse
 from cex_tbot.query_params import TradeQuery
-from cex_tbot.enums import ProposalStatus
+from cex_tbot.enums import ProposalStatus, SafetyState
 from cex_tbot.read_models import QueryService, TradeDetailView, TradeListItem
 from cex_tbot.reporting import TradeReport, TradeReportBuilder
 from cex_tbot.review_cards import ReviewCardBuilder
@@ -99,6 +99,30 @@ class TradingBackendService:
             AuditEntry(actor="system", raw_command=f"UNHALT {previous_reason}", outcome="HALT_OFF")
         )
 
+    def evaluate_stop_conditions(self, portfolio: PortfolioState) -> None:
+        if self.session.system_state.emergency_halt_active:
+            return
+        if portfolio.daily_drawdown_pct >= self.execution.risk_engine.config.max_daily_drawdown_percent:
+            self.session.system_state.set_block(
+                f"daily drawdown limit reached: {portfolio.daily_drawdown_pct:.2f}%",
+                safety_state=SafetyState.BLOCK_NEW_TRADES,
+            )
+            return
+        if portfolio.open_positions_count >= self.execution.risk_engine.config.max_open_positions:
+            self.session.system_state.set_block(
+                f"max open positions reached: {portfolio.open_positions_count}",
+                safety_state=SafetyState.BLOCK_NEW_TRADES,
+            )
+            return
+        projected_reserved = self.execution.risk_engine.pending_risk_book.total_reserved_risk_pct + portfolio.aggregate_open_risk_pct
+        if projected_reserved >= self.execution.risk_engine.config.max_aggregate_open_risk_percent:
+            self.session.system_state.set_block(
+                f"aggregate open risk exhausted: {projected_reserved:.2f}%",
+                safety_state=SafetyState.BLOCK_NEW_TRADES,
+            )
+            return
+        self.session.system_state.clear_block()
+
     def run_operator_command(
         self,
         actor: str,
@@ -110,10 +134,16 @@ class TradingBackendService:
         render_mode: str = "plain",
         now: datetime | None = None,
     ) -> RenderedResponse:
+        self.evaluate_stop_conditions(portfolio)
         if self.session.system_state.emergency_halt_active:
             return RenderedResponse(
                 render_mode,
                 f"Emergency halt active: {self.session.system_state.halt_reason or 'no reason provided'}",
+            )
+        if self.session.system_state.block_new_trades:
+            return RenderedResponse(
+                render_mode,
+                f"New trades blocked: {self.session.system_state.block_reason or 'safety policy active'}",
             )
         return self.router.route(
             actor,
@@ -275,4 +305,5 @@ class TradingBackendService:
                 "recent_items": [item.__dict__.copy() for item in dashboard.operator_activity.recent_items],
             },
             "alerts": {"items": [item.__dict__.copy() for item in dashboard.alerts.items]},
+            "universe": dashboard.universe.__dict__.copy(),
         }
