@@ -90,7 +90,10 @@ class PostAnalysisWidget:
     top_strategy: str | None = None
     top_timeframe: str | None = None
     recent_trade_count: int = 0
+    recent_executed_trades: int = 0
+    recent_rejected_trades: int = 0
     recent_avg_confidence: float = 0.0
+    trend_hint: str | None = None
     latest_hint: str | None = None
 
 
@@ -246,8 +249,11 @@ class DashboardBuilder:
                 top_no_trade_reason=next(iter(analysis.no_trade_reason_counts), None),
                 top_strategy=next(iter(analysis.strategy_activity), None),
                 top_timeframe=next(iter(analysis.timeframe_activity), None),
-                recent_trade_count=len(recent_trade_slice),
-                recent_avg_confidence=recent_avg_conf,
+                recent_trade_count=analysis.recent_trade_count,
+                recent_executed_trades=analysis.recent_executed_trades,
+                recent_rejected_trades=analysis.recent_rejected_trades,
+                recent_avg_confidence=analysis.recent_avg_confidence,
+                trend_hint=analysis.trend_hint,
                 latest_hint=(analysis.calibration_hints[0] if analysis.calibration_hints else None),
             ),
         )

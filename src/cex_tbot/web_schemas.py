@@ -270,7 +270,10 @@ class DashboardPostAnalysisPayload(BaseModel):
     top_strategy: str | None = None
     top_timeframe: str | None = None
     recent_trade_count: int = 0
+    recent_executed_trades: int = 0
+    recent_rejected_trades: int = 0
     recent_avg_confidence: float = 0.0
+    trend_hint: str | None = None
     latest_hint: str | None = None
 
 
@@ -299,6 +302,11 @@ class PostAnalysisPayload(BaseModel):
     timeframe_activity: dict[str, int] = Field(default_factory=dict)
     strategy_activity: dict[str, int] = Field(default_factory=dict)
     outcome_matrix: dict[str, dict[str, int]] = Field(default_factory=dict)
+    recent_trade_count: int = 0
+    recent_executed_trades: int = 0
+    recent_rejected_trades: int = 0
+    recent_avg_confidence: float = 0.0
+    trend_hint: str | None = None
     trade_confidence_buckets: dict[str, int] = Field(default_factory=dict)
     no_trade_confidence_buckets: dict[str, int] = Field(default_factory=dict)
     calibration_hints: list[str] = Field(default_factory=list)

@@ -22,6 +22,11 @@ class PostAnalysisSummary:
     timeframe_activity: dict[str, int]
     strategy_activity: dict[str, int]
     outcome_matrix: dict[str, dict[str, int]]
+    recent_trade_count: int
+    recent_executed_trades: int
+    recent_rejected_trades: int
+    recent_avg_confidence: float
+    trend_hint: str | None
     trade_confidence_buckets: dict[str, int]
     no_trade_confidence_buckets: dict[str, int]
     calibration_hints: list[str]
@@ -57,6 +62,9 @@ class PostAnalysisSummary:
             lines.append("Outcome matrix:")
             for key, value in self.outcome_matrix.items():
                 lines.append(f"- {key}: {value}")
+        lines.append(f"Recent window: trades={self.recent_trade_count} executed={self.recent_executed_trades} rejected={self.recent_rejected_trades} avg_conf={self.recent_avg_confidence:.4f}")
+        if self.trend_hint:
+            lines.append(f"Trend hint: {self.trend_hint}")
         if self.trade_confidence_buckets:
             lines.append("Trade confidence buckets:")
             for key, value in self.trade_confidence_buckets.items():
@@ -138,6 +146,19 @@ class PostAnalysisBuilder:
         avg_conf_executed = round(sum(item.confidence_score for item in executed) / len(executed), 4) if executed else 0.0
         avg_conf_no_trade = round(sum(item.confidence_score for item in no_trades) / len(no_trades), 4) if no_trades else 0.0
 
+        recent_trades = sorted(trades, key=lambda item: item.created_at, reverse=True)[:3]
+        recent_executed = [item for item in recent_trades if item.status == "EXECUTED"]
+        recent_rejected = [item for item in recent_trades if "REJECT" in item.status or item.status in {"INVALIDATED", "EXPIRED", "CANCELLED"}]
+        recent_avg_conf = round(sum(item.confidence_score for item in recent_trades) / len(recent_trades), 4) if recent_trades else 0.0
+        trend_hint = None
+        if recent_trades:
+            if recent_avg_conf > avg_conf_all:
+                trend_hint = "Recent trade confidence is above all-time average."
+            elif recent_avg_conf < avg_conf_all:
+                trend_hint = "Recent trade confidence is below all-time average."
+            else:
+                trend_hint = "Recent trade confidence matches all-time average."
+
         hints: list[str] = []
         if no_trade_reason_counts.get("CONFIDENCE_BELOW_THRESHOLD", 0) >= 3:
             hints.append("Review confidence threshold calibration: frequent low-confidence no-trades detected.")
@@ -177,6 +198,11 @@ class PostAnalysisBuilder:
             timeframe_activity=dict(sorted(timeframe_activity.items(), key=lambda item: (-item[1], item[0]))[:10]),
             strategy_activity=dict(sorted(strategy_activity.items(), key=lambda item: (-item[1], item[0]))[:10]),
             outcome_matrix=dict(sorted(outcome_matrix.items(), key=lambda item: item[0])[:20]),
+            recent_trade_count=len(recent_trades),
+            recent_executed_trades=len(recent_executed),
+            recent_rejected_trades=len(recent_rejected),
+            recent_avg_confidence=recent_avg_conf,
+            trend_hint=trend_hint,
             trade_confidence_buckets=dict(sorted(trade_confidence_buckets.items())),
             no_trade_confidence_buckets=dict(sorted(no_trade_confidence_buckets.items())),
             calibration_hints=hints,

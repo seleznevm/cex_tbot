@@ -98,6 +98,8 @@ class DashboardCompletionTests(unittest.TestCase):
         self.assertEqual(payload["universe"]["eligible_symbols"], ["BTC_USDT"])
         self.assertEqual(payload["post_analysis"]["total_trades"], 1)
         self.assertEqual(payload["post_analysis"]["top_strategy"], "pullback")
+        self.assertEqual(payload["post_analysis"]["recent_trade_count"], 1)
+        self.assertIn("all-time average", payload["post_analysis"]["trend_hint"])
 
 
 if __name__ == "__main__":
