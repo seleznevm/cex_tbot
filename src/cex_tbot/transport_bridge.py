@@ -64,6 +64,11 @@ class TransportCommandBridge:
             if self.audit_transcript is not None:
                 self.audit_transcript.append(AuditEntry(actor=message.sender_id, raw_command='DEMO_ARM', outcome='DEMO_ARMED'))
             return BotReply(f"Demo write actions armed until {expires_at.isoformat()}")
+        if stripped.startswith('/demo_disarm'):
+            self.arm_state.clear()
+            if self.audit_transcript is not None:
+                self.audit_transcript.append(AuditEntry(actor=message.sender_id, raw_command='DEMO_DISARM', outcome='DEMO_DISARMED'))
+            return BotReply('Demo write actions disarmed')
         command = stripped.split()[0]
         if command in _WRITE_COMMANDS:
             if not self.write_sender_policy.is_allowed(message.sender_id):

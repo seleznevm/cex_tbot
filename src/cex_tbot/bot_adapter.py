@@ -44,6 +44,8 @@ class BotCommandAdapter:
                     "/demo_open_orders — Gate demo open orders",
                     "/demo_order_status <order_id> — Gate demo order status",
                     "/demo_arm — arm demo write actions for a short window",
+                    "/demo_disarm — clear demo write arm immediately",
+                    "/demo_status — consolidated demo operator status",
                     "/demo_write_status — current write-arm status",
                     "/demo_audit — recent demo write audit entries",
                     "/demo_place_test_order <contract> <buy|sell> — explicit tiny demo test order",
@@ -90,6 +92,14 @@ class BotCommandAdapter:
 
     def handle_post_analysis(self) -> BotReply:
         return BotReply(self.backend.get_post_analysis_text())
+
+    def handle_demo_status(self) -> BotReply:
+        chunks = [
+            self.handle_demo_capabilities().text,
+            self.handle_demo_write_status().text,
+            self.handle_demo_account_overview().text,
+        ]
+        return BotReply("\n\n".join(chunks))
 
     def handle_demo_write_status(self) -> BotReply:
         if self.write_arm_state is None:
