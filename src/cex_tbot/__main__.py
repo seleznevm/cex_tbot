@@ -104,6 +104,11 @@ def build_parser() -> argparse.ArgumentParser:
     export_post_analysis_parser.add_argument("--format", choices=("text", "json"), default="json", help="Export format")
     export_post_analysis_parser.add_argument("--out", type=Path, help="Optional explicit output path")
 
+    diff_post_analysis_parser = subparsers.add_parser("post-analysis-diff", help="Diff two post-analysis review snapshots")
+    diff_post_analysis_parser.add_argument("--current", type=Path, required=True, help="Current snapshot path")
+    diff_post_analysis_parser.add_argument("--previous", type=Path, help="Previous snapshot path; defaults to prior file in the same directory")
+    diff_post_analysis_parser.add_argument("--format", choices=("text", "json"), default="json", help="Output format")
+
     no_trade_parser = subparsers.add_parser("no-trade-demo", help="Store a deterministic no-trade decision")
     no_trade_parser.add_argument("--storage-dir", type=Path, help="Optional base directory for file-backed session state")
     no_trade_parser.add_argument("--format", choices=("text", "json"), default="text", help="Output format")
@@ -253,6 +258,51 @@ def _default_post_analysis_export_path(storage_dir: Path | None, fmt: str) -> Pa
     return reports_dir / f"post_analysis_{timestamp}.{suffix}"
 
 
+def _resolve_previous_snapshot(current: Path, explicit_previous: Path | None) -> Path:
+    if explicit_previous is not None:
+        return explicit_previous
+    candidates = sorted(path for path in current.parent.glob(current.name.split("_")[0] + "*.json") if path != current)
+    if not candidates:
+        raise FileNotFoundError("No previous snapshot found for diff")
+    return candidates[-1]
+
+
+def _diff_post_analysis_snapshots(current: dict[str, object], previous: dict[str, object]) -> dict[str, object]:
+    keys = [
+        "total_trades",
+        "executed_trades",
+        "rejected_trades",
+        "pending_trades",
+        "no_trade_decisions",
+        "avg_confidence_all",
+        "recent_trade_count",
+        "recent_executed_trades",
+        "recent_rejected_trades",
+        "recent_avg_confidence",
+    ]
+    deltas = {}
+    for key in keys:
+        current_value = current.get(key, 0)
+        previous_value = previous.get(key, 0)
+        if isinstance(current_value, (int, float)) and isinstance(previous_value, (int, float)):
+            deltas[key] = round(current_value - previous_value, 4)
+    hint = None
+    if deltas.get("executed_trades", 0) > 0 and deltas.get("rejected_trades", 0) <= 0:
+        hint = "Execution count improved without additional rejections."
+    elif deltas.get("rejected_trades", 0) > 0:
+        hint = "Rejections increased versus previous snapshot; inspect weak cells and safety filters."
+    elif deltas.get("recent_avg_confidence", 0) > 0:
+        hint = "Recent confidence improved versus previous snapshot."
+    else:
+        hint = "No clear improvement signal versus previous snapshot yet."
+    return {
+        "current_path_metrics": current,
+        "previous_path_metrics": previous,
+        "deltas": deltas,
+        "hint": hint,
+    }
+
+
 def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
@@ -348,6 +398,15 @@ def main() -> int:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(rendered + ("\n" if not rendered.endswith("\n") else ""), encoding="utf-8")
         print(_print_payload({"status": "ok", "path": str(output_path), "format": fmt}, fmt))
+        return 0
+
+    if command == "post-analysis-diff":
+        current_path = args.current
+        previous_path = _resolve_previous_snapshot(current_path, args.previous)
+        current_payload = json.loads(current_path.read_text(encoding="utf-8"))
+        previous_payload = json.loads(previous_path.read_text(encoding="utf-8"))
+        diff_payload = _diff_post_analysis_snapshots(current_payload, previous_payload)
+        print(_print_payload(diff_payload, fmt))
         return 0
 
     if command == "no-trade-demo":

@@ -49,6 +49,23 @@ class Z12CliRestTests(unittest.TestCase):
             exported = json.loads(out_path.read_text(encoding="utf-8"))
             self.assertIn("total_trades", exported)
 
+    def test_post_analysis_diff_compares_snapshots(self) -> None:
+        env = os.environ.copy()
+        env["PYTHONPATH"] = "src"
+        with tempfile.TemporaryDirectory() as tmp:
+            storage = str(Path(tmp) / "runtime")
+            first = Path(tmp) / "first.json"
+            second = Path(tmp) / "second.json"
+            subprocess.run([sys.executable, "-m", "cex_tbot", "submit-demo", "--storage-dir", storage, "--format", "json"], cwd=Path(__file__).resolve().parents[1], check=True, capture_output=True, text=True, env=env)
+            subprocess.run([sys.executable, "-m", "cex_tbot", "post-analysis-export", "--storage-dir", storage, "--format", "json", "--out", str(first)], cwd=Path(__file__).resolve().parents[1], check=True, capture_output=True, text=True, env=env)
+            subprocess.run([sys.executable, "-m", "cex_tbot", "no-trade-demo", "--storage-dir", storage, "--format", "json"], cwd=Path(__file__).resolve().parents[1], check=True, capture_output=True, text=True, env=env)
+            subprocess.run([sys.executable, "-m", "cex_tbot", "post-analysis-export", "--storage-dir", storage, "--format", "json", "--out", str(second)], cwd=Path(__file__).resolve().parents[1], check=True, capture_output=True, text=True, env=env)
+            result = subprocess.run([sys.executable, "-m", "cex_tbot", "post-analysis-diff", "--current", str(second), "--previous", str(first), "--format", "json"], cwd=Path(__file__).resolve().parents[1], check=True, capture_output=True, text=True, env=env)
+            payload = json.loads(result.stdout)
+            self.assertIn("deltas", payload)
+            self.assertEqual(payload["deltas"]["no_trade_decisions"], 1)
+            self.assertIn("hint", payload)
+
 
 if __name__ == "__main__":
     unittest.main()
