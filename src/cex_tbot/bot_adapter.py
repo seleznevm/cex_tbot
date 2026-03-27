@@ -6,7 +6,7 @@ from cex_tbot.backend_service import TradingBackendService
 from cex_tbot.bootstrap import TradingApplication
 from cex_tbot.config import BotConfig
 from cex_tbot.decision_contracts import NoTradeDecision, TradeProposal
-from cex_tbot.exceptions import GateDemoTransportError
+from cex_tbot.exceptions import GateDemoTransportError, MissingGateDemoCredentialsError
 from cex_tbot.query_params import TradeQuery
 from cex_tbot.risk_engine import PortfolioState
 from cex_tbot.shared import utc_now
@@ -36,6 +36,7 @@ class BotCommandAdapter:
                     "/safety — current safety state",
                     "/gate_demo_status — Gate demo transport status",
                     "/demo_health — Gate demo metadata endpoint health",
+                    "/demo_account_status — Gate demo account status snapshot",
                     "/demo_capabilities — Gate demo runtime capabilities",
                     "/runtime_status — runtime/storage/fetcher status",
                     "/session_paths — session storage paths",
@@ -120,14 +121,36 @@ class BotCommandAdapter:
             )
         )
 
+    def handle_demo_account_status(self) -> BotReply:
+        if self.app is None or not hasattr(self.app.instrument_fetcher, "client"):
+            return BotReply("Gate demo account status unavailable: no demo client bound.")
+        client = self.app.instrument_fetcher.client
+        try:
+            payload = client.account_status()
+        except (NotImplementedError, GateDemoTransportError, MissingGateDemoCredentialsError) as exc:
+            return BotReply(f"Gate demo account status unavailable: {exc}")
+        return BotReply(
+            "\n".join(
+                [
+                    "Gate demo account status",
+                    f"- ok={payload.get('ok')}",
+                    f"- endpoint={payload.get('endpoint')}",
+                    f"- currency={payload.get('currency')}",
+                    f"- available={payload.get('available')}",
+                    f"- total={payload.get('total')}",
+                ]
+            )
+        )
+
     def handle_demo_capabilities(self) -> BotReply:
         lines = [
             "Gate demo capabilities",
             f"- execution_mode={self.config.execution_mode}",
             f"- metadata_fetch={'yes' if self.config.execution_mode == 'gate_demo' else 'available via static/local fetchers only'}",
+            f"- account_status={'yes' if bool(self.config.gate_demo_key and self.config.gate_demo_secret) else 'credentials_missing'}",
             "- live_trading=no",
             "- order_placement=no",
-            "- account_sync=no",
+            "- account_sync=read_only_boundary",
         ]
         return BotReply("\n".join(lines))
 

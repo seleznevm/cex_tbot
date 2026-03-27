@@ -26,11 +26,15 @@ class BotConfig:
     max_daily_drawdown_percent: float = 2.0
     max_open_positions: int = 2
     gate_demo_api: str = ""
+    gate_demo_key: str = ""
+    gate_demo_secret: str = ""
 
     def __post_init__(self) -> None:
         normalized_mode = self.execution_mode.strip().lower()
         object.__setattr__(self, "execution_mode", normalized_mode)
         object.__setattr__(self, "gate_demo_api", self.gate_demo_api.strip())
+        object.__setattr__(self, "gate_demo_key", self.gate_demo_key.strip())
+        object.__setattr__(self, "gate_demo_secret", self.gate_demo_secret.strip())
 
         if normalized_mode in _BLOCKED_LIVE_EXECUTION_MODES or (
             "live" in normalized_mode and normalized_mode != "gate_demo"
@@ -64,4 +68,6 @@ def load_config(env: dict[str, str] | None = None) -> BotConfig:
         max_daily_drawdown_percent=float(source.get("CEX_TBOT_MAX_DAILY_DRAWDOWN_PERCENT", "2.0")),
         max_open_positions=int(source.get("CEX_TBOT_MAX_OPEN_POSITIONS", "2")),
         gate_demo_api=source.get("GATE_DEMO_API", ""),
+        gate_demo_key=source.get("GATE_DEMO_KEY", ""),
+        gate_demo_secret=source.get("GATE_DEMO_SECRET", ""),
     )

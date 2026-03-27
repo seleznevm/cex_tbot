@@ -185,6 +185,10 @@ def _build_default_instrument_fetcher(
     gate_demo_client: GateDemoInstrumentClient | None,
 ) -> GateInstrumentFetcher:
     if config.execution_mode == "gate_demo":
-        client = gate_demo_client or HttpxGateDemoInstrumentClient(config.gate_demo_api)
+        client = gate_demo_client or HttpxGateDemoInstrumentClient(
+            config.gate_demo_api,
+            gate_demo_key=config.gate_demo_key,
+            gate_demo_secret=config.gate_demo_secret,
+        )
         return GateDemoInstrumentFetcher(client)
     return StaticGateInstrumentFetcher()

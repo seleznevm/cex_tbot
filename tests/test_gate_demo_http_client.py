@@ -53,6 +53,12 @@ class GateDemoHttpClientTests(unittest.TestCase):
         self.assertEqual(payload["contracts_seen"], 2)
         self.assertIn("/futures/usdt/contracts", payload["endpoint"])
 
+    def test_httpx_gate_demo_client_account_status_requires_credentials(self) -> None:
+        client = HttpxGateDemoInstrumentClient("https://demo.gate")
+
+        with self.assertRaisesRegex(Exception, "GATE_DEMO_KEY and GATE_DEMO_SECRET"):
+            client.account_status()
+
 
 if __name__ == "__main__":
     unittest.main()

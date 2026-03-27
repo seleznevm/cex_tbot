@@ -35,6 +35,9 @@ class _HealthyDemoClient:
     def healthcheck(self) -> dict[str, object]:
         return {"ok": True, "endpoint": "https://demo.gate/futures/usdt/contracts", "contracts_seen": 1}
 
+    def account_status(self) -> dict[str, object]:
+        return {"ok": True, "endpoint": "https://demo.gate/futures/usdt/accounts", "currency": "USDT", "available": "1000", "total": "1000"}
+
 
 class GateDemoOperatorCommandTests(unittest.TestCase):
     def test_runtime_and_session_commands(self) -> None:
@@ -71,6 +74,8 @@ class GateDemoOperatorCommandTests(unittest.TestCase):
 
         self.assertIn("Gate demo health", dispatcher.dispatch("/demo_health").text)
         self.assertIn("contracts_seen=1", dispatcher.dispatch("/demo_health").text)
+        self.assertIn("Gate demo account status", dispatcher.dispatch("/demo_account_status").text)
+        self.assertIn("available=1000", dispatcher.dispatch("/demo_account_status").text)
         self.assertIn("Gate demo capabilities", dispatcher.dispatch("/demo_capabilities").text)
 
 

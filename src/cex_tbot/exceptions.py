@@ -15,3 +15,7 @@ class GateLiveModeBlockedError(GateDemoTransportError):
 
 class GateDemoDependencyError(GateDemoTransportError):
     """Raised when optional HTTP client dependencies for demo transport are unavailable."""
+
+
+class MissingGateDemoCredentialsError(GateDemoTransportError):
+    """Raised when account-level Gate demo actions are requested without full credentials."""

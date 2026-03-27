@@ -10,6 +10,8 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(cfg.whitelist_size, 20)
         self.assertEqual(cfg.execution_mode, "paper_sim")
         self.assertEqual(cfg.gate_demo_api, "")
+        self.assertEqual(cfg.gate_demo_key, "")
+        self.assertEqual(cfg.gate_demo_secret, "")
 
     def test_env_override(self) -> None:
         cfg = load_config(
@@ -17,11 +19,15 @@ class ConfigTests(unittest.TestCase):
                 "CEX_TBOT_WHITELIST_SIZE": "10",
                 "CEX_TBOT_EXECUTION_MODE": "dry_run",
                 "GATE_DEMO_API": "demo-secret-placeholder",
+                "GATE_DEMO_KEY": "demo-key",
+                "GATE_DEMO_SECRET": "demo-secret",
             }
         )
         self.assertEqual(cfg.whitelist_size, 10)
         self.assertEqual(cfg.execution_mode, "dry_run")
         self.assertEqual(cfg.gate_demo_api, "demo-secret-placeholder")
+        self.assertEqual(cfg.gate_demo_key, "demo-key")
+        self.assertEqual(cfg.gate_demo_secret, "demo-secret")
 
     def test_gate_demo_requires_demo_api(self) -> None:
         with self.assertRaisesRegex(MissingGateDemoApiError, "GATE_DEMO_API"):

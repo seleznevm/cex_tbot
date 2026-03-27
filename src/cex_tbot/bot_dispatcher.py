@@ -38,6 +38,8 @@ class BotCommandDispatcher:
             return self.adapter.handle_gate_demo_status()
         if parsed.name == "demo_health":
             return self.adapter.handle_demo_health()
+        if parsed.name == "demo_account_status":
+            return self.adapter.handle_demo_account_status()
         if parsed.name == "demo_capabilities":
             return self.adapter.handle_demo_capabilities()
         if parsed.name == "runtime_status":
