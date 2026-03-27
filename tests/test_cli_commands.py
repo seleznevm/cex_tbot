@@ -11,13 +11,13 @@ from datetime import datetime, UTC, timedelta
 
 
 class CliCommandTests(unittest.TestCase):
-    def _run(self, tmp: str, *args: str) -> subprocess.CompletedProcess[str]:
+    def _run(self, tmp: str, *args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
         env = os.environ.copy()
         env["PYTHONPATH"] = "src"
         return subprocess.run(
             [sys.executable, "-m", "cex_tbot", *args],
             cwd=Path(__file__).resolve().parents[1],
-            check=True,
+            check=check,
             capture_output=True,
             text=True,
             env=env,
@@ -143,6 +143,26 @@ class CliCommandTests(unittest.TestCase):
             payload = json.loads(result.stdout)
             self.assertEqual(payload["proposal_id"], "proposal_file_live_1")
             self.assertIn("/approve proposal_file_live_1", payload["text"])
+
+    def test_submit_and_emit_print_contract(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            result = self._run(tmp, "submit-and-emit", "--print-contract")
+            self.assertIn("Proposal JSON contract", result.stdout)
+            self.assertIn("confidence_score: 0..1", result.stdout)
+
+    def test_submit_and_emit_validation_error(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            storage = str(Path(tmp) / "runtime")
+            proposal_path = Path(tmp) / "bad_proposal.json"
+            proposal_path.write_text(json.dumps({
+                "proposal_id": "bad_1",
+                "agent_name": "Luma",
+                "direction": "UP",
+                "entry_split": []
+            }), encoding="utf-8")
+            result = self._run(tmp, "submit-and-emit", str(proposal_path), "--storage-dir", storage, check=False)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("Invalid proposal JSON", result.stdout or result.stderr)
 
 
 if __name__ == "__main__":

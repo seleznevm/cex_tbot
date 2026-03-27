@@ -12,6 +12,7 @@ from cex_tbot.demo import build_demo_proposal, render_demo
 from cex_tbot.enums import NoTradeReasonCode, ProposalStatus, TradeDirection
 from cex_tbot.openclaw_wrapper import OpenClawTopicWrapper
 from cex_tbot.topic_producer import TopicProposalProducer
+from cex_tbot.proposal_contract import proposal_contract_text, validate_proposal_payload
 from cex_tbot.rest_api import RestApiDependencyError, create_rest_app
 from cex_tbot.shared import utc_now
 
@@ -154,11 +155,12 @@ def build_parser() -> argparse.ArgumentParser:
     submit_and_emit_parser.add_argument("--thread-id", default="7", help="Target thread/topic id for rendered outbound payload")
 
     submit_and_emit_file_parser = subparsers.add_parser("submit-and-emit", help="Submit proposal JSON through same-topic producer")
-    submit_and_emit_file_parser.add_argument("proposal_file", type=Path, help="Path to proposal JSON file")
+    submit_and_emit_file_parser.add_argument("proposal_file", type=Path, nargs="?", help="Path to proposal JSON file")
     submit_and_emit_file_parser.add_argument("--storage-dir", type=Path, help="Optional base directory for file-backed session state")
     submit_and_emit_file_parser.add_argument("--format", choices=("text", "json"), default="text", help="Output format")
     submit_and_emit_file_parser.add_argument("--chat-id", default="telegram:-1003832858724", help="Target chat id for rendered outbound payload")
     submit_and_emit_file_parser.add_argument("--thread-id", default="7", help="Target thread/topic id for rendered outbound payload")
+    submit_and_emit_file_parser.add_argument("--print-contract", action="store_true", help="Print expected JSON contract and exit")
 
     serve_rest_parser = subparsers.add_parser("serve-rest", help="Run optional FastAPI REST bridge")
     serve_rest_parser.add_argument("--storage-dir", type=Path, help="Optional base directory for file-backed session state")
@@ -295,6 +297,9 @@ def render_demo_audit_report(app) -> str:
 
 def load_proposal_from_json(path: Path) -> TradeProposal:
     payload = json.loads(path.read_text(encoding="utf-8"))
+    validation = validate_proposal_payload(payload)
+    if not validation.ok:
+        raise ValueError("Invalid proposal JSON: " + "; ".join(validation.errors))
     entry_split = [
         EntrySplitLeg(
             leg_number=int(item["leg_number"]),
@@ -580,8 +585,18 @@ def main() -> int:
         return 0
 
     if command in {"emit-demo-proposal", "submit-and-emit-demo", "submit-and-emit"}:
+        if command == "submit-and-emit" and getattr(args, "print_contract", False):
+            print(proposal_contract_text())
+            return 0
         if command == "submit-and-emit":
-            proposal = load_proposal_from_json(args.proposal_file)
+            if args.proposal_file is None:
+                print("Usage: submit-and-emit <proposal_file.json> [--print-contract]")
+                return 2
+            try:
+                proposal = load_proposal_from_json(args.proposal_file)
+            except ValueError as exc:
+                print(str(exc))
+                return 2
             chat_id = args.chat_id
             thread_id = args.thread_id
         else:
