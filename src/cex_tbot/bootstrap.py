@@ -25,6 +25,7 @@ from cex_tbot.read_models import QueryService
 from cex_tbot.reporting import TradeReportBuilder
 from cex_tbot.review_cards import ReviewCardBuilder
 from cex_tbot.risk_engine import PendingRiskBook, RiskEngine
+from cex_tbot.safety_controls import SafetyController
 from cex_tbot.serializers import ApiSerializer
 from cex_tbot.session_store import TradeSessionStore
 from cex_tbot.session_summary import SessionSummaryBuilder
@@ -107,6 +108,7 @@ def build_app(
         universe_repository=universe_repository,
     )
     summary_builder = SessionSummaryBuilder()
+    safety_controller = SafetyController(resolved_session.system_state, resolved_session.operator_transcript, risk_engine)
     backend = TradingBackendService(
         session=resolved_session,
         approval_flow=approval_flow,
@@ -120,6 +122,7 @@ def build_app(
         query_service=query_service,
         serializer=serializer,
         dashboard_builder=dashboard_builder,
+        safety_controller=safety_controller,
     )
     api = ApiSurface(backend)
     market_data_service = MarketDataService()

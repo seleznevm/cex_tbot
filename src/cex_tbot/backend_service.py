@@ -17,6 +17,7 @@ from cex_tbot.read_models import QueryService, TradeDetailView, TradeListItem
 from cex_tbot.reporting import TradeReport, TradeReportBuilder
 from cex_tbot.review_cards import ReviewCardBuilder
 from cex_tbot.risk_engine import PortfolioState, RiskEngine
+from cex_tbot.safety_controls import SafetyController
 from cex_tbot.serializers import ApiSerializer
 from cex_tbot.session_store import TradeSessionStore
 from cex_tbot.session_summary import SessionSummary, SessionSummaryBuilder
@@ -39,6 +40,7 @@ class TradingBackendService:
     query_service: QueryService
     serializer: ApiSerializer
     dashboard_builder: DashboardBuilder
+    safety_controller: SafetyController
 
     @classmethod
     def from_session(
@@ -60,6 +62,7 @@ class TradingBackendService:
         )
         workflow = TradeWorkflowService(approval_flow, ApprovalExecutionHandoff(approval_flow, execution), timeline_builder, report_builder, review_cards)
         router = OperatorCommandRouter(workflow, approval_flow, transcript=session.operator_transcript)
+        safety_controller = SafetyController(session.system_state, session.operator_transcript, execution.risk_engine)
         return cls(
             session=session,
             approval_flow=approval_flow,
@@ -78,6 +81,7 @@ class TradingBackendService:
                 config=(risk_engine.config if risk_engine is not None else BotConfig()),
                 pending_risk_book=((risk_engine.pending_risk_book) if risk_engine is not None else None),
             ),
+            safety_controller=safety_controller,
         )
 
     def submit_proposal(self, proposal: TradeProposal) -> TradeProposal:
@@ -100,82 +104,10 @@ class TradingBackendService:
         )
 
     def clear_safety_controls(self) -> None:
-        if self.session.system_state.emergency_halt_active:
-            self.session.operator_transcript.append(
-                AuditEntry(actor="system", raw_command="CLEAR_SAFETY_SKIPPED", outcome="CLEAR_SAFETY_SKIPPED")
-            )
-            return
-        had_block = self.session.system_state.block_new_trades
-        had_warning = self.session.system_state.safety_state == SafetyState.WARNING
-        self.session.system_state.clear_block()
-        self.session.system_state.clear_warning()
-        if had_block or had_warning:
-            self.session.operator_transcript.append(
-                AuditEntry(actor="system", raw_command="CLEAR_SAFETY", outcome="CLEAR_SAFETY")
-            )
+        self.safety_controller.clear_safety_controls()
 
     def evaluate_stop_conditions(self, portfolio: PortfolioState) -> None:
-        if self.session.system_state.emergency_halt_active:
-            return
-
-        previous_block = self.session.system_state.block_reason if self.session.system_state.block_new_trades else None
-        previous_warning = self.session.system_state.block_reason if self.session.system_state.safety_state == SafetyState.WARNING else None
-
-        def apply_block(reason: str) -> None:
-            self.session.system_state.set_block(
-                reason,
-                safety_state=SafetyState.BLOCK_NEW_TRADES,
-            )
-            if previous_block != reason:
-                self.session.operator_transcript.append(
-                    AuditEntry(actor="system", raw_command=f"AUTO_BLOCK {reason}", outcome="AUTO_BLOCK_ON")
-                )
-
-        def apply_warning(reason: str) -> None:
-            self.session.system_state.set_warning(reason)
-            if previous_warning != reason:
-                self.session.operator_transcript.append(
-                    AuditEntry(actor="system", raw_command=f"AUTO_WARNING {reason}", outcome="AUTO_WARNING_ON")
-                )
-
-        max_drawdown = self.execution.risk_engine.config.max_daily_drawdown_percent
-        max_positions = self.execution.risk_engine.config.max_open_positions
-        max_risk = self.execution.risk_engine.config.max_aggregate_open_risk_percent
-        projected_reserved = self.execution.risk_engine.pending_risk_book.total_reserved_risk_pct + portfolio.aggregate_open_risk_pct
-
-        if portfolio.daily_drawdown_pct >= max_drawdown:
-            apply_block(f"daily drawdown limit reached: {portfolio.daily_drawdown_pct:.2f}%")
-            return
-        if portfolio.open_positions_count >= max_positions:
-            apply_block(f"max open positions reached: {portfolio.open_positions_count}")
-            return
-        if projected_reserved >= max_risk:
-            apply_block(f"aggregate open risk exhausted: {projected_reserved:.2f}%")
-            return
-
-        warning_reason = None
-        if max_drawdown > 0 and portfolio.daily_drawdown_pct >= max_drawdown * 0.8:
-            warning_reason = f"daily drawdown nearing limit: {portfolio.daily_drawdown_pct:.2f}%"
-        elif max_positions > 1 and portfolio.open_positions_count >= max_positions - 1:
-            warning_reason = f"open positions near limit: {portfolio.open_positions_count}/{max_positions}"
-        elif max_risk > 0 and projected_reserved >= max_risk * 0.8:
-            warning_reason = f"aggregate open risk nearing cap: {projected_reserved:.2f}%"
-
-        if self.session.system_state.block_new_trades:
-            self.session.operator_transcript.append(
-                AuditEntry(actor="system", raw_command="AUTO_BLOCK_CLEAR", outcome="AUTO_BLOCK_OFF")
-            )
-        self.session.system_state.clear_block()
-
-        if warning_reason is not None:
-            apply_warning(warning_reason)
-            return
-
-        if self.session.system_state.safety_state == SafetyState.WARNING:
-            self.session.operator_transcript.append(
-                AuditEntry(actor="system", raw_command="AUTO_WARNING_CLEAR", outcome="AUTO_WARNING_OFF")
-            )
-        self.session.system_state.clear_warning()
+        self.safety_controller.evaluate(portfolio)
 
     def run_operator_command(
         self,
