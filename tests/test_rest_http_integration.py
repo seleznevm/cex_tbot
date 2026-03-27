@@ -163,6 +163,39 @@ class RestHttpIntegrationTests(unittest.TestCase):
         self.assertFalse(dashboard_after.json()["risk"]["emergency_halt_active"])
         self.assertIsNone(dashboard_after.json()["risk"]["halt_reason"])
 
+    def test_execute_endpoint_is_blocked_by_stop_conditions(self) -> None:
+        response = self.client.post("/proposals", json=self.proposal_payload, headers=self.headers)
+        self.assertEqual(response.status_code, 200)
+
+        approved = self.client.post(
+            "/proposals/proposal_http_1/approve",
+            json={
+                "actor": "Mike",
+                "portfolio_equity": 1000.0,
+                "execute_on_approve": False,
+                "now": self.now.isoformat(),
+            },
+            headers=self.headers,
+        )
+        self.assertEqual(approved.status_code, 200)
+
+        executed = self.client.post(
+            "/trades/proposal_http_1/execute",
+            json={
+                "actor": "Mike",
+                "portfolio_equity": 1000.0,
+                "daily_drawdown_pct": 2.0,
+                "now": self.now.isoformat(),
+            },
+            headers=self.headers,
+        )
+        self.assertEqual(executed.status_code, 200)
+        self.assertIn("New trades blocked", executed.json()["text"])
+
+        detail = self.client.get("/proposals/proposal_http_1", headers=self.headers)
+        self.assertEqual(detail.status_code, 200)
+        self.assertEqual(detail.json()["status"], "APPROVED_PENDING_EXECUTION_CHECK")
+
 
 if __name__ == "__main__":
     unittest.main()

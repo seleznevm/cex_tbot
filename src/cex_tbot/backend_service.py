@@ -226,10 +226,16 @@ class TradingBackendService:
         render_mode: str = "plain",
         now: datetime | None = None,
     ) -> RenderedResponse:
+        self.evaluate_stop_conditions(portfolio)
         if self.session.system_state.emergency_halt_active:
             return RenderedResponse(
                 render_mode,
                 f"Emergency halt active: {self.session.system_state.halt_reason or 'no reason provided'}",
+            )
+        if self.session.system_state.block_new_trades:
+            return RenderedResponse(
+                render_mode,
+                f"New trades blocked: {self.session.system_state.block_reason or 'safety policy active'}",
             )
         proposal = self.session.proposals.require(proposal_id)
         if proposal.status != ProposalStatus.APPROVED_PENDING_EXECUTION_CHECK:

@@ -86,6 +86,47 @@ class NoTradeAndHaltTests(unittest.TestCase):
         entries = service.session.operator_transcript.list_entries()
         self.assertTrue(any(entry.outcome == "AUTO_BLOCK_ON" for entry in entries))
 
+    def test_auto_block_also_blocks_direct_execute_path(self) -> None:
+        session = TradeSessionStore()
+        service = TradingBackendService.from_session(session)
+        now = datetime.now(UTC)
+        proposal = TradeProposal(
+            proposal_id="proposal_exec_block",
+            agent_name="Luma",
+            strategy_id="pullback",
+            strategy_version="v1",
+            market_context_id="ctx_1",
+            symbol="BTC_USDT",
+            timeframe="15m",
+            direction=TradeDirection.LONG,
+            entry_zone_min=99.0,
+            entry_zone_max=100.0,
+            entry_split=[EntrySplitLeg(1, 100.0, 100.0, 1.0, now + timedelta(minutes=10))],
+            stop_loss=99.0,
+            take_profit_1=101.0,
+            take_profit_2=102.0,
+            risk_percent=0.5,
+            risk_usd=5.0,
+            position_size=10.0,
+            confidence_score=0.8,
+            thesis="structure intact",
+            invalidity_condition="swing low breaks",
+            liquidity_check="ok",
+            data_freshness_ms=100,
+            created_at=now,
+            expires_at=now + timedelta(minutes=15),
+            status=ProposalStatus.APPROVED_PENDING_EXECUTION_CHECK,
+        )
+        service.submit_proposal(proposal)
+        rendered = service.execute_approved_proposal(
+            "proposal_exec_block",
+            PortfolioState(equity=1000.0, daily_drawdown_pct=2.0),
+            actor="Mike",
+            now=now,
+        )
+        self.assertIn("New trades blocked", rendered.text)
+        self.assertEqual(service.session.proposals.require("proposal_exec_block").status, ProposalStatus.APPROVED_PENDING_EXECUTION_CHECK)
+
 
 if __name__ == "__main__":
     unittest.main()
