@@ -9,12 +9,12 @@ from cex_tbot.risk_engine import PendingRiskBook, PortfolioState, RiskEngine
 from cex_tbot.session_store import TradeSessionStore
 
 
-class Z11DashboardAlertTests(unittest.TestCase):
-    def test_dashboard_exposes_stop_condition_alert_code(self) -> None:
+class Z11WarningStateTests(unittest.TestCase):
+    def test_warning_state_is_exposed_before_block(self) -> None:
         session = TradeSessionStore()
         now = datetime.now(UTC)
         proposal = TradeProposal(
-            proposal_id="proposal_z11_1",
+            proposal_id="proposal_warn_1",
             agent_name="Luma",
             strategy_id="pullback",
             strategy_version="v1",
@@ -46,17 +46,20 @@ class Z11DashboardAlertTests(unittest.TestCase):
 
         service.run_operator_command(
             "Mike",
-            "APPROVE proposal_z11_1",
-            PortfolioState(equity=1000.0, daily_drawdown_pct=2.0),
+            "APPROVE proposal_warn_1",
+            PortfolioState(equity=1000.0, daily_drawdown_pct=1.7),
             now=now,
         )
 
+        summary = service.get_session_summary_payload()
         dashboard = service.get_dashboard_payload()
+        entries = service.session.operator_transcript.list_entries()
 
-        self.assertEqual(dashboard["risk"]["safety_state"], "BLOCK_NEW_TRADES")
-        self.assertTrue(dashboard["risk"]["block_new_trades"])
-        self.assertTrue(any(item["code"] == "STOP_DAILY_DRAWDOWN" for item in dashboard["alerts"]["items"]))
-        self.assertTrue(any(item["outcome"] == "AUTO_BLOCK_ON" for item in dashboard["operator_activity"]["recent_items"]))
+        self.assertEqual(summary["safety_state"], SafetyState.WARNING.value)
+        self.assertFalse(summary["block_new_trades"])
+        self.assertIn("daily drawdown nearing limit", summary["block_reason"])
+        self.assertTrue(any(item["code"] == "WARN_DAILY_DRAWDOWN" for item in dashboard["alerts"]["items"]))
+        self.assertTrue(any(entry.outcome == "AUTO_WARNING_ON" for entry in entries))
 
 
 if __name__ == "__main__":

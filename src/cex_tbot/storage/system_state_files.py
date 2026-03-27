@@ -34,6 +34,14 @@ class FileSystemState(SystemState):
         super().clear_block()
         self._save()
 
+    def set_warning(self, reason: str) -> None:
+        super().set_warning(reason)
+        self._save()
+
+    def clear_warning(self) -> None:
+        super().clear_warning()
+        self._save()
+
     def _save(self) -> None:
         self.path.write_text(
             json.dumps(

@@ -37,3 +37,13 @@ class SystemState:
             self.block_new_trades = False
             self.block_reason = None
             self.safety_state = SafetyState.NORMAL
+
+    def set_warning(self, reason: str) -> None:
+        if not self.emergency_halt_active and not self.block_new_trades:
+            self.safety_state = SafetyState.WARNING
+            self.block_reason = reason
+
+    def clear_warning(self) -> None:
+        if not self.emergency_halt_active and not self.block_new_trades and self.safety_state == SafetyState.WARNING:
+            self.safety_state = SafetyState.NORMAL
+            self.block_reason = None

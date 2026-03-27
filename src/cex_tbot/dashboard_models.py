@@ -137,6 +137,17 @@ class DashboardBuilder:
             else:
                 code = "STOP_CONDITION_ACTIVE"
             alerts.append(AlertItem(level="critical", code=code, message=f"New trades blocked: {block_reason}"))
+        elif summary.safety_state == "WARNING" and summary.block_reason:
+            warning_reason = summary.block_reason
+            if "daily drawdown nearing limit" in warning_reason:
+                code = "WARN_DAILY_DRAWDOWN"
+            elif "open positions near limit" in warning_reason:
+                code = "WARN_MAX_OPEN_POSITIONS"
+            elif "aggregate open risk nearing cap" in warning_reason:
+                code = "WARN_AGGREGATE_RISK"
+            else:
+                code = "WARNING_ACTIVE"
+            alerts.append(AlertItem(level="warning", code=code, message=warning_reason))
         if pending_approvals > 0:
             alerts.append(AlertItem(level="warning", code="PENDING_APPROVALS", message=f"{pending_approvals} proposal(s) waiting for approval"))
         if trades and free_risk <= 0.0:

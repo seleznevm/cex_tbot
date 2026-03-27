@@ -103,7 +103,8 @@ class TradingBackendService:
         if self.session.system_state.emergency_halt_active:
             return
 
-        previous_block = self.session.system_state.block_reason
+        previous_block = self.session.system_state.block_reason if self.session.system_state.block_new_trades else None
+        previous_warning = self.session.system_state.block_reason if self.session.system_state.safety_state == SafetyState.WARNING else None
 
         def apply_block(reason: str) -> None:
             self.session.system_state.set_block(
@@ -115,21 +116,51 @@ class TradingBackendService:
                     AuditEntry(actor="system", raw_command=f"AUTO_BLOCK {reason}", outcome="AUTO_BLOCK_ON")
                 )
 
-        if portfolio.daily_drawdown_pct >= self.execution.risk_engine.config.max_daily_drawdown_percent:
+        def apply_warning(reason: str) -> None:
+            self.session.system_state.set_warning(reason)
+            if previous_warning != reason:
+                self.session.operator_transcript.append(
+                    AuditEntry(actor="system", raw_command=f"AUTO_WARNING {reason}", outcome="AUTO_WARNING_ON")
+                )
+
+        max_drawdown = self.execution.risk_engine.config.max_daily_drawdown_percent
+        max_positions = self.execution.risk_engine.config.max_open_positions
+        max_risk = self.execution.risk_engine.config.max_aggregate_open_risk_percent
+        projected_reserved = self.execution.risk_engine.pending_risk_book.total_reserved_risk_pct + portfolio.aggregate_open_risk_pct
+
+        if portfolio.daily_drawdown_pct >= max_drawdown:
             apply_block(f"daily drawdown limit reached: {portfolio.daily_drawdown_pct:.2f}%")
             return
-        if portfolio.open_positions_count >= self.execution.risk_engine.config.max_open_positions:
+        if portfolio.open_positions_count >= max_positions:
             apply_block(f"max open positions reached: {portfolio.open_positions_count}")
             return
-        projected_reserved = self.execution.risk_engine.pending_risk_book.total_reserved_risk_pct + portfolio.aggregate_open_risk_pct
-        if projected_reserved >= self.execution.risk_engine.config.max_aggregate_open_risk_percent:
+        if projected_reserved >= max_risk:
             apply_block(f"aggregate open risk exhausted: {projected_reserved:.2f}%")
             return
+
+        warning_reason = None
+        if max_drawdown > 0 and portfolio.daily_drawdown_pct >= max_drawdown * 0.8:
+            warning_reason = f"daily drawdown nearing limit: {portfolio.daily_drawdown_pct:.2f}%"
+        elif max_positions > 1 and portfolio.open_positions_count >= max_positions - 1:
+            warning_reason = f"open positions near limit: {portfolio.open_positions_count}/{max_positions}"
+        elif max_risk > 0 and projected_reserved >= max_risk * 0.8:
+            warning_reason = f"aggregate open risk nearing cap: {projected_reserved:.2f}%"
+
         if self.session.system_state.block_new_trades:
             self.session.operator_transcript.append(
                 AuditEntry(actor="system", raw_command="AUTO_BLOCK_CLEAR", outcome="AUTO_BLOCK_OFF")
             )
         self.session.system_state.clear_block()
+
+        if warning_reason is not None:
+            apply_warning(warning_reason)
+            return
+
+        if self.session.system_state.safety_state == SafetyState.WARNING:
+            self.session.operator_transcript.append(
+                AuditEntry(actor="system", raw_command="AUTO_WARNING_CLEAR", outcome="AUTO_WARNING_OFF")
+            )
+        self.session.system_state.clear_warning()
 
     def run_operator_command(
         self,
