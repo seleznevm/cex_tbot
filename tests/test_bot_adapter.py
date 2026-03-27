@@ -69,6 +69,7 @@ class BotAdapterTests(unittest.TestCase):
         )
 
         approved = adapter.handle_approve("proposal_1")
+        rejected = adapter.handle_reject("proposal_1")
         report = adapter.handle_report("proposal_1")
         detail = adapter.handle_detail("proposal_1")
         post_analysis = adapter.handle_post_analysis()
@@ -76,6 +77,7 @@ class BotAdapterTests(unittest.TestCase):
 
         self.assertEqual(approved.parse_mode, "Markdown")
         self.assertIn("Approval processed for proposal_1", approved.text)
+        self.assertIn("Reject processed for proposal_1", rejected.text)
         self.assertEqual(report.parse_mode, "Markdown")
         self.assertIn("Report for proposal_1", report.text)
         self.assertIn("**Trade Report", report.text)
