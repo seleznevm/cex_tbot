@@ -7,7 +7,7 @@ from cex_tbot.bootstrap import build_app
 from cex_tbot.bot_adapter import BotCommandAdapter
 from cex_tbot.bot_dispatcher import BotCommandDispatcher
 from cex_tbot.config import BotConfig
-from cex_tbot.market_data import GateDemoInstrumentFetcher, GateInstrumentRecord, StaticGateInstrumentFetcher
+from cex_tbot.market_data import GateInstrumentRecord
 
 
 @dataclass(frozen=True)
