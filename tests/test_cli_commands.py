@@ -88,6 +88,7 @@ class CliCommandTests(unittest.TestCase):
             storage = str(Path(tmp) / "runtime")
             result = self._run(tmp, "emit-demo-proposal", "--storage-dir", storage)
             self.assertIn("Trade approval request", result.stdout)
+            self.assertIn("BTC_USDT LONG · 15m", result.stdout)
             self.assertIn("/approve proposal_topic_demo_btc", result.stdout)
 
 

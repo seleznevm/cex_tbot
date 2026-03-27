@@ -55,18 +55,14 @@ class OpenClawTopicWrapper:
     def render_approval_request(self, proposal: TradeProposal, *, chat_id: str | None = None, thread_id: str | None = None) -> OpenClawOutboundMessage:
         lines = [
             "Trade approval request",
-            f"- proposal_id={proposal.proposal_id}",
-            f"- symbol={proposal.symbol}",
-            f"- side={proposal.direction.value}",
-            f"- timeframe={proposal.timeframe}",
-            f"- entry={proposal.entry_zone_min}..{proposal.entry_zone_max}",
-            f"- stop_loss={proposal.stop_loss}",
-            f"- take_profit_1={proposal.take_profit_1}",
-            f"- take_profit_2={proposal.take_profit_2}",
-            f"- confidence={proposal.confidence_score}",
-            f"- risk_percent={proposal.risk_percent}",
-            f"- thesis={proposal.thesis}",
-            "- actions=/approve {id} | /reject {id} | /report {id}".format(id=proposal.proposal_id),
+            f"{proposal.symbol} {proposal.direction.value} · {proposal.timeframe}",
+            f"proposal_id={proposal.proposal_id}",
+            f"entry {proposal.entry_zone_min}..{proposal.entry_zone_max} | sl {proposal.stop_loss} | tp1 {proposal.take_profit_1} | tp2 {proposal.take_profit_2}",
+            f"confidence {proposal.confidence_score} | risk {proposal.risk_percent}%",
+            f"thesis: {proposal.thesis}",
+            f"/approve {proposal.proposal_id}",
+            f"/reject {proposal.proposal_id}",
+            f"/report {proposal.proposal_id}",
         ]
         return OpenClawOutboundMessage(
             text="\n".join(lines),

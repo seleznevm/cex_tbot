@@ -72,6 +72,8 @@ class OpenClawWrapperTests(unittest.TestCase):
         outbound = wrapper.render_approval_request(proposal)
 
         self.assertIn("Trade approval request", outbound.text)
+        self.assertIn("BTC_USDT LONG · 15m", outbound.text)
+        self.assertIn("proposal_id=proposal_topic_1", outbound.text)
         self.assertIn("/approve proposal_topic_1", outbound.text)
         self.assertEqual(outbound.chat_id, "telegram:-100")
         self.assertEqual(outbound.thread_id, "7")
