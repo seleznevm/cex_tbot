@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from cex_tbot.audit import AuditEntry
 from cex_tbot.backend_service import TradingBackendService
@@ -11,6 +11,7 @@ from cex_tbot.exceptions import GateDemoTransportError, MissingGateDemoCredentia
 from cex_tbot.query_params import TradeQuery
 from cex_tbot.risk_engine import PortfolioState
 from cex_tbot.shared import utc_now
+from cex_tbot.enums import ProposalStatus
 
 
 @dataclass(frozen=True)
@@ -428,7 +429,8 @@ class BotCommandAdapter:
         return BotReply("\n".join(lines))
 
     def handle_report(self, proposal_id: str) -> BotReply:
-        return BotReply(self.backend.get_trade_report_text(proposal_id, render_mode="telegram"), parse_mode="Markdown")
+        report = self.backend.get_trade_report_text(proposal_id, render_mode="telegram")
+        return BotReply(f"Report for {proposal_id}\n\n{report}", parse_mode="Markdown")
 
     def handle_approve(self, proposal_id: str, *, actor: str = "Mike", portfolio_equity: float = 10_000.0, execute_on_approve: bool = True) -> BotReply:
         response = self.backend.run_operator_command_payload(
@@ -438,7 +440,39 @@ class BotCommandAdapter:
             execute_on_approve=execute_on_approve,
             render_mode="telegram",
         )
-        return BotReply(response["text"], parse_mode="Markdown")
+        return BotReply(f"Approval processed for {proposal_id}\n\n{response['text']}", parse_mode="Markdown")
+
+    def handle_reject(self, proposal_id: str, *, actor: str = "Mike", portfolio_equity: float = 10_000.0) -> BotReply:
+        response = self.backend.run_operator_command_payload(
+            actor,
+            f"REJECT {proposal_id}",
+            portfolio=self._portfolio(portfolio_equity),
+            execute_on_approve=False,
+            render_mode="telegram",
+        )
+        return BotReply(f"Reject processed for {proposal_id}\n\n{response['text']}", parse_mode="Markdown")
+
+    def handle_modify(self, proposal_id: str, changes_text: str, *, actor: str = "Mike") -> BotReply:
+        proposal = self.backend.approval_flow.store.require(proposal_id)
+        updates = self._parse_modify_changes(changes_text)
+        replacement = replace(
+            proposal,
+            stop_loss=updates.get("stop_loss", proposal.stop_loss),
+            take_profit_1=updates.get("take_profit_1", proposal.take_profit_1),
+            take_profit_2=updates.get("take_profit_2", proposal.take_profit_2),
+            thesis=updates.get("thesis", proposal.thesis),
+            status=ProposalStatus.PENDING_APPROVAL,
+            proposal_id=f"{proposal.proposal_id}_v{proposal.proposal_version + 1}",
+        )
+        response = self.backend.run_operator_command_payload(
+            actor,
+            f"MODIFY {proposal_id}: {changes_text}",
+            portfolio=self._portfolio(10_000.0),
+            execute_on_approve=False,
+            render_mode="telegram",
+            replacement=replacement,
+        )
+        return BotReply(f"Modify processed for {proposal_id}\n\n{response['text']}", parse_mode="Markdown")
 
     def handle_execute(self, proposal_id: str, *, actor: str = "Mike", portfolio_equity: float = 10_000.0) -> BotReply:
         response = self.backend.execute_approved_proposal_payload(
@@ -470,6 +504,22 @@ class BotCommandAdapter:
         for item in decisions[-5:]:
             lines.append(f"- {item['symbol']} | {item['reason_code']} | conf={item['confidence_score']:.2f}")
         return BotReply("\n".join(lines))
+
+    @staticmethod
+    def _parse_modify_changes(changes_text: str) -> dict[str, float | str]:
+        updates: dict[str, float | str] = {}
+        for chunk in changes_text.split(","):
+            item = chunk.strip()
+            if not item or "=" not in item:
+                continue
+            key, value = item.split("=", 1)
+            key = key.strip().lower()
+            value = value.strip()
+            if key in {"stop_loss", "take_profit_1", "take_profit_2"}:
+                updates[key] = float(value)
+            elif key == "thesis":
+                updates[key] = value
+        return updates
 
     @staticmethod
     def _portfolio(equity: float) -> PortfolioState:

@@ -97,6 +97,14 @@ class BotCommandDispatcher:
             if not parsed.args:
                 return BotReply("Usage: /approve_only <proposal_id>")
             return self.adapter.handle_approve(parsed.args[0], execute_on_approve=False)
+        if parsed.name == "reject":
+            if not parsed.args:
+                return BotReply("Usage: /reject <proposal_id>")
+            return self.adapter.handle_reject(parsed.args[0])
+        if parsed.name == "modify":
+            if len(parsed.args) < 2:
+                return BotReply("Usage: /modify <proposal_id> key=value[, key=value]")
+            return self.adapter.handle_modify(parsed.args[0], " ".join(parsed.args[1:]))
         if parsed.name == "execute":
             if not parsed.args:
                 return BotReply("Usage: /execute <proposal_id>")
