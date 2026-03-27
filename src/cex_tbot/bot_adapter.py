@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+from datetime import datetime
 
 from cex_tbot.audit import AuditEntry
 from cex_tbot.backend_service import TradingBackendService
@@ -420,10 +421,40 @@ class BotCommandAdapter:
         pending = [item for item in trades if item["status"] == ProposalStatus.PENDING_APPROVAL.value]
         if not pending:
             return BotReply("Pending proposals: none")
+        now = utc_now()
         lines = ["Pending proposals:"]
         for item in pending:
+            detail = self.backend.get_trade_detail_payload(str(item["proposal_id"]))
+            expires_at = datetime.fromisoformat(str(detail["expires_at"]))
+            created_at = datetime.fromisoformat(str(detail["created_at"]))
+            minutes_left = int((expires_at - now).total_seconds() // 60)
+            age_min = int((now - created_at).total_seconds() // 60)
+            stale_flag = " | EXPIRED" if minutes_left < 0 else (" | stale-soon" if minutes_left <= 5 else "")
             lines.append(
-                f"- {item['proposal_id']} | {item['symbol']} {item['direction']} {item['timeframe']} | conf={item['confidence_score']:.2f}"
+                f"- {item['proposal_id']} | {item['symbol']} {item['direction']} {item['timeframe']} | conf={item['confidence_score']:.2f} | age={age_min}m | ttl={minutes_left}m{stale_flag}"
+            )
+        return BotReply("\n".join(lines))
+
+    def handle_expired(self, *, limit: int = 10) -> BotReply:
+        trades = self.backend.list_trades_payload(TradeQuery(limit=limit))
+        now = utc_now()
+        expired = []
+        for item in trades:
+            if item["status"] != ProposalStatus.PENDING_APPROVAL.value:
+                continue
+            detail = self.backend.get_trade_detail_payload(str(item["proposal_id"]))
+            expires_at = datetime.fromisoformat(str(detail["expires_at"]))
+            if expires_at < now:
+                expired.append((item, detail, expires_at))
+        if not expired:
+            return BotReply("Expired proposals: none")
+        lines = ["Expired proposals:"]
+        for item, detail, expires_at in expired:
+            created_at = datetime.fromisoformat(str(detail["created_at"]))
+            age_min = int((now - created_at).total_seconds() // 60)
+            expired_min = int((now - expires_at).total_seconds() // 60)
+            lines.append(
+                f"- {item['proposal_id']} | {item['symbol']} {item['direction']} {item['timeframe']} | age={age_min}m | expired={expired_min}m"
             )
         return BotReply("\n".join(lines))
 
