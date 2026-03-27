@@ -42,7 +42,7 @@ class PostAnalysisSummary:
 
     def to_text(self) -> str:
         lines = [
-            "Post-analysis and calibration",
+            "Post-analysis and calibration review snapshot",
             f"- trades={self.total_trades} executed={self.executed_trades} rejected={self.rejected_trades} pending={self.pending_trades}",
             f"- no_trades={self.no_trade_decisions}",
             f"- avg_conf_all={self.avg_confidence_all:.4f} avg_conf_executed={self.avg_confidence_executed:.4f} avg_conf_no_trade={self.avg_confidence_no_trade:.4f}",
