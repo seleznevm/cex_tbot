@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from datetime import UTC, datetime
 import json
 from pathlib import Path
 
@@ -97,6 +98,11 @@ def build_parser() -> argparse.ArgumentParser:
     post_analysis_parser = subparsers.add_parser("post-analysis", help="Show post-analysis and calibration summary")
     post_analysis_parser.add_argument("--storage-dir", type=Path, help="Optional base directory for file-backed session state")
     post_analysis_parser.add_argument("--format", choices=("text", "json"), default="text", help="Output format")
+
+    export_post_analysis_parser = subparsers.add_parser("post-analysis-export", help="Export post-analysis review snapshot to a file")
+    export_post_analysis_parser.add_argument("--storage-dir", type=Path, help="Optional base directory for file-backed session state")
+    export_post_analysis_parser.add_argument("--format", choices=("text", "json"), default="json", help="Export format")
+    export_post_analysis_parser.add_argument("--out", type=Path, help="Optional explicit output path")
 
     no_trade_parser = subparsers.add_parser("no-trade-demo", help="Store a deterministic no-trade decision")
     no_trade_parser.add_argument("--storage-dir", type=Path, help="Optional base directory for file-backed session state")
@@ -238,6 +244,15 @@ def render_dashboard_text(payload: dict[str, object]) -> str:
     return "\n".join(lines)
 
 
+def _default_post_analysis_export_path(storage_dir: Path | None, fmt: str) -> Path:
+    base_dir = storage_dir or Path.cwd()
+    reports_dir = base_dir / "reports"
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    suffix = "json" if fmt == "json" else "txt"
+    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    return reports_dir / f"post_analysis_{timestamp}.{suffix}"
+
+
 def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
@@ -324,6 +339,15 @@ def main() -> int:
     if command == "post-analysis":
         payload = api.post_analysis()
         print(_print_payload(payload, fmt) if fmt == "json" else app.backend.get_post_analysis_text())
+        return 0
+
+    if command == "post-analysis-export":
+        payload = api.post_analysis()
+        output_path = args.out or _default_post_analysis_export_path(storage_dir, fmt)
+        rendered = _print_payload(payload, fmt) if fmt == "json" else app.backend.get_post_analysis_text()
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(rendered + ("\n" if not rendered.endswith("\n") else ""), encoding="utf-8")
+        print(_print_payload({"status": "ok", "path": str(output_path), "format": fmt}, fmt))
         return 0
 
     if command == "no-trade-demo":

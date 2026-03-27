@@ -34,6 +34,21 @@ class Z12CliRestTests(unittest.TestCase):
         self.assertIn("total_trades", payload)
         self.assertIn("calibration_hints", payload)
 
+    def test_post_analysis_export_writes_file(self) -> None:
+        env = os.environ.copy()
+        env["PYTHONPATH"] = "src"
+        with tempfile.TemporaryDirectory() as tmp:
+            storage = str(Path(tmp) / "runtime")
+            subprocess.run([sys.executable, "-m", "cex_tbot", "submit-demo", "--storage-dir", storage, "--format", "json"], cwd=Path(__file__).resolve().parents[1], check=True, capture_output=True, text=True, env=env)
+            out_path = Path(tmp) / "review.json"
+            result = subprocess.run([sys.executable, "-m", "cex_tbot", "post-analysis-export", "--storage-dir", storage, "--format", "json", "--out", str(out_path)], cwd=Path(__file__).resolve().parents[1], check=True, capture_output=True, text=True, env=env)
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["status"], "ok")
+            self.assertEqual(payload["path"], str(out_path))
+            self.assertTrue(out_path.exists())
+            exported = json.loads(out_path.read_text(encoding="utf-8"))
+            self.assertIn("total_trades", exported)
+
 
 if __name__ == "__main__":
     unittest.main()
