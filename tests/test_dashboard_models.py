@@ -5,7 +5,7 @@ from cex_tbot.approval_flow import ApprovalFlow
 from cex_tbot.config import BotConfig
 from cex_tbot.dashboard_models import DashboardBuilder
 from cex_tbot.decision_contracts import EntrySplitLeg, TradeProposal
-from cex_tbot.enums import ProposalStatus, TradeDirection
+from cex_tbot.enums import EligibilityReasonCode, EligibilityStatus, ProposalStatus, TradeDirection
 from cex_tbot.execution import ExecutionOrchestrator, InMemoryExecutionJournal, InMemoryExecutionStateStore, TradeTimelineBuilder
 from cex_tbot.handoff import ApprovalExecutionHandoff
 from cex_tbot.operator_router import OperatorCommandRouter
@@ -13,6 +13,7 @@ from cex_tbot.read_models import QueryService
 from cex_tbot.risk_engine import PendingRiskBook, PortfolioState, RiskEngine
 from cex_tbot.session_store import TradeSessionStore
 from cex_tbot.simulator import SimulatorService
+from cex_tbot.universe import InMemoryUniverseSnapshotRepository, WhitelistedInstrument
 from cex_tbot.workflow import TradeWorkflowService
 
 
@@ -60,8 +61,31 @@ class DashboardModelTests(unittest.TestCase):
         query = QueryService(session, TradeTimelineBuilder(session.execution_journal, session.execution_state))
         pending_risk_book = PendingRiskBook()
         pending_risk_book.reserve("proposal_pending", 0.2)
+        universe_repository = InMemoryUniverseSnapshotRepository()
+        universe_repository.append(
+            [
+                WhitelistedInstrument(
+                    symbol="BTC_USDT",
+                    eligibility_status=EligibilityStatus.ELIGIBLE,
+                    eligibility_reason=EligibilityReasonCode.PASSES_PHASE2_RULES,
+                    listing_age_hours=500,
+                    volume_24h=2_000_000,
+                    open_interest=1_000_000,
+                    top_book_depth=400_000,
+                )
+            ],
+            snapshot_id="universe_001",
+            refresh_reason="manual_refresh",
+            created_at=now,
+        )
         session.system_state.activate_halt("manual-stop")
-        dashboard = DashboardBuilder(session, query, config=BotConfig(max_aggregate_open_risk_percent=1.0), pending_risk_book=pending_risk_book).build()
+        dashboard = DashboardBuilder(
+            session,
+            query,
+            config=BotConfig(max_aggregate_open_risk_percent=1.0),
+            pending_risk_book=pending_risk_book,
+            universe_repository=universe_repository,
+        ).build()
         self.assertEqual(dashboard.kpis.total_proposals, 1)
         self.assertEqual(dashboard.kpis.pending_approvals, 0)
         self.assertEqual(dashboard.kpis.executed_proposals, 1)
@@ -78,6 +102,9 @@ class DashboardModelTests(unittest.TestCase):
         self.assertEqual(dashboard.risk.active_risk_percent, 0.5)
         self.assertEqual(dashboard.risk.free_risk_budget_percent, 0.3)
         self.assertTrue(any(item.code == "HALT_ACTIVE" for item in dashboard.alerts.items))
+        self.assertEqual(dashboard.universe.snapshot_id, "universe_001")
+        self.assertEqual(dashboard.universe.eligible_instruments, 1)
+        self.assertEqual(dashboard.universe.eligible_symbols, ["BTC_USDT"])
 
 
 if __name__ == "__main__":

@@ -7,6 +7,7 @@ from cex_tbot.read_models import QueryService, TradeListItem
 from cex_tbot.risk_engine import PendingRiskBook
 from cex_tbot.session_store import TradeSessionStore
 from cex_tbot.session_summary import SessionSummaryBuilder
+from cex_tbot.universe.repository import InMemoryUniverseSnapshotRepository
 
 
 @dataclass(frozen=True)
@@ -63,12 +64,25 @@ class AlertsWidget:
 
 
 @dataclass(frozen=True)
+class UniverseWidget:
+    snapshot_id: str | None = None
+    refresh_reason: str | None = None
+    last_refresh_at: str | None = None
+    total_instruments: int = 0
+    eligible_instruments: int = 0
+    ineligible_instruments: int = 0
+    stale_instruments: int = 0
+    eligible_symbols: list[str] = None
+
+
+@dataclass(frozen=True)
 class DashboardView:
     kpis: KpiWidget
     risk: RiskWidget
     latest_trades: list[TradeListItem]
     operator_activity: OperatorActivityWidget
     alerts: AlertsWidget
+    universe: UniverseWidget
 
 
 class DashboardBuilder:
@@ -79,12 +93,14 @@ class DashboardBuilder:
         *,
         config: BotConfig | None = None,
         pending_risk_book: PendingRiskBook | None = None,
+        universe_repository: InMemoryUniverseSnapshotRepository | None = None,
     ) -> None:
         self.session = session
         self.query_service = query_service
         self.summary_builder = SessionSummaryBuilder()
         self.config = config or BotConfig()
         self.pending_risk_book = pending_risk_book or PendingRiskBook()
+        self.universe_repository = universe_repository or InMemoryUniverseSnapshotRepository()
 
     def build(self, latest_limit: int = 5) -> DashboardView:
         summary = self.summary_builder.build(self.session)
@@ -115,6 +131,24 @@ class DashboardBuilder:
             alerts.append(AlertItem(level="warning", code="LOW_FREE_RISK", message=f"Free risk budget is low: {free_risk}% remaining"))
         if not trades and summary.total_no_trade_decisions == 0:
             alerts.append(AlertItem(level="info", code="EMPTY_STATE", message="No proposals or no-trade decisions recorded yet"))
+        latest_universe = self.universe_repository.latest()
+        if latest_universe is None:
+            universe = UniverseWidget(eligible_symbols=[])
+            alerts.append(AlertItem(level="info", code="UNIVERSE_NOT_REFRESHED", message="Universe snapshot has not been refreshed yet"))
+        else:
+            eligible_count = sum(1 for item in latest_universe.instruments if item.eligibility_status.value == "ELIGIBLE")
+            stale_count = sum(1 for item in latest_universe.instruments if item.eligibility_status.value == "STALE")
+            ineligible_count = len(latest_universe.instruments) - eligible_count - stale_count
+            universe = UniverseWidget(
+                snapshot_id=latest_universe.snapshot_id,
+                refresh_reason=latest_universe.refresh_reason,
+                last_refresh_at=latest_universe.created_at.isoformat(),
+                total_instruments=len(latest_universe.instruments),
+                eligible_instruments=eligible_count,
+                ineligible_instruments=ineligible_count,
+                stale_instruments=stale_count,
+                eligible_symbols=self.universe_repository.latest_eligible_symbols(),
+            )
         return DashboardView(
             kpis=KpiWidget(
                 total_proposals=summary.total_proposals,
@@ -153,4 +187,5 @@ class DashboardBuilder:
                 ],
             ),
             alerts=AlertsWidget(items=alerts),
+            universe=universe,
         )

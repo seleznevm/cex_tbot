@@ -243,12 +243,24 @@ class DashboardAlertsPayload(BaseModel):
     items: list[DashboardAlertItemPayload] = Field(default_factory=list)
 
 
+class DashboardUniversePayload(BaseModel):
+    snapshot_id: str | None = None
+    refresh_reason: str | None = None
+    last_refresh_at: datetime | None = None
+    total_instruments: int = 0
+    eligible_instruments: int = 0
+    ineligible_instruments: int = 0
+    stale_instruments: int = 0
+    eligible_symbols: list[str] = Field(default_factory=list)
+
+
 class DashboardPayload(BaseModel):
     kpis: DashboardKpisPayload
     risk: DashboardRiskPayload
     latest_trades: list[TradeListItemPayload]
     operator_activity: DashboardOperatorActivityPayload
     alerts: DashboardAlertsPayload
+    universe: DashboardUniversePayload
 
 
 class HaltPayload(BaseModel):

@@ -98,11 +98,13 @@ def build_app(
     router = OperatorCommandRouter(workflow, approval_flow, transcript=resolved_session.operator_transcript)
     query_service = QueryService(resolved_session, timeline_builder)
     serializer = ApiSerializer()
+    universe_repository = InMemoryUniverseSnapshotRepository()
     dashboard_builder = DashboardBuilder(
         resolved_session,
         query_service,
         config=resolved_config,
         pending_risk_book=pending_risk_book,
+        universe_repository=universe_repository,
     )
     summary_builder = SessionSummaryBuilder()
     backend = TradingBackendService(
