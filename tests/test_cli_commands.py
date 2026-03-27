@@ -75,6 +75,14 @@ class CliCommandTests(unittest.TestCase):
             self.assertIn("Operator activity:", dashboard.stdout)
             self.assertIn("Latest trades", dashboard.stdout)
 
+    def test_demo_reports_commands(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            storage = str(Path(tmp) / "runtime")
+            status = self._run(tmp, "demo-status-report", "--storage-dir", storage)
+            audit = self._run(tmp, "demo-audit-report", "--storage-dir", storage)
+            self.assertIn("Gate demo capabilities", status.stdout)
+            self.assertIn("Demo audit", audit.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

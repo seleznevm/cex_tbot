@@ -130,6 +130,14 @@ def build_parser() -> argparse.ArgumentParser:
     clear_safety_parser.add_argument("--storage-dir", type=Path, help="Optional base directory for file-backed session state")
     clear_safety_parser.add_argument("--format", choices=("text", "json"), default="text", help="Output format")
 
+    demo_status_report_parser = subparsers.add_parser("demo-status-report", help="Emit a cron-friendly consolidated demo status report")
+    demo_status_report_parser.add_argument("--storage-dir", type=Path, help="Optional base directory for file-backed session state")
+    demo_status_report_parser.add_argument("--format", choices=("text", "json"), default="text", help="Output format")
+
+    demo_audit_report_parser = subparsers.add_parser("demo-audit-report", help="Emit a cron-friendly demo audit report")
+    demo_audit_report_parser.add_argument("--storage-dir", type=Path, help="Optional base directory for file-backed session state")
+    demo_audit_report_parser.add_argument("--format", choices=("text", "json"), default="text", help="Output format")
+
     serve_rest_parser = subparsers.add_parser("serve-rest", help="Run optional FastAPI REST bridge")
     serve_rest_parser.add_argument("--storage-dir", type=Path, help="Optional base directory for file-backed session state")
     serve_rest_parser.add_argument("--host", default="127.0.0.1")
@@ -247,6 +255,20 @@ def render_dashboard_text(payload: dict[str, object]) -> str:
     else:
         lines.append("Latest trades: none")
     return "\n".join(lines)
+
+
+def render_demo_status_report(app) -> str:
+    from cex_tbot.bot_adapter import BotCommandAdapter
+
+    adapter = BotCommandAdapter(app.backend, config=app.config, app=app)
+    return adapter.handle_demo_status().text
+
+
+def render_demo_audit_report(app) -> str:
+    from cex_tbot.bot_adapter import BotCommandAdapter
+
+    adapter = BotCommandAdapter(app.backend, config=app.config, app=app)
+    return adapter.handle_demo_audit().text
 
 
 def _default_post_analysis_export_path(storage_dir: Path | None, fmt: str) -> Path:
@@ -450,6 +472,16 @@ def main() -> int:
         app.backend.clear_safety_controls()
         payload = app.backend.get_session_summary_payload()
         print(_print_payload(payload, fmt))
+        return 0
+
+    if command == "demo-status-report":
+        rendered = render_demo_status_report(app)
+        print(_print_payload({"report": rendered}, fmt) if fmt == "json" else rendered)
+        return 0
+
+    if command == "demo-audit-report":
+        rendered = render_demo_audit_report(app)
+        print(_print_payload({"report": rendered}, fmt) if fmt == "json" else rendered)
         return 0
 
     if command == "serve-rest":
