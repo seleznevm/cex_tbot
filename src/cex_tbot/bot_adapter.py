@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from cex_tbot.audit import AuditEntry
 from cex_tbot.backend_service import TradingBackendService
 from cex_tbot.bootstrap import TradingApplication
 from cex_tbot.config import BotConfig
@@ -43,6 +44,7 @@ class BotCommandAdapter:
                     "/demo_order_status <order_id> — Gate demo order status",
                     "/demo_place_test_order <contract> <buy|sell> — explicit tiny demo test order",
                     "/demo_cancel_order <order_id> — cancel demo order",
+                    "/demo_smoke <contract> <buy|sell> — place/status/cancel-if-open demo smoke",
                     "/demo_account_overview — Gate demo account + positions overview",
                     "/demo_capabilities — Gate demo runtime capabilities",
                     "/runtime_status — runtime/storage/fetcher status",
@@ -237,6 +239,9 @@ class BotCommandAdapter:
             payload = client.place_test_order(contract, size=self.config.gate_demo_test_order_size, side=side.lower())
         except (NotImplementedError, GateDemoTransportError, MissingGateDemoCredentialsError) as exc:
             return BotReply(f"Demo test order unavailable: {exc}")
+        self.backend.session.operator_transcript.append(
+            AuditEntry(actor="operator", raw_command=f"DEMO_PLACE_TEST_ORDER {contract} {side.lower()}", outcome="DEMO_ORDER_PLACED", proposal_id=str(payload.get('id') or ''))
+        )
         return BotReply(
             "\n".join(
                 [
@@ -256,8 +261,23 @@ class BotCommandAdapter:
         client = self.app.instrument_fetcher.client
         try:
             payload = client.cancel_order(order_id)
-        except (NotImplementedError, GateDemoTransportError, MissingGateDemoCredentialsError) as exc:
+        except (NotImplementedError, MissingGateDemoCredentialsError) as exc:
             return BotReply(f"Demo cancel order unavailable: {exc}")
+        except GateDemoTransportError as exc:
+            if "ORDER_NOT_FOUND" in str(exc):
+                try:
+                    status = client.order_status(order_id)
+                except Exception:
+                    return BotReply(f"Demo cancel order unavailable: {exc}")
+                if str(status.get("status", "")).lower() in {"finished", "closed", "cancelled"} or str(status.get("left", "")) == "0":
+                    self.backend.session.operator_transcript.append(
+                        AuditEntry(actor="operator", raw_command=f"DEMO_CANCEL_ORDER {order_id}", outcome="DEMO_ORDER_ALREADY_FINAL", proposal_id=order_id)
+                    )
+                    return BotReply(f"Gate demo cancel order\n- id={order_id}\n- status=already_finalized")
+            return BotReply(f"Demo cancel order unavailable: {exc}")
+        self.backend.session.operator_transcript.append(
+            AuditEntry(actor="operator", raw_command=f"DEMO_CANCEL_ORDER {order_id}", outcome="DEMO_ORDER_CANCELLED", proposal_id=order_id)
+        )
         return BotReply(
             "\n".join(
                 [
@@ -267,6 +287,19 @@ class BotCommandAdapter:
                 ]
             )
         )
+
+    def handle_demo_smoke(self, contract: str, side: str) -> BotReply:
+        placed = self.handle_demo_place_test_order(contract, side).text
+        order_id = None
+        for line in placed.splitlines():
+            if line.startswith("- id="):
+                order_id = line.split("=", 1)[1].strip()
+                break
+        chunks = [placed]
+        if order_id:
+            chunks.append(self.handle_demo_order_status(order_id).text)
+            chunks.append(self.handle_demo_cancel_order(order_id).text)
+        return BotReply("\n\n".join(chunks))
 
     def handle_demo_account_overview(self) -> BotReply:
         account = self.handle_demo_account_status().text

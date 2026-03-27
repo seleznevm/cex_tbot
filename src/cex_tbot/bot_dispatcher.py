@@ -58,6 +58,10 @@ class BotCommandDispatcher:
             if not parsed.args:
                 return BotReply("Usage: /demo_cancel_order <order_id>")
             return self.adapter.handle_demo_cancel_order(parsed.args[0])
+        if parsed.name == "demo_smoke":
+            if len(parsed.args) < 2:
+                return BotReply("Usage: /demo_smoke <contract> <buy|sell>")
+            return self.adapter.handle_demo_smoke(parsed.args[0], parsed.args[1])
         if parsed.name == "demo_account_overview":
             return self.adapter.handle_demo_account_overview()
         if parsed.name == "demo_capabilities":
