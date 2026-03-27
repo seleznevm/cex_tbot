@@ -224,11 +224,22 @@ class DashboardOperatorActivityPayload(BaseModel):
     latest_outcomes: list[str]
 
 
+class DashboardAlertItemPayload(BaseModel):
+    level: str
+    code: str
+    message: str
+
+
+class DashboardAlertsPayload(BaseModel):
+    items: list[DashboardAlertItemPayload] = Field(default_factory=list)
+
+
 class DashboardPayload(BaseModel):
     kpis: DashboardKpisPayload
     risk: DashboardRiskPayload
     latest_trades: list[TradeListItemPayload]
     operator_activity: DashboardOperatorActivityPayload
+    alerts: DashboardAlertsPayload
 
 
 class HaltPayload(BaseModel):

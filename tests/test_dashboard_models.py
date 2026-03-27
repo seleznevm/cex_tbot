@@ -75,6 +75,7 @@ class DashboardModelTests(unittest.TestCase):
         self.assertEqual(dashboard.risk.reserved_pending_risk_percent, 0.2)
         self.assertEqual(dashboard.risk.active_risk_percent, 0.5)
         self.assertEqual(dashboard.risk.free_risk_budget_percent, 0.3)
+        self.assertTrue(any(item.code == "HALT_ACTIVE" for item in dashboard.alerts.items))
 
 
 if __name__ == "__main__":

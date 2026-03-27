@@ -143,6 +143,8 @@ class BackendServiceTests(unittest.TestCase):
         self.assertEqual(payload["risk"]["free_risk_budget_percent"], 0.8)
         self.assertEqual(payload["kpis"]["pending_approvals"], 0)
         self.assertEqual(payload["kpis"]["status_breakdown"], {})
+        self.assertIn("alerts", payload)
+        self.assertTrue(any(item["code"] == "HALT_ACTIVE" for item in payload["alerts"]["items"]))
         self.assertIn("latest_outcomes", payload["operator_activity"])
         self.assertIsInstance(payload["operator_activity"]["latest_outcomes"], list)
 

@@ -41,11 +41,24 @@ class OperatorActivityWidget:
 
 
 @dataclass(frozen=True)
+class AlertItem:
+    level: str
+    code: str
+    message: str
+
+
+@dataclass(frozen=True)
+class AlertsWidget:
+    items: list[AlertItem]
+
+
+@dataclass(frozen=True)
 class DashboardView:
     kpis: KpiWidget
     risk: RiskWidget
     latest_trades: list[TradeListItem]
     operator_activity: OperatorActivityWidget
+    alerts: AlertsWidget
 
 
 class DashboardBuilder:
@@ -80,13 +93,25 @@ class DashboardBuilder:
         reserved_risk = round(self.pending_risk_book.total_reserved_risk_pct, 4)
         max_open_risk = round(self.config.max_aggregate_open_risk_percent, 4)
         free_risk = round(max(0.0, max_open_risk - active_risk - reserved_risk), 4)
+        alerts: list[AlertItem] = []
+        pending_approvals = summary.proposal_status_breakdown.get("PENDING_APPROVAL", 0)
+        if summary.emergency_halt_active:
+            alerts.append(AlertItem(level="critical", code="HALT_ACTIVE", message=f"Emergency halt active: {summary.halt_reason or 'no reason provided'}"))
+        if pending_approvals > 0:
+            alerts.append(AlertItem(level="warning", code="PENDING_APPROVALS", message=f"{pending_approvals} proposal(s) waiting for approval"))
+        if trades and free_risk <= 0.0:
+            alerts.append(AlertItem(level="critical", code="RISK_BUDGET_EXHAUSTED", message="Free risk budget is exhausted"))
+        elif trades and free_risk <= min(0.25, max_open_risk * 0.25):
+            alerts.append(AlertItem(level="warning", code="LOW_FREE_RISK", message=f"Free risk budget is low: {free_risk}% remaining"))
+        if not trades and summary.total_no_trade_decisions == 0:
+            alerts.append(AlertItem(level="info", code="EMPTY_STATE", message="No proposals or no-trade decisions recorded yet"))
         return DashboardView(
             kpis=KpiWidget(
                 total_proposals=summary.total_proposals,
                 total_no_trade_decisions=summary.total_no_trade_decisions,
                 executed_proposals=summary.executed_proposals,
                 rejected_proposals=summary.rejected_proposals,
-                pending_approvals=summary.proposal_status_breakdown.get("PENDING_APPROVAL", 0),
+                pending_approvals=pending_approvals,
                 operator_commands=summary.operator_commands,
                 status_breakdown=summary.proposal_status_breakdown,
             ),
@@ -107,4 +132,5 @@ class DashboardBuilder:
                 command_count=len(operator_entries),
                 latest_outcomes=[entry.outcome for entry in operator_entries[-5:]],
             ),
+            alerts=AlertsWidget(items=alerts),
         )
