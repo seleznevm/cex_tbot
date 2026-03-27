@@ -5,6 +5,7 @@ import unittest
 
 from cex_tbot.backend_service import TradingBackendService
 from cex_tbot.bot_adapter import BotCommandAdapter
+from cex_tbot.config import BotConfig
 from cex_tbot.decision_contracts import EntrySplitLeg, NoTradeDecision, TradeProposal
 from cex_tbot.enums import NoTradeReasonCode, ProposalStatus, TradeDirection
 from cex_tbot.session_store import TradeSessionStore
@@ -14,6 +15,8 @@ class BotAdapterTests(unittest.TestCase):
     def test_help_status_and_dashboard(self) -> None:
         adapter = BotCommandAdapter(TradingBackendService.from_session(TradeSessionStore()))
         self.assertIn("/help", adapter.handle_help().text)
+        self.assertIn("/post_analysis", adapter.handle_help().text)
+        self.assertIn("/clear_safety", adapter.handle_help().text)
         self.assertIn("Session Summary", adapter.handle_status().text)
         self.assertIn("Dashboard", adapter.handle_dashboard().text)
 
@@ -68,6 +71,7 @@ class BotAdapterTests(unittest.TestCase):
         approved = adapter.handle_approve("proposal_1")
         report = adapter.handle_report("proposal_1")
         detail = adapter.handle_detail("proposal_1")
+        post_analysis = adapter.handle_post_analysis()
         no_trades = adapter.handle_no_trades()
 
         self.assertEqual(approved.parse_mode, "Markdown")
@@ -75,6 +79,7 @@ class BotAdapterTests(unittest.TestCase):
         self.assertEqual(report.parse_mode, "Markdown")
         self.assertIn("**Trade Report", report.text)
         self.assertIn("Trade detail", detail.text)
+        self.assertIn("Post-analysis and calibration review snapshot", post_analysis.text)
         self.assertIn("No-trade decisions", no_trades.text)
 
     def test_halt_blocks_approve(self) -> None:
@@ -112,6 +117,8 @@ class BotAdapterTests(unittest.TestCase):
         adapter.handle_halt("manual stop")
         blocked = adapter.handle_approve("proposal_2")
         self.assertIn("Emergency halt active", blocked.text)
+        self.assertIn("Safety status", adapter.handle_safety().text)
+        self.assertIn("inactive", BotCommandAdapter(service, config=BotConfig()).handle_gate_demo_status().text)
         self.assertIn("cleared", adapter.handle_unhalt().text)
 
 

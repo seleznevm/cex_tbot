@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from cex_tbot.backend_service import TradingBackendService
+from cex_tbot.config import BotConfig
 from cex_tbot.decision_contracts import NoTradeDecision, TradeProposal
 from cex_tbot.query_params import TradeQuery
 from cex_tbot.risk_engine import PortfolioState
@@ -15,8 +16,9 @@ class BotReply:
 
 
 class BotCommandAdapter:
-    def __init__(self, backend: TradingBackendService) -> None:
+    def __init__(self, backend: TradingBackendService, *, config: BotConfig | None = None) -> None:
         self.backend = backend
+        self.config = config or BotConfig()
 
     def handle_help(self) -> BotReply:
         return BotReply(
@@ -26,6 +28,9 @@ class BotCommandAdapter:
                     "/help — show this help",
                     "/status — session summary",
                     "/dashboard — dashboard snapshot",
+                    "/post_analysis — post-analysis and calibration snapshot",
+                    "/safety — current safety state",
+                    "/gate_demo_status — Gate demo transport status",
                     "/list — latest trades",
                     "/detail <proposal_id> — trade detail",
                     "/report <proposal_id> — telegram-ready trade report",
@@ -34,6 +39,7 @@ class BotCommandAdapter:
                     "/execute <proposal_id> — execute approved proposal",
                     "/halt <reason> — activate emergency halt",
                     "/unhalt — clear emergency halt",
+                    "/clear_safety — clear warning/block safety state",
                     "/no_trades — list no-trade decisions",
                 ]
             )
@@ -49,6 +55,7 @@ class BotCommandAdapter:
             "Dashboard",
             f"- proposals={payload['kpis']['total_proposals']} no_trades={payload['kpis']['total_no_trade_decisions']} executed={payload['kpis']['executed_proposals']}",
             f"- rejected={payload['kpis']['rejected_proposals']} commands={payload['kpis']['operator_commands']} halt={payload['risk']['emergency_halt_active']}",
+            f"- safety={payload['risk']['safety_state']} blocked={payload['risk']['block_new_trades']}",
         ]
         if latest:
             lines.append("Latest trades:")
@@ -56,6 +63,33 @@ class BotCommandAdapter:
                 lines.append(f"- {item['proposal_id']} {item['symbol']} {item['status']} conf={item['confidence_score']:.2f}")
         else:
             lines.append("Latest trades: none")
+        return BotReply("\n".join(lines))
+
+    def handle_post_analysis(self) -> BotReply:
+        return BotReply(self.backend.get_post_analysis_text())
+
+    def handle_safety(self) -> BotReply:
+        payload = self.backend.get_session_summary_payload()
+        lines = [
+            "Safety status",
+            f"- state={payload['safety_state']} halt={payload['emergency_halt_active']} blocked={payload['block_new_trades']}",
+        ]
+        if payload.get('halt_reason'):
+            lines.append(f"- halt_reason={payload['halt_reason']}")
+        if payload.get('block_reason'):
+            lines.append(f"- block_reason={payload['block_reason']}")
+        return BotReply("\n".join(lines))
+
+    def handle_gate_demo_status(self) -> BotReply:
+        lines = [
+            "Gate demo transport status",
+            f"- execution_mode={self.config.execution_mode}",
+            f"- gate_demo_api_configured={bool(self.config.gate_demo_api)}",
+        ]
+        if self.config.execution_mode != "gate_demo":
+            lines.append("- transport=inactive (runtime not in gate_demo mode)")
+        else:
+            lines.append("- transport=demo boundary enabled")
         return BotReply("\n".join(lines))
 
     def handle_submit_proposal(self, proposal: TradeProposal) -> BotReply:
@@ -117,6 +151,11 @@ class BotCommandAdapter:
     def handle_unhalt(self) -> BotReply:
         self.backend.clear_emergency_halt()
         return BotReply("Emergency halt cleared")
+
+    def handle_clear_safety(self) -> BotReply:
+        self.backend.clear_safety_controls()
+        payload = self.backend.get_session_summary_payload()
+        return BotReply(f"Safety cleared: state={payload['safety_state']} blocked={payload['block_new_trades']}")
 
     def handle_no_trades(self) -> BotReply:
         decisions = self.backend.list_no_trades_payload()
