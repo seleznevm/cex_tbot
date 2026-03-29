@@ -54,8 +54,11 @@ class _HealthyDemoClient:
         normalized = 465 if contract == "BTC_USDT" else int(size)
         return {"id": "99", "contract": contract, "side": side, "size": normalized if side == "buy" else -normalized, "normalized_contracts": normalized, "status": "open"}
 
-    def place_trigger_order(self, contract: str, *, trigger_price: float, order_price: float, size: int, side: str, reduce_only: bool = True, text: str = "cex_tbot_trigger") -> dict[str, object]:
-        return {"id": f"{text}-1", "contract": contract, "side": side, "size": size, "trigger_price": trigger_price, "order_price": order_price, "reduce_only": reduce_only, "status": "open"}
+    def set_leverage(self, contract: str, leverage: int) -> dict[str, object]:
+        return {"contract": contract, "leverage": leverage}
+
+    def place_trigger_order(self, contract: str, *, trigger_price: float, order_price: float, size: int, side: str, trigger_rule: int, reduce_only: bool = True, text: str = "cex_tbot_trigger") -> dict[str, object]:
+        return {"id": f"{text}-1", "contract": contract, "side": side, "size": size, "trigger_price": trigger_price, "order_price": order_price, "trigger_rule": trigger_rule, "reduce_only": reduce_only, "status": "open"}
 
     def trigger_order_status(self, order_id: str) -> dict[str, object]:
         return {"id": order_id, "contract": "BTC_USDT", "size": -465, "price": "99", "status": "open", "reduce_only": True, "trigger_price": "99"}

@@ -54,6 +54,9 @@ class GateDemoSdkClientTests(unittest.TestCase):
             def get_futures_order(self, settle, order_id):
                 return _Obj(id=order_id, contract="BTC_USDT", size=1, price="100", status="open", left=1, fill_price=None)
 
+            def update_position_leverage(self, settle, contract, leverage):
+                return _Obj(contract=contract, leverage=leverage)
+
             def create_futures_order(self, settle, order):
                 return _Obj(id="99", contract=order.contract, size=order.size, status="open")
 
@@ -81,10 +84,11 @@ class GateDemoSdkClientTests(unittest.TestCase):
             self.assertEqual(client.positions_snapshot()[0]["contract"], "BTC_USDT")
             self.assertEqual(client.open_orders()[0]["id"], "42")
             self.assertEqual(client.order_status("42")["status"], "open")
+            self.assertEqual(client.set_leverage("BTC_USDT", 10)["leverage"], "10")
             placed = client.place_test_order("BTC_USDT", size=0.0465, side="buy")
             self.assertEqual(placed["id"], "99")
             self.assertEqual(placed["normalized_contracts"], 465)
-            triggered = client.place_trigger_order("BTC_USDT", trigger_price=99.0, order_price=99.0, size=465, side="sell", reduce_only=True)
+            triggered = client.place_trigger_order("BTC_USDT", trigger_price=99.0, order_price=99.0, size=465, side="sell", trigger_rule=2, reduce_only=True)
             self.assertEqual(triggered["id"], "pt-1")
             self.assertEqual(triggered["reduce_only"], True)
             trigger_status = client.trigger_order_status("pt-1")

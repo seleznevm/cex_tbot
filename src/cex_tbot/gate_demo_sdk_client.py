@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import math
+from typing import Literal
 
 from cex_tbot.exceptions import GateDemoDependencyError, GateDemoTransportError, MissingGateDemoApiError, MissingGateDemoCredentialsError
 from cex_tbot.market_data.gate_metadata import GateInstrumentRecord
@@ -173,6 +174,18 @@ class GateDemoSdkClient:
             "trigger_price": getattr(trigger, "price", None) if trigger is not None else None,
         }
 
+    def set_leverage(self, contract: str, leverage: int) -> dict[str, object]:
+        self._require_credentials()
+        _, api = self._sdk()
+        try:
+            payload = api.update_position_leverage("usdt", contract, str(int(leverage)))
+        except Exception as exc:  # pragma: no cover
+            raise GateDemoTransportError(f"Gate demo set leverage failed: {exc}") from exc
+        return {
+            "contract": contract,
+            "leverage": getattr(payload, "leverage", None) or leverage,
+        }
+
     def place_test_order(self, contract: str, *, size: float, side: str) -> dict[str, object]:
         self._require_credentials()
         gate_api, api = self._sdk()
@@ -218,6 +231,7 @@ class GateDemoSdkClient:
         order_price: float,
         size: int,
         side: str,
+        trigger_rule: Literal[1, 2],
         reduce_only: bool = True,
         text: str = "cex_tbot_trigger",
     ) -> dict[str, object]:
@@ -237,7 +251,7 @@ class GateDemoSdkClient:
                 "strategy_type": 0,
                 "price_type": 0,
                 "price": str(trigger_price),
-                "rule": 1 if side == "buy" else 2,
+                "rule": int(trigger_rule),
             }
             payload = api.create_price_triggered_order(
                 "usdt",

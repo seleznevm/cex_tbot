@@ -29,6 +29,7 @@ class BotConfig:
     gate_demo_key: str = ""
     gate_demo_secret: str = ""
     gate_demo_test_order_size: float = 1.0
+    gate_demo_leverage: int = 10
 
     def __post_init__(self) -> None:
         normalized_mode = self.execution_mode.strip().lower()
@@ -37,6 +38,7 @@ class BotConfig:
         object.__setattr__(self, "gate_demo_key", self.gate_demo_key.strip())
         object.__setattr__(self, "gate_demo_secret", self.gate_demo_secret.strip())
         object.__setattr__(self, "gate_demo_test_order_size", float(self.gate_demo_test_order_size))
+        object.__setattr__(self, "gate_demo_leverage", int(self.gate_demo_leverage))
 
         if normalized_mode in _BLOCKED_LIVE_EXECUTION_MODES or (
             "live" in normalized_mode and normalized_mode != "gate_demo"
@@ -73,4 +75,5 @@ def load_config(env: dict[str, str] | None = None) -> BotConfig:
         gate_demo_key=source.get("GATE_DEMO_KEY", ""),
         gate_demo_secret=source.get("GATE_DEMO_SECRET", ""),
         gate_demo_test_order_size=float(source.get("GATE_DEMO_TEST_ORDER_SIZE", "1.0")),
+        gate_demo_leverage=int(source.get("GATE_DEMO_LEVERAGE", "10")),
     )

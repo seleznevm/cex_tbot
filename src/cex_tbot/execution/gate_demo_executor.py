@@ -32,12 +32,14 @@ class GateDemoExecutionAdapter:
         journal: InMemoryExecutionJournal | None = None,
         state_store: InMemoryExecutionStateStore | None = None,
         demo_order_store: InMemoryDemoOrderStore | None = None,
+        leverage: int = 10,
     ) -> None:
         self.risk_engine = risk_engine
         self.demo_client = demo_client
         self.journal = journal or InMemoryExecutionJournal()
         self.state_store = state_store or InMemoryExecutionStateStore()
         self.demo_order_store = demo_order_store or InMemoryDemoOrderStore()
+        self.leverage = int(leverage)
 
     def execute(self, proposal: TradeProposal, portfolio: PortfolioState, *, now=None) -> ExecutionResult:
         effective_now = now or utc_now()
@@ -56,6 +58,7 @@ class GateDemoExecutionAdapter:
 
         side = "buy" if proposal.direction == TradeDirection.LONG else "sell"
         stop_side = "sell" if proposal.direction == TradeDirection.LONG else "buy"
+        self.demo_client.set_leverage(proposal.symbol, min(self.leverage, 10))
         entry = self.demo_client.place_test_order(proposal.symbol, size=proposal.position_size, side=side)
         entry_order_id = str(entry.get("id") or "")
         entry_contracts = int(entry.get("normalized_contracts") or abs(int(entry.get("size") or 0)) or 0)
@@ -178,12 +181,14 @@ class GateDemoExecutionAdapter:
         tp_side = stop_side
         tp1_contracts = max(1, entry_contracts // 2)
         tp2_contracts = max(1, entry_contracts - tp1_contracts)
+        stop_rule, tp_rule = self._protective_trigger_rules(proposal.direction)
         stop = self.demo_client.place_trigger_order(
             proposal.symbol,
             trigger_price=proposal.stop_loss,
             order_price=proposal.stop_loss,
             size=entry_contracts,
             side=stop_side,
+            trigger_rule=stop_rule,
             reduce_only=True,
             text="cex_tbot_sl",
         )
@@ -193,6 +198,7 @@ class GateDemoExecutionAdapter:
             order_price=proposal.take_profit_1,
             size=tp1_contracts,
             side=tp_side,
+            trigger_rule=tp_rule,
             reduce_only=True,
             text="cex_tbot_tp1",
         )
@@ -202,6 +208,7 @@ class GateDemoExecutionAdapter:
             order_price=proposal.take_profit_2,
             size=tp2_contracts,
             side=tp_side,
+            trigger_rule=tp_rule,
             reduce_only=True,
             text="cex_tbot_tp2",
         )
@@ -214,3 +221,9 @@ class GateDemoExecutionAdapter:
             tp1_contracts=tp1_contracts,
             tp2_contracts=tp2_contracts,
         )
+
+    @staticmethod
+    def _protective_trigger_rules(direction: TradeDirection) -> tuple[int, int]:
+        if direction == TradeDirection.LONG:
+            return 2, 1
+        return 1, 2

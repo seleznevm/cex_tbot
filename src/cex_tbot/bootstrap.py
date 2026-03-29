@@ -106,6 +106,7 @@ def build_app(
             journal=resolved_session.execution_journal,
             state_store=resolved_session.execution_state,
             demo_order_store=resolved_session.demo_orders,
+            leverage=resolved_config.gate_demo_leverage,
         )
     execution = ExecutionOrchestrator(
         risk_engine,
