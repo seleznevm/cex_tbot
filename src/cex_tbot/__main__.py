@@ -4,6 +4,7 @@ import argparse
 from datetime import UTC, datetime
 import json
 from pathlib import Path
+import time
 
 from cex_tbot import build_app
 from cex_tbot.api_surface import CommandRequest, ProposalSubmitRequest, TradeListRequest
@@ -180,6 +181,12 @@ def build_parser() -> argparse.ArgumentParser:
     market_sync_parser.add_argument("--loop", action="store_true", help="Keep refreshing on a fixed interval")
     market_sync_parser.add_argument("--runs", type=int, help="Optional max runs when used with --loop")
     market_sync_parser.add_argument("--format", choices=("text", "json"), default="text", help="Output format")
+
+    autosync_parser = subparsers.add_parser("autosync-demo", help="Continuously sync Gate demo order states for all tracked proposals")
+    autosync_parser.add_argument("--storage-dir", type=Path, help="Optional base directory for file-backed session state")
+    autosync_parser.add_argument("--interval-sec", type=int, default=30)
+    autosync_parser.add_argument("--runs", type=int, default=1)
+    autosync_parser.add_argument("--format", choices=("text", "json"), default="text", help="Output format")
 
     return parser
 
@@ -525,6 +532,28 @@ def main() -> int:
             lines = ["Gate demo sync", f"proposal_id={payload['proposal_id']}"]
             for item in payload["orders"]:
                 lines.append(f"- {item['role']} id={item['order_id']} status={item['status']} size={item['size']}")
+            print("\n".join(lines))
+        return 0
+
+    if command == "autosync-demo":
+        runs = max(1, args.runs)
+        snapshots: list[dict[str, object]] = []
+        for idx in range(runs):
+            proposal_ids = [item["proposal_id"] for item in api.list_trades() if app.backend.session.demo_orders.list_for_proposal(str(item["proposal_id"]))]
+            cycle = []
+            for proposal_id in proposal_ids:
+                cycle.append(api.sync_demo_orders(str(proposal_id)))
+            snapshots.append({"run": idx + 1, "proposals": cycle})
+            if idx + 1 < runs:
+                time.sleep(max(1, args.interval_sec))
+        if fmt == "json":
+            print(_print_payload(snapshots, fmt))
+        else:
+            lines = ["Gate demo autosync"]
+            for snap in snapshots:
+                lines.append(f"run={snap['run']} synced={len(snap['proposals'])}")
+                for item in snap["proposals"]:
+                    lines.append(f"- {item['proposal_id']} orders={len(item['orders'])}")
             print("\n".join(lines))
         return 0
 
