@@ -141,6 +141,7 @@ class ApiSurface:
                 }
                 for item in records
             ],
+            "policy": self.backend.get_demo_policy_assessment_payload(proposal_id),
         }
 
     def clear_safety(self) -> dict[str, object]:

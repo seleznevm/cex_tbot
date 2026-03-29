@@ -8,7 +8,7 @@ from cex_tbot.audit import AuditEntry
 from cex_tbot.config import BotConfig
 from cex_tbot.dashboard_models import DashboardBuilder, DashboardView
 from cex_tbot.decision_contracts import NoTradeDecision, TradeProposal
-from cex_tbot.execution import DemoLifecycleSync, ExecutionOrchestrator, TradeTimelineBuilder
+from cex_tbot.execution import ConservativeDemoPolicy, DemoLifecycleSync, ExecutionOrchestrator, TradeTimelineBuilder
 from cex_tbot.execution.demo_sync import DemoOrderRecord
 from cex_tbot.handoff import ApprovalExecutionHandoff
 from cex_tbot.operator_router import OperatorCommandRouter, RenderedResponse
@@ -348,8 +348,19 @@ class TradingBackendService:
             self.session.proposals.update_status(proposal_id, ProposalStatus.EXECUTED)
         return synced
 
+    def get_demo_policy_assessment_payload(self, proposal_id: str) -> dict[str, object]:
+        assessment = ConservativeDemoPolicy().assess(proposal_id, self.session.demo_orders.list_for_proposal(proposal_id))
+        return {
+            "proposal_id": assessment.proposal_id,
+            "mode": assessment.mode,
+            "alerts": list(assessment.alerts),
+            "auto_actions": list(assessment.auto_actions),
+        }
+
     def get_trade_detail_payload(self, proposal_id: str) -> dict[str, object]:
-        return self.serializer.trade_detail(self.get_trade_detail(proposal_id), demo_orders=self.session.demo_orders.list_for_proposal(proposal_id))
+        payload = self.serializer.trade_detail(self.get_trade_detail(proposal_id), demo_orders=self.session.demo_orders.list_for_proposal(proposal_id))
+        payload["demo_policy"] = self.get_demo_policy_assessment_payload(proposal_id)
+        return payload
 
     def get_trade_report_payload(self, proposal_id: str) -> dict[str, object]:
         return self.serializer.trade_report(self.get_trade_report(proposal_id))

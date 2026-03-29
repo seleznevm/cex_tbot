@@ -121,6 +121,13 @@ class TradeListPagePayload(BaseModel):
     has_more: bool
 
 
+class DemoPolicyPayload(BaseModel):
+    proposal_id: str
+    mode: str
+    alerts: list[str] = Field(default_factory=list)
+    auto_actions: list[str] = Field(default_factory=list)
+
+
 class TradeDetailPayload(BaseModel):
     proposal_id: str
     proposal_version: int
@@ -153,6 +160,7 @@ class TradeDetailPayload(BaseModel):
     approval_decision_count: int
     operator_command_count: int
     timeline: TradeTimelinePayload
+    demo_policy: DemoPolicyPayload | None = None
 
 
 class TradeReportPayload(BaseModel):

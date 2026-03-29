@@ -59,6 +59,8 @@ class ApiSyncDemoTests(unittest.TestCase):
         self.assertEqual(len(payload["orders"]), 4)
         roles = {item["role"] for item in payload["orders"]}
         self.assertEqual(roles, {"entry", "stop_loss", "take_profit_1", "take_profit_2"})
+        self.assertEqual(payload["policy"]["mode"], "conservative")
+        self.assertTrue(len(payload["policy"]["alerts"]) >= 1)
 
 
 if __name__ == "__main__":

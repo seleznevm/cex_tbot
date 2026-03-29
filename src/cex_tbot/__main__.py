@@ -532,6 +532,9 @@ def main() -> int:
             lines = ["Gate demo sync", f"proposal_id={payload['proposal_id']}"]
             for item in payload["orders"]:
                 lines.append(f"- {item['role']} id={item['order_id']} status={item['status']} size={item['size']}")
+            lines.append(f"policy_mode={payload['policy']['mode']}")
+            for alert in payload["policy"]["alerts"]:
+                lines.append(f"- alert: {alert}")
             print("\n".join(lines))
         return 0
 

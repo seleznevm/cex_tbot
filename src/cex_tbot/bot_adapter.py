@@ -354,6 +354,10 @@ class BotCommandAdapter:
         lines = ["Gate demo sync", f"- proposal_id={proposal_id}"]
         for item in records:
             lines.append(f"- {item.role}: id={item.order_id} status={item.status} size={item.size} trigger={item.trigger_price}")
+        policy = self.backend.get_demo_policy_assessment_payload(proposal_id)
+        lines.append(f"- policy_mode={policy['mode']}")
+        for alert in policy["alerts"]:
+            lines.append(f"- alert: {alert}")
         return BotReply("\n".join(lines))
 
     def handle_demo_account_overview(self) -> BotReply:
