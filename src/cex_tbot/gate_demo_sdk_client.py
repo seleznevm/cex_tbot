@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import math
 
 from cex_tbot.exceptions import GateDemoDependencyError, GateDemoTransportError, MissingGateDemoApiError, MissingGateDemoCredentialsError
 from cex_tbot.market_data.gate_metadata import GateInstrumentRecord
@@ -157,7 +158,9 @@ class GateDemoSdkClient:
         self._require_credentials()
         gate_api, api = self._sdk()
         try:
-            order = gate_api.FuturesOrder(contract=contract, size=size if side == "buy" else -size, price="0", tif="ioc")
+            contracts = self._normalize_contract_size(api, contract, size)
+            signed_size = contracts if side == "buy" else -contracts
+            order = gate_api.FuturesOrder(contract=contract, size=signed_size, price="0", tif="ioc")
             payload = api.create_futures_order("usdt", order)
         except Exception as exc:  # pragma: no cover
             raise GateDemoTransportError(f"Gate demo place order failed: {exc}") from exc
@@ -166,7 +169,72 @@ class GateDemoSdkClient:
             "contract": getattr(payload, "contract", None),
             "side": side,
             "size": getattr(payload, "size", None),
+            "requested_base_size": size,
+            "normalized_contracts": contracts,
             "status": getattr(payload, "status", None),
+        }
+
+    def _normalize_contract_size(self, api, contract: str, base_size: float) -> int:
+        if base_size <= 0:
+            raise GateDemoTransportError("Gate demo place order failed: size must be positive")
+        try:
+            instruments = api.list_futures_contracts("usdt")
+        except Exception as exc:  # pragma: no cover
+            raise GateDemoTransportError(f"Gate demo contract lookup failed: {exc}") from exc
+        record = next((item for item in instruments if getattr(item, "name", None) == contract), None)
+        if record is None:
+            raise GateDemoTransportError(f"Gate demo contract lookup failed: unknown contract {contract}")
+        quanto_multiplier = float(getattr(record, "quanto_multiplier", 0.0) or 0.0)
+        min_contracts = int(float(getattr(record, "order_size_min", 1) or 1))
+        if quanto_multiplier <= 0:
+            raise GateDemoTransportError(f"Gate demo contract lookup failed: invalid quanto_multiplier for {contract}")
+        contracts = math.ceil(base_size / quanto_multiplier)
+        return max(min_contracts, contracts)
+
+    def place_trigger_order(
+        self,
+        contract: str,
+        *,
+        trigger_price: float,
+        order_price: float,
+        size: int,
+        side: str,
+        reduce_only: bool = True,
+        text: str = "cex_tbot_trigger",
+    ) -> dict[str, object]:
+        self._require_credentials()
+        gate_api, api = self._sdk()
+        try:
+            signed_size = abs(int(size)) if side == "buy" else -abs(int(size))
+            initial = {
+                "contract": contract,
+                "size": signed_size,
+                "price": str(order_price),
+                "tif": "gtc",
+                "reduce_only": reduce_only,
+                "text": text,
+            }
+            trigger = {
+                "strategy_type": 0,
+                "price_type": 0,
+                "price": str(trigger_price),
+                "rule": 1 if side == "buy" else 2,
+            }
+            payload = api.create_price_triggered_order(
+                "usdt",
+                gate_api.FuturesPriceTriggeredOrder(initial=initial, trigger=trigger),
+            )
+        except Exception as exc:  # pragma: no cover
+            raise GateDemoTransportError(f"Gate demo trigger order failed: {exc}") from exc
+        return {
+            "id": getattr(payload, "id", None),
+            "status": getattr(payload, "status", None),
+            "contract": contract,
+            "size": signed_size,
+            "trigger_price": trigger_price,
+            "order_price": order_price,
+            "reduce_only": reduce_only,
+            "text": text,
         }
 
     def cancel_order(self, order_id: str) -> dict[str, object]:

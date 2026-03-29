@@ -33,6 +33,7 @@ class GateDemoOperatorSmokeTests(unittest.TestCase):
         ]
 
         self.assertIn("balance_snapshot=yes", steps[0])
+        self.assertIn("order_placement=entry+trigger_brackets", steps[0])
         self.assertIn("Gate demo account status", steps[1])
         self.assertIn("Gate demo test order", steps[2])
         self.assertIn("Gate demo open orders", steps[3])

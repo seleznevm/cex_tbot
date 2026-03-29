@@ -60,10 +60,10 @@ class BotCommandAdapter:
                     "/refresh_universe — refresh whitelist/universe snapshot",
                     "/list — latest trades",
                     "/detail <proposal_id> — trade detail",
-                    "/report <proposal_id> — telegram-ready trade report",
-                    "/approve <proposal_id> — approve and execute",
-                    "/approve_only <proposal_id> — approve without execution",
-                    "/execute <proposal_id> — execute approved proposal",
+                    "/trade_report <proposal_id> — telegram-ready trade report",
+                    "/trade_approve <proposal_id> — approve and execute",
+                    "/trade_approve_only <proposal_id> — approve without execution",
+                    "/trade_execute <proposal_id> — execute approved proposal",
                     "/halt <reason> — activate emergency halt",
                     "/unhalt — clear emergency halt",
                     "/clear_safety — clear warning/block safety state",
@@ -353,6 +353,11 @@ class BotCommandAdapter:
         return BotReply(account + "\n\n" + positions + "\n\n" + orders)
 
     def handle_demo_capabilities(self) -> BotReply:
+        gate_demo_exec_enabled = bool(
+            self.config.execution_mode == "gate_demo"
+            and self.app is not None
+            and getattr(self.app.execution, "gate_demo_executor", None) is not None
+        )
         lines = [
             "Gate demo capabilities",
             f"- execution_mode={self.config.execution_mode}",
@@ -360,9 +365,9 @@ class BotCommandAdapter:
             f"- account_status={'yes' if bool(self.config.gate_demo_key and self.config.gate_demo_secret) else 'credentials_missing'}",
             f"- balance_snapshot={'yes' if bool(self.config.gate_demo_key and self.config.gate_demo_secret) else 'credentials_missing'}",
             f"- positions_snapshot={'yes' if bool(self.config.gate_demo_key and self.config.gate_demo_secret) else 'credentials_missing'}",
-            "- live_trading=no",
-            "- order_placement=no",
-            "- account_sync=read_only_boundary",
+            f"- live_trading={'demo_only' if gate_demo_exec_enabled else 'no'}",
+            f"- order_placement={'entry+trigger_brackets' if gate_demo_exec_enabled else 'no'}",
+            f"- account_sync={'demo_executor_attached' if gate_demo_exec_enabled else 'read_only_boundary'}",
         ]
         return BotReply("\n".join(lines))
 

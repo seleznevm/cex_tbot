@@ -10,6 +10,7 @@ from cex_tbot.execution.state_store import InMemoryExecutionStateStore
 from cex_tbot.risk_engine import PortfolioState, RiskEngine
 from cex_tbot.shared import utc_now
 from cex_tbot.simulator import Position, SimulatorService
+from cex_tbot.execution.gate_demo_executor import GateDemoExecutionAdapter
 
 
 @dataclass(frozen=True)
@@ -27,13 +28,18 @@ class ExecutionOrchestrator:
         simulator: SimulatorService,
         journal: InMemoryExecutionJournal | None = None,
         state_store: InMemoryExecutionStateStore | None = None,
+        gate_demo_executor: GateDemoExecutionAdapter | None = None,
     ) -> None:
         self.risk_engine = risk_engine
         self.simulator = simulator
         self.journal = journal or InMemoryExecutionJournal()
         self.state_store = state_store or InMemoryExecutionStateStore()
+        self.gate_demo_executor = gate_demo_executor
 
     def execute(self, proposal: TradeProposal, portfolio: PortfolioState, *, now: datetime | None = None) -> ExecutionResult:
+        if self.gate_demo_executor is not None:
+            return self.gate_demo_executor.execute(proposal, portfolio, now=now)
+
         effective_now = now or utc_now()
         self.journal.append(ExecutionEvent(proposal.proposal_id, "PRE_EXECUTION_CHECK", "starting pre-execution check"))
         check = self.risk_engine.pre_execution_check(proposal, portfolio, now=effective_now)

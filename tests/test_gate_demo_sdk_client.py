@@ -30,12 +30,17 @@ class GateDemoSdkClientTests(unittest.TestCase):
             def __init__(self, **kwargs):
                 self.__dict__.update(kwargs)
 
+        class FuturesPriceTriggeredOrder:
+            def __init__(self, initial=None, trigger=None):
+                self.initial = initial
+                self.trigger = trigger
+
         class FuturesApi:
             def __init__(self, api_client):
                 self.api_client = api_client
 
             def list_futures_contracts(self, settle):
-                return [_Obj(name="BTC_USDT", trade_status="tradable", volume_24h=1000, open_interest=500)]
+                return [_Obj(name="BTC_USDT", trade_status="tradable", volume_24h=1000, open_interest=500, quanto_multiplier="0.0001", order_size_min="1")]
 
             def list_futures_accounts(self, settle):
                 return _Obj(currency="USDT", available="1000", total="1000")
@@ -52,6 +57,9 @@ class GateDemoSdkClientTests(unittest.TestCase):
             def create_futures_order(self, settle, order):
                 return _Obj(id="99", contract=order.contract, size=order.size, status="open")
 
+            def create_price_triggered_order(self, settle, order):
+                return _Obj(id="pt-1", status="open", initial=order.initial, trigger=order.trigger)
+
             def cancel_futures_order(self, settle, order_id):
                 return _Obj(id=order_id, status="cancelled")
 
@@ -59,6 +67,7 @@ class GateDemoSdkClientTests(unittest.TestCase):
         fake_gate_api.ApiClient = ApiClient
         fake_gate_api.FuturesApi = FuturesApi
         fake_gate_api.FuturesOrder = FuturesOrder
+        fake_gate_api.FuturesPriceTriggeredOrder = FuturesPriceTriggeredOrder
 
         original = sys.modules.get("gate_api")
         sys.modules["gate_api"] = fake_gate_api
@@ -69,7 +78,12 @@ class GateDemoSdkClientTests(unittest.TestCase):
             self.assertEqual(client.positions_snapshot()[0]["contract"], "BTC_USDT")
             self.assertEqual(client.open_orders()[0]["id"], "42")
             self.assertEqual(client.order_status("42")["status"], "open")
-            self.assertEqual(client.place_test_order("BTC_USDT", size=1.0, side="buy")["id"], "99")
+            placed = client.place_test_order("BTC_USDT", size=0.0465, side="buy")
+            self.assertEqual(placed["id"], "99")
+            self.assertEqual(placed["normalized_contracts"], 465)
+            triggered = client.place_trigger_order("BTC_USDT", trigger_price=99.0, order_price=99.0, size=465, side="sell", reduce_only=True)
+            self.assertEqual(triggered["id"], "pt-1")
+            self.assertEqual(triggered["reduce_only"], True)
             self.assertEqual(client.cancel_order("42")["status"], "cancelled")
         finally:
             if original is None:

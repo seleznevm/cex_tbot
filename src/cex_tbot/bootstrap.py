@@ -10,6 +10,7 @@ from cex_tbot.config import BotConfig, load_config
 from cex_tbot.dashboard_models import DashboardBuilder
 from cex_tbot.decision_contracts.validator import ProposalValidator
 from cex_tbot.execution import ExecutionOrchestrator, TradeTimelineBuilder
+from cex_tbot.execution.gate_demo_executor import GateDemoExecutionAdapter
 from cex_tbot.handoff import ApprovalExecutionHandoff
 from cex_tbot.gate_demo_sdk_client import GateDemoSdkClient
 from cex_tbot.market_data.gate_client import (
@@ -92,11 +93,25 @@ def build_app(
     report_builder = TradeReportBuilder()
     timeline_builder = TradeTimelineBuilder(resolved_session.execution_journal, resolved_session.execution_state)
     approval_flow = ApprovalFlow(resolved_session.proposals, review_cards)
+    gate_demo_executor = None
+    if resolved_config.execution_mode == "gate_demo":
+        demo_client = gate_demo_client or GateDemoSdkClient(
+            resolved_config.gate_demo_api,
+            gate_demo_key=resolved_config.gate_demo_key,
+            gate_demo_secret=resolved_config.gate_demo_secret,
+        )
+        gate_demo_executor = GateDemoExecutionAdapter(
+            risk_engine,
+            demo_client,
+            journal=resolved_session.execution_journal,
+            state_store=resolved_session.execution_state,
+        )
     execution = ExecutionOrchestrator(
         risk_engine,
         simulator,
         journal=resolved_session.execution_journal,
         state_store=resolved_session.execution_state,
+        gate_demo_executor=gate_demo_executor,
     )
     handoff = ApprovalExecutionHandoff(approval_flow, execution)
     workflow = TradeWorkflowService(approval_flow, handoff, timeline_builder, report_builder, review_cards)

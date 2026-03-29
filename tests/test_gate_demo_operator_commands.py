@@ -51,7 +51,11 @@ class _HealthyDemoClient:
         return {"id": order_id, "contract": "BTC_USDT", "size": 1, "price": "100", "status": "open", "left": 1, "fill_price": None}
 
     def place_test_order(self, contract: str, *, size: float, side: str) -> dict[str, object]:
-        return {"id": "99", "contract": contract, "side": side, "size": size, "status": "open"}
+        normalized = 465 if contract == "BTC_USDT" else int(size)
+        return {"id": "99", "contract": contract, "side": side, "size": normalized if side == "buy" else -normalized, "normalized_contracts": normalized, "status": "open"}
+
+    def place_trigger_order(self, contract: str, *, trigger_price: float, order_price: float, size: int, side: str, reduce_only: bool = True, text: str = "cex_tbot_trigger") -> dict[str, object]:
+        return {"id": f"{text}-1", "contract": contract, "side": side, "size": size, "trigger_price": trigger_price, "order_price": order_price, "reduce_only": reduce_only, "status": "open"}
 
     def cancel_order(self, order_id: str) -> dict[str, object]:
         return {"id": order_id, "status": "cancelled"}
