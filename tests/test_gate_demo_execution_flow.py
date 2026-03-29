@@ -68,6 +68,13 @@ class GateDemoExecutionFlowTests(unittest.TestCase):
         kinds = [item.kind for item in events]
         self.assertIn("ENTRY_ORDER_PLACED", kinds)
         self.assertIn("BRACKET_ORDERS_PLACED", kinds)
+        demo_orders = app.session.demo_orders.list_for_proposal("proposal_demo_1")
+        self.assertEqual(len(demo_orders), 4)
+        synced = app.backend.sync_demo_orders("proposal_demo_1")
+        self.assertEqual(len(synced), 4)
+        detail = app.backend.get_trade_detail_payload("proposal_demo_1")
+        self.assertEqual(detail["demo_order_count"], 4)
+        self.assertEqual(len(detail["demo_orders"]), 4)
 
 
 if __name__ == "__main__":

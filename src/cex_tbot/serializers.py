@@ -10,6 +10,7 @@ from cex_tbot.operator_router import RenderedResponse
 from cex_tbot.post_analysis import PostAnalysisSummary
 from cex_tbot.read_models import TradeDetailView, TradeListItem
 from cex_tbot.reporting import TradeReport
+from cex_tbot.execution.demo_sync import DemoOrderRecord
 from cex_tbot.session_summary import SessionSummary
 
 
@@ -31,7 +32,7 @@ class ApiSerializer:
     def trade_list_item(self, item: TradeListItem) -> dict[str, object]:
         return self._json_ready(asdict(item))
 
-    def trade_detail(self, detail: TradeDetailView) -> dict[str, object]:
+    def trade_detail(self, detail: TradeDetailView, demo_orders: list[DemoOrderRecord] | None = None) -> dict[str, object]:
         data = asdict(detail)
         data["timeline"] = {
             "proposal_id": detail.timeline.proposal_id,
@@ -40,6 +41,7 @@ class ApiSerializer:
             "events": detail.timeline.events,
             "snapshots": detail.timeline.snapshots,
         }
+        data["demo_orders"] = [asdict(item) for item in (demo_orders or [])]
         return self._json_ready(data)
 
     def trade_report(self, report: TradeReport) -> dict[str, object]:

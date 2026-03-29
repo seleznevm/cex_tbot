@@ -9,6 +9,7 @@ from cex_tbot.config import BotConfig
 from cex_tbot.dashboard_models import DashboardBuilder, DashboardView
 from cex_tbot.decision_contracts import NoTradeDecision, TradeProposal
 from cex_tbot.execution import ExecutionOrchestrator, TradeTimelineBuilder
+from cex_tbot.execution.demo_sync import DemoOrderRecord
 from cex_tbot.handoff import ApprovalExecutionHandoff
 from cex_tbot.operator_router import OperatorCommandRouter, RenderedResponse
 from cex_tbot.post_analysis import PostAnalysisBuilder, PostAnalysisSummary
@@ -243,7 +244,8 @@ class TradingBackendService:
         position = None
         if snapshots:
             position = None
-        return self.report_builder.build(review_card, timeline, position)
+        demo_orders = self.session.demo_orders.list_for_proposal(proposal_id)
+        return self.report_builder.build(review_card, timeline, position, demo_orders=demo_orders)
 
     def get_trade_report_text(self, proposal_id: str, *, render_mode: str = "plain") -> str:
         return self.router.render_report(self.get_trade_report(proposal_id), render_mode)
@@ -277,8 +279,47 @@ class TradingBackendService:
             "has_more": offset + len(items) < total,
         }
 
+    def sync_demo_orders(self, proposal_id: str) -> list[DemoOrderRecord]:
+        if getattr(self.execution, "gate_demo_executor", None) is None:
+            return self.session.demo_orders.list_for_proposal(proposal_id)
+        executor = self.execution.gate_demo_executor
+        records = self.session.demo_orders.list_for_proposal(proposal_id)
+        synced: list[DemoOrderRecord] = []
+        for item in records:
+            if item.role == "entry":
+                payload = executor.demo_client.order_status(item.order_id)
+                status = str(payload.get("status") or item.status)
+                synced.append(DemoOrderRecord(
+                    order_id=item.order_id,
+                    proposal_id=item.proposal_id,
+                    role=item.role,
+                    contract=str(payload.get("contract") or item.contract),
+                    side=item.side,
+                    size=float(payload.get("size") or item.size),
+                    status=status,
+                    linked_entry_order_id=item.linked_entry_order_id,
+                ))
+            else:
+                payload = executor.demo_client.trigger_order_status(item.order_id)
+                status = str(payload.get("status") or item.status)
+                synced.append(DemoOrderRecord(
+                    order_id=item.order_id,
+                    proposal_id=item.proposal_id,
+                    role=item.role,
+                    contract=str(payload.get("contract") or item.contract),
+                    side=item.side,
+                    size=float(payload.get("size") or item.size),
+                    status=status,
+                    trigger_price=float(payload.get("trigger_price") or item.trigger_price or 0.0),
+                    order_price=float(payload.get("price") or item.order_price or 0.0),
+                    reduce_only=bool(payload.get("reduce_only") if payload.get("reduce_only") is not None else item.reduce_only),
+                    linked_entry_order_id=item.linked_entry_order_id,
+                ))
+        self.session.demo_orders.replace_for_proposal(proposal_id, synced)
+        return synced
+
     def get_trade_detail_payload(self, proposal_id: str) -> dict[str, object]:
-        return self.serializer.trade_detail(self.get_trade_detail(proposal_id))
+        return self.serializer.trade_detail(self.get_trade_detail(proposal_id), demo_orders=self.session.demo_orders.list_for_proposal(proposal_id))
 
     def get_trade_report_payload(self, proposal_id: str) -> dict[str, object]:
         return self.serializer.trade_report(self.get_trade_report(proposal_id))

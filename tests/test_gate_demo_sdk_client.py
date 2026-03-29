@@ -58,7 +58,10 @@ class GateDemoSdkClientTests(unittest.TestCase):
                 return _Obj(id="99", contract=order.contract, size=order.size, status="open")
 
             def create_price_triggered_order(self, settle, order):
-                return _Obj(id="pt-1", status="open", initial=order.initial, trigger=order.trigger)
+                return _Obj(id="pt-1", status="open", initial=_Obj(**order.initial), trigger=_Obj(**order.trigger))
+
+            def get_price_triggered_order(self, settle, order_id):
+                return _Obj(id=order_id, status="open", initial=_Obj(contract="BTC_USDT", size=-465, price="99.0", reduce_only=True), trigger=_Obj(price="99.0"))
 
             def cancel_futures_order(self, settle, order_id):
                 return _Obj(id=order_id, status="cancelled")
@@ -84,6 +87,9 @@ class GateDemoSdkClientTests(unittest.TestCase):
             triggered = client.place_trigger_order("BTC_USDT", trigger_price=99.0, order_price=99.0, size=465, side="sell", reduce_only=True)
             self.assertEqual(triggered["id"], "pt-1")
             self.assertEqual(triggered["reduce_only"], True)
+            trigger_status = client.trigger_order_status("pt-1")
+            self.assertEqual(trigger_status["id"], "pt-1")
+            self.assertEqual(trigger_status["contract"], "BTC_USDT")
             self.assertEqual(client.cancel_order("42")["status"], "cancelled")
         finally:
             if original is None:

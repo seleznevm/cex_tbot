@@ -154,6 +154,25 @@ class GateDemoSdkClient:
             "fill_price": getattr(item, "fill_price", None),
         }
 
+    def trigger_order_status(self, order_id: str) -> dict[str, object]:
+        self._require_credentials()
+        _, api = self._sdk()
+        try:
+            item = api.get_price_triggered_order("usdt", order_id)
+        except Exception as exc:  # pragma: no cover
+            raise GateDemoTransportError(f"Gate demo trigger order status failed: {exc}") from exc
+        initial = getattr(item, "initial", None)
+        trigger = getattr(item, "trigger", None)
+        return {
+            "id": getattr(item, "id", None),
+            "status": getattr(item, "status", None),
+            "contract": getattr(initial, "contract", None) if initial is not None else None,
+            "size": getattr(initial, "size", None) if initial is not None else None,
+            "price": getattr(initial, "price", None) if initial is not None else None,
+            "reduce_only": getattr(initial, "reduce_only", None) if initial is not None else None,
+            "trigger_price": getattr(trigger, "price", None) if trigger is not None else None,
+        }
+
     def place_test_order(self, contract: str, *, size: float, side: str) -> dict[str, object]:
         self._require_credentials()
         gate_api, api = self._sdk()

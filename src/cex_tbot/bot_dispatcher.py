@@ -26,7 +26,7 @@ class BotCommandDispatcher:
 
         if parsed.name == "help":
             return self.adapter.handle_help()
-        if parsed.name == "status":
+        if parsed.name in {"status", "trade_status"}:
             return self.adapter.handle_status()
         if parsed.name == "dashboard":
             return self.adapter.handle_dashboard()
@@ -56,6 +56,10 @@ class BotCommandDispatcher:
             if not parsed.args:
                 return BotReply("Usage: /demo_order_status <order_id>")
             return self.adapter.handle_demo_order_status(parsed.args[0])
+        if parsed.name == "demo_sync":
+            if not parsed.args:
+                return BotReply("Usage: /demo_sync <proposal_id>")
+            return self.adapter.handle_demo_sync(parsed.args[0])
         if parsed.name == "demo_place_test_order":
             if len(parsed.args) < 2:
                 return BotReply("Usage: /demo_place_test_order <contract> <buy|sell>")
@@ -81,7 +85,7 @@ class BotCommandDispatcher:
         if parsed.name == "list":
             limit = self._parse_limit(parsed.args)
             return self.adapter.handle_list(limit=limit)
-        if parsed.name == "pending":
+        if parsed.name in {"pending", "trade_pending"}:
             limit = self._parse_limit(parsed.args) if parsed.args else 10
             return self.adapter.handle_pending(limit=limit)
         if parsed.name == "expired":
@@ -91,29 +95,29 @@ class BotCommandDispatcher:
             if not parsed.args:
                 return BotReply("Usage: /detail <proposal_id>")
             return self.adapter.handle_detail(parsed.args[0])
-        if parsed.name == "report":
+        if parsed.name == "trade_report":
             if not parsed.args:
-                return BotReply("Usage: /report <proposal_id>")
+                return BotReply("Usage: /trade_report <proposal_id>")
             return self.adapter.handle_report(parsed.args[0])
-        if parsed.name == "approve":
+        if parsed.name == "trade_approve":
             if not parsed.args:
-                return BotReply("Usage: /approve <proposal_id>")
+                return BotReply("Usage: /trade_approve <proposal_id>")
             return self.adapter.handle_approve(parsed.args[0], execute_on_approve=True)
-        if parsed.name == "approve_only":
+        if parsed.name == "trade_approve_only":
             if not parsed.args:
-                return BotReply("Usage: /approve_only <proposal_id>")
+                return BotReply("Usage: /trade_approve_only <proposal_id>")
             return self.adapter.handle_approve(parsed.args[0], execute_on_approve=False)
-        if parsed.name == "reject":
+        if parsed.name == "trade_reject":
             if not parsed.args:
-                return BotReply("Usage: /reject <proposal_id>")
+                return BotReply("Usage: /trade_reject <proposal_id>")
             return self.adapter.handle_reject(parsed.args[0])
-        if parsed.name == "modify":
+        if parsed.name == "trade_modify":
             if len(parsed.args) < 2:
-                return BotReply("Usage: /modify <proposal_id> key=value[, key=value]")
+                return BotReply("Usage: /trade_modify <proposal_id> key=value[, key=value]")
             return self.adapter.handle_modify(parsed.args[0], " ".join(parsed.args[1:]))
-        if parsed.name == "execute":
+        if parsed.name == "trade_execute":
             if not parsed.args:
-                return BotReply("Usage: /execute <proposal_id>")
+                return BotReply("Usage: /trade_execute <proposal_id>")
             return self.adapter.handle_execute(parsed.args[0])
         if parsed.name == "halt":
             if not parsed.args:

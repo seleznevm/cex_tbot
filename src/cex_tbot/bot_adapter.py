@@ -45,6 +45,7 @@ class BotCommandAdapter:
                     "/demo_positions — Gate demo positions snapshot",
                     "/demo_open_orders — Gate demo open orders",
                     "/demo_order_status <order_id> — Gate demo order status",
+                    "/demo_sync <proposal_id> — sync stored Gate demo order states for a proposal",
                     "/demo_arm — arm demo write actions for a short window",
                     "/demo_disarm — clear demo write arm immediately",
                     "/demo_status — consolidated demo operator status",
@@ -345,6 +346,15 @@ class BotCommandAdapter:
             chunks.append(self.handle_demo_order_status(order_id).text)
             chunks.append(self.handle_demo_cancel_order(order_id).text)
         return BotReply("\n\n".join(chunks))
+
+    def handle_demo_sync(self, proposal_id: str) -> BotReply:
+        records = self.backend.sync_demo_orders(proposal_id)
+        if not records:
+            return BotReply(f"Gate demo sync\n- proposal_id={proposal_id}\n- demo_orders=none")
+        lines = ["Gate demo sync", f"- proposal_id={proposal_id}"]
+        for item in records:
+            lines.append(f"- {item.role}: id={item.order_id} status={item.status} size={item.size} trigger={item.trigger_price}")
+        return BotReply("\n".join(lines))
 
     def handle_demo_account_overview(self) -> BotReply:
         account = self.handle_demo_account_status().text

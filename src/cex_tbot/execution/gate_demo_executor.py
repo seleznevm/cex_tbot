@@ -7,6 +7,7 @@ from cex_tbot.enums import ProposalStatus, TradeDirection
 from cex_tbot.execution.journal import ExecutionEvent, InMemoryExecutionJournal
 from cex_tbot.execution.orchestrator import ExecutionResult
 from cex_tbot.execution.state_store import InMemoryExecutionStateStore
+from cex_tbot.execution.demo_sync import DemoOrderRecord, InMemoryDemoOrderStore
 from cex_tbot.risk_engine import PortfolioState, RiskEngine
 from cex_tbot.shared import utc_now
 from cex_tbot.simulator.models import Position, PositionStatus
@@ -30,11 +31,13 @@ class GateDemoExecutionAdapter:
         demo_client,
         journal: InMemoryExecutionJournal | None = None,
         state_store: InMemoryExecutionStateStore | None = None,
+        demo_order_store: InMemoryDemoOrderStore | None = None,
     ) -> None:
         self.risk_engine = risk_engine
         self.demo_client = demo_client
         self.journal = journal or InMemoryExecutionJournal()
         self.state_store = state_store or InMemoryExecutionStateStore()
+        self.demo_order_store = demo_order_store or InMemoryDemoOrderStore()
 
     def execute(self, proposal: TradeProposal, portfolio: PortfolioState, *, now=None) -> ExecutionResult:
         effective_now = now or utc_now()
@@ -52,6 +55,7 @@ class GateDemoExecutionAdapter:
             return ExecutionResult(proposal.proposal_id, ProposalStatus.REJECTED_PRE_EXECUTION, reason=check.reason_code.value)
 
         side = "buy" if proposal.direction == TradeDirection.LONG else "sell"
+        stop_side = "sell" if proposal.direction == TradeDirection.LONG else "buy"
         entry = self.demo_client.place_test_order(proposal.symbol, size=proposal.position_size, side=side)
         entry_order_id = str(entry.get("id") or "")
         entry_contracts = int(entry.get("normalized_contracts") or abs(int(entry.get("size") or 0)) or 0)
@@ -92,6 +96,59 @@ class GateDemoExecutionAdapter:
                     "tp2_contracts": protective.tp2_contracts or 0,
                 },
             )
+        )
+        self.demo_order_store.replace_for_proposal(
+            proposal.proposal_id,
+            [
+                DemoOrderRecord(
+                    order_id=entry_order_id,
+                    proposal_id=proposal.proposal_id,
+                    role="entry",
+                    contract=proposal.symbol,
+                    side=side,
+                    size=float(entry_contracts),
+                    status=str(entry.get("status") or "unknown"),
+                ),
+                DemoOrderRecord(
+                    order_id=protective.stop_order_id,
+                    proposal_id=proposal.proposal_id,
+                    role="stop_loss",
+                    contract=proposal.symbol,
+                    side=stop_side,
+                    size=float(entry_contracts),
+                    status="open",
+                    trigger_price=proposal.stop_loss,
+                    order_price=proposal.stop_loss,
+                    reduce_only=True,
+                    linked_entry_order_id=entry_order_id,
+                ),
+                DemoOrderRecord(
+                    order_id=protective.tp1_order_id,
+                    proposal_id=proposal.proposal_id,
+                    role="take_profit_1",
+                    contract=proposal.symbol,
+                    side=stop_side,
+                    size=float(protective.tp1_contracts or 0),
+                    status="open",
+                    trigger_price=proposal.take_profit_1,
+                    order_price=proposal.take_profit_1,
+                    reduce_only=True,
+                    linked_entry_order_id=entry_order_id,
+                ),
+                DemoOrderRecord(
+                    order_id=protective.tp2_order_id,
+                    proposal_id=proposal.proposal_id,
+                    role="take_profit_2",
+                    contract=proposal.symbol,
+                    side=stop_side,
+                    size=float(protective.tp2_contracts or 0),
+                    status="open",
+                    trigger_price=proposal.take_profit_2,
+                    order_price=proposal.take_profit_2,
+                    reduce_only=True,
+                    linked_entry_order_id=entry_order_id,
+                ),
+            ],
         )
         return ExecutionResult(proposal.proposal_id, ProposalStatus.EXECUTED, position=position, reason="gate_demo_bracket_submitted")
 

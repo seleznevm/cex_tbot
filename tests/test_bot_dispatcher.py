@@ -21,6 +21,7 @@ class BotDispatcherTests(unittest.TestCase):
         self.assertIn("Safety status", dispatcher.dispatch("/safety").text)
         self.assertIn("Gate demo transport status", dispatcher.dispatch("/gate_demo_status").text)
         self.assertIn("Safety cleared", dispatcher.dispatch("/clear_safety").text)
+        self.assertIn("Usage: /demo_sync", dispatcher.dispatch("/demo_sync").text)
 
     def test_dispatcher_routes_trade_commands(self) -> None:
         service = TradingBackendService.from_session(TradeSessionStore())
@@ -59,10 +60,10 @@ class BotDispatcherTests(unittest.TestCase):
         self.assertIn("Pending proposals", dispatcher.dispatch("/pending").text)
         self.assertIn("Expired proposals", dispatcher.dispatch("/expired").text)
         self.assertIn("Trade detail", dispatcher.dispatch("/detail proposal_dispatch").text)
-        self.assertIn("Approval processed for proposal_dispatch", dispatcher.dispatch("/approve_only proposal_dispatch").text)
-        self.assertIn("Report for proposal_dispatch", dispatcher.dispatch("/report proposal_dispatch").text)
-        self.assertIn("Reject processed for proposal_dispatch", dispatcher.dispatch("/reject proposal_dispatch").text)
-        self.assertIn("Modify processed for proposal_dispatch", dispatcher.dispatch("/modify proposal_dispatch stop_loss=98.5, thesis=clean retest").text)
+        self.assertIn("Approval processed for proposal_dispatch", dispatcher.dispatch("/trade_approve_only proposal_dispatch").text)
+        self.assertIn("Report for proposal_dispatch", dispatcher.dispatch("/trade_report proposal_dispatch").text)
+        self.assertIn("Reject processed for proposal_dispatch", dispatcher.dispatch("/trade_reject proposal_dispatch").text)
+        self.assertIn("Modify processed for proposal_dispatch", dispatcher.dispatch("/trade_modify proposal_dispatch stop_loss=98.5, thesis=clean retest").text)
 
     def test_dispatcher_handles_usage_and_unknown(self) -> None:
         service = TradingBackendService.from_session(TradeSessionStore())

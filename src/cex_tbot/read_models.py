@@ -50,6 +50,7 @@ class TradeDetailView:
     timeline: TradeTimelineView
     approval_decision_count: int
     operator_command_count: int
+    demo_order_count: int
 
 
 class QueryService:
@@ -128,4 +129,5 @@ class QueryService:
             timeline=timeline,
             approval_decision_count=len(self.session.proposals.history(proposal_id)),
             operator_command_count=len(self.session.operator_transcript.list_entries(proposal_id)),
+            demo_order_count=len(self.session.demo_orders.list_for_proposal(proposal_id)),
         )

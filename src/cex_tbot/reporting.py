@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from cex_tbot.execution import TradeTimelineView
+from cex_tbot.execution.demo_sync import DemoOrderRecord
 from cex_tbot.review_cards import ReviewCard
 from cex_tbot.simulator import Position
 
@@ -54,6 +55,7 @@ class TradeReportBuilder:
         review_card: ReviewCard,
         timeline: TradeTimelineView,
         position: Position | None = None,
+        demo_orders: list[DemoOrderRecord] | None = None,
     ) -> TradeReport:
         headline = f"Trade Report — {review_card.symbol} {review_card.direction} [{review_card.proposal_id}]"
         summary_lines = [
@@ -77,6 +79,12 @@ class TradeReportBuilder:
                     f"Total fees: {position.total_fees:.4f}",
                 ]
             )
+        if demo_orders:
+            summary_lines.append(f"Demo orders: {len(demo_orders)}")
+            for item in demo_orders:
+                summary_lines.append(
+                    f"- {item.role}: id={item.order_id} status={item.status} size={item.size} trigger={item.trigger_price}"
+                )
         timeline_lines = [
             f"Timeline events: {timeline.event_count}",
             f"State snapshots: {timeline.snapshot_count}",
