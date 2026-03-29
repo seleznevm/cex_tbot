@@ -7,6 +7,10 @@ from pathlib import Path
 from typing import Any
 
 from cex_tbot.api_surface import ApiSurface, CommandRequest, ProposalSubmitRequest, TradeListRequest
+from cex_tbot.bot_adapter import BotCommandAdapter
+from cex_tbot.bot_dispatcher import BotCommandDispatcher
+from cex_tbot.openclaw_wrapper import OpenClawInboundMessage, OpenClawOutboundMessage, OpenClawTopicWrapper
+from cex_tbot.transport_bridge import SenderPolicy, TransportCommandBridge
 from cex_tbot.bootstrap import build_app
 from cex_tbot.decision_contracts import EntrySplitLeg, TradeProposal
 from cex_tbot.enums import ContractType, Exchange, MarketType, ProposalStatus, TradeDirection
@@ -128,6 +132,16 @@ class RestErrorFactory:
         }
 
 
+@dataclass(frozen=True)
+class TopicCommandPayload:
+    sender_id: str
+    text: str
+    sender_name: str | None = None
+    channel: str | None = None
+    chat_id: str | None = None
+    thread_id: str | None = None
+
+
 def _build_portfolio_payload(payload: dict[str, Any] | PortfolioContextPayload) -> dict[str, Any]:
     if isinstance(payload, PortfolioContextPayload):
         payload = payload.model_dump(mode="python")
@@ -157,6 +171,20 @@ def create_rest_app(*, storage_dir: str | Path | None = None, api_token: str | N
     api = trading_app.api
     auth = RestAuth(api_token)
     app = FastAPI(title="cex_tbot REST bridge", version="0.3.0")
+    allowed_sender_ids = os.environ.get("CEX_TBOT_ALLOWED_SENDER_IDS", "125619710")
+    bridge = TransportCommandBridge(
+        BotCommandDispatcher(BotCommandAdapter(trading_app.backend, config=trading_app.config, app=trading_app)),
+        sender_policy=SenderPolicy(
+            allowed_sender_ids=frozenset(item.strip() for item in allowed_sender_ids.split(",") if item.strip()),
+            allow_empty_policy=False,
+        ),
+        write_sender_policy=SenderPolicy(
+            allowed_sender_ids=frozenset(item.strip() for item in allowed_sender_ids.split(",") if item.strip()),
+            allow_empty_policy=False,
+        ),
+        audit_transcript=trading_app.backend.session.operator_transcript,
+    )
+    topic_wrapper = OpenClawTopicWrapper(bridge)
     static_dir = frontend_dir()
 
     def require_auth(x_api_key: str | None = Header(default=None)) -> None:
@@ -287,6 +315,24 @@ def create_rest_app(*, storage_dir: str | Path | None = None, api_token: str | N
             )
         )
 
+    @app.post("/topic/command", dependencies=[Depends(require_auth)])
+    def topic_command(payload: TopicCommandPayload) -> dict[str, str | None]:
+        outbound: OpenClawOutboundMessage = topic_wrapper.handle_inbound(
+            OpenClawInboundMessage(
+                sender_id=payload.sender_id,
+                text=payload.text,
+                sender_name=payload.sender_name,
+                channel=payload.channel,
+                chat_id=payload.chat_id,
+                thread_id=payload.thread_id,
+            )
+        )
+        return {
+            "text": outbound.text,
+            "chat_id": outbound.chat_id,
+            "thread_id": outbound.thread_id,
+        }
+
     @app.post("/proposals/{proposal_id}/approve", dependencies=[Depends(require_auth)], response_model=RenderedResponsePayload, responses={401: {"model": ErrorEnvelope}})
     def approve_proposal(proposal_id: str, payload: PortfolioContextPayload | None = None) -> RenderedResponsePayload:
         payload = payload or PortfolioContextPayload()
@@ -348,6 +394,13 @@ def create_rest_app(*, storage_dir: str | Path | None = None, api_token: str | N
                 )
             )
         )
+
+    @app.post("/trades/{proposal_id}/sync-demo", dependencies=[Depends(require_auth)], responses={401: {"model": ErrorEnvelope}, 404: {"model": ErrorEnvelope}})
+    def sync_demo(proposal_id: str) -> dict[str, object]:
+        try:
+            return api.sync_demo_orders(proposal_id)
+        except KeyError as exc:
+            raise http_error(404, "PROPOSAL_NOT_FOUND", f"Unknown proposal_id: {proposal_id}") from exc
 
     @app.post("/trades/{proposal_id}/execute", dependencies=[Depends(require_auth)], response_model=RenderedResponsePayload, responses={401: {"model": ErrorEnvelope}, 404: {"model": ErrorEnvelope}})
     def execute(proposal_id: str, payload: PortfolioContextPayload | None = None) -> RenderedResponsePayload:

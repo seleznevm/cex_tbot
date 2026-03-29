@@ -10,6 +10,7 @@ from cex_tbot.api_surface import CommandRequest, ProposalSubmitRequest, TradeLis
 from cex_tbot.decision_contracts import EntrySplitLeg, NoTradeDecision, TradeProposal
 from cex_tbot.demo import build_demo_proposal, render_demo
 from cex_tbot.enums import NoTradeReasonCode, ProposalStatus, TradeDirection
+from cex_tbot.market_pipeline import BinanceMarketDataPipeline
 from cex_tbot.openclaw_wrapper import OpenClawTopicWrapper
 from cex_tbot.topic_producer import TopicProposalProducer
 from cex_tbot.proposal_contract import proposal_contract_text, validate_proposal_payload
@@ -95,6 +96,11 @@ def build_parser() -> argparse.ArgumentParser:
     report_parser.add_argument("--format", choices=("text", "json"), default="text", help="Output format")
     report_parser.add_argument("--render-mode", choices=("plain", "operator", "telegram", "compact"), default="operator")
 
+    sync_demo_parser = subparsers.add_parser("sync-demo", help="Sync Gate demo order states for a stored trade")
+    sync_demo_parser.add_argument("proposal_id")
+    sync_demo_parser.add_argument("--storage-dir", type=Path, help="Optional base directory for file-backed session state")
+    sync_demo_parser.add_argument("--format", choices=("text", "json"), default="text", help="Output format")
+
     dashboard_parser = subparsers.add_parser("dashboard", help="Show dashboard payload")
     dashboard_parser.add_argument("--storage-dir", type=Path, help="Optional base directory for file-backed session state")
     dashboard_parser.add_argument("--format", choices=("text", "json"), default="text", help="Output format")
@@ -166,6 +172,14 @@ def build_parser() -> argparse.ArgumentParser:
     serve_rest_parser.add_argument("--storage-dir", type=Path, help="Optional base directory for file-backed session state")
     serve_rest_parser.add_argument("--host", default="127.0.0.1")
     serve_rest_parser.add_argument("--port", type=int, default=8000)
+
+    market_sync_parser = subparsers.add_parser("market-sync", help="Fetch Binance public market data into host-side JSON files")
+    market_sync_parser.add_argument("--output-dir", type=Path, default=Path("/data/.openclaw/workspace/market"))
+    market_sync_parser.add_argument("--universe-limit", type=int, default=150)
+    market_sync_parser.add_argument("--interval-sec", type=int, default=300)
+    market_sync_parser.add_argument("--loop", action="store_true", help="Keep refreshing on a fixed interval")
+    market_sync_parser.add_argument("--runs", type=int, help="Optional max runs when used with --loop")
+    market_sync_parser.add_argument("--format", choices=("text", "json"), default="text", help="Output format")
 
     return parser
 
@@ -501,6 +515,17 @@ def main() -> int:
             print(_print_payload(api.trade_report(args.proposal_id), fmt))
         else:
             print(app.backend.get_trade_report_text(args.proposal_id, render_mode=args.render_mode))
+        return 0
+
+    if command == "sync-demo":
+        payload = api.sync_demo_orders(args.proposal_id)
+        if fmt == "json":
+            print(_print_payload(payload, fmt))
+        else:
+            lines = ["Gate demo sync", f"proposal_id={payload['proposal_id']}"]
+            for item in payload["orders"]:
+                lines.append(f"- {item['role']} id={item['order_id']} status={item['status']} size={item['size']}")
+            print("\n".join(lines))
         return 0
 
     if command == "dashboard":

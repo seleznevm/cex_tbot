@@ -8,7 +8,7 @@ from cex_tbot.audit import AuditEntry
 from cex_tbot.config import BotConfig
 from cex_tbot.dashboard_models import DashboardBuilder, DashboardView
 from cex_tbot.decision_contracts import NoTradeDecision, TradeProposal
-from cex_tbot.execution import ExecutionOrchestrator, TradeTimelineBuilder
+from cex_tbot.execution import DemoLifecycleSync, ExecutionOrchestrator, TradeTimelineBuilder
 from cex_tbot.execution.demo_sync import DemoOrderRecord
 from cex_tbot.handoff import ApprovalExecutionHandoff
 from cex_tbot.operator_router import OperatorCommandRouter, RenderedResponse
@@ -316,6 +316,36 @@ class TradingBackendService:
                     linked_entry_order_id=item.linked_entry_order_id,
                 ))
         self.session.demo_orders.replace_for_proposal(proposal_id, synced)
+        latest_snapshot = self.session.execution_state.latest_snapshot(proposal_id)
+        proposal = self.session.proposals.require(proposal_id)
+        position = None
+        if latest_snapshot is not None:
+            from cex_tbot.simulator.models import Position
+            position = Position(
+                proposal_id=proposal.proposal_id,
+                symbol=proposal.symbol,
+                direction=proposal.direction,
+                status=latest_snapshot.status,
+                planned_legs=len(proposal.entry_split),
+                filled_legs=len(proposal.entry_split),
+                avg_entry=sum((leg.planned_entry_price * leg.size_fraction) for leg in proposal.entry_split),
+                total_size=proposal.position_size,
+                remaining_size=latest_snapshot.remaining_size,
+                realized_pnl=latest_snapshot.realized_pnl,
+                total_fees=latest_snapshot.total_fees,
+                stop_loss=proposal.stop_loss,
+                take_profit_1=proposal.take_profit_1,
+                take_profit_2=proposal.take_profit_2,
+                tp1_hit=any(item.role == "take_profit_1" and str(item.status).lower() in {"finished", "triggered", "closed"} for item in synced),
+                opened_at=proposal.created_at,
+                position_id=latest_snapshot.position_id,
+            )
+        lifecycle = DemoLifecycleSync(self.session.execution_journal, self.session.execution_state)
+        updated_position = lifecycle.apply(proposal_id, position, synced)
+        if updated_position is not None and updated_position.status == "STOPPED":
+            self.session.proposals.update_status(proposal_id, ProposalStatus.EXECUTED)
+        elif updated_position is not None and updated_position.remaining_size <= 0:
+            self.session.proposals.update_status(proposal_id, ProposalStatus.EXECUTED)
         return synced
 
     def get_trade_detail_payload(self, proposal_id: str) -> dict[str, object]:

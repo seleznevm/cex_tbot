@@ -9,7 +9,7 @@ from cex_tbot.backend_service import TradingBackendService
 from cex_tbot.config import BotConfig, load_config
 from cex_tbot.dashboard_models import DashboardBuilder
 from cex_tbot.decision_contracts.validator import ProposalValidator
-from cex_tbot.execution import ExecutionOrchestrator, TradeTimelineBuilder
+from cex_tbot.execution import DemoLifecycleSync, ExecutionOrchestrator, TradeTimelineBuilder
 from cex_tbot.execution.gate_demo_executor import GateDemoExecutionAdapter
 from cex_tbot.handoff import ApprovalExecutionHandoff
 from cex_tbot.gate_demo_sdk_client import GateDemoSdkClient
@@ -105,6 +105,7 @@ def build_app(
             demo_client,
             journal=resolved_session.execution_journal,
             state_store=resolved_session.execution_state,
+            demo_order_store=resolved_session.demo_orders,
         )
     execution = ExecutionOrchestrator(
         risk_engine,

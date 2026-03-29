@@ -121,6 +121,28 @@ class ApiSurface:
     def post_analysis(self) -> dict[str, object]:
         return self.backend.get_post_analysis_payload()
 
+    def sync_demo_orders(self, proposal_id: str) -> dict[str, object]:
+        records = self.backend.sync_demo_orders(proposal_id)
+        return {
+            "proposal_id": proposal_id,
+            "orders": [
+                {
+                    "order_id": item.order_id,
+                    "role": item.role,
+                    "contract": item.contract,
+                    "side": item.side,
+                    "size": item.size,
+                    "status": item.status,
+                    "trigger_price": item.trigger_price,
+                    "order_price": item.order_price,
+                    "reduce_only": item.reduce_only,
+                    "linked_entry_order_id": item.linked_entry_order_id,
+                    "synced_at": item.synced_at.isoformat(),
+                }
+                for item in records
+            ],
+        }
+
     def clear_safety(self) -> dict[str, object]:
         self.backend.clear_safety_controls()
         return self.backend.get_session_summary_payload()
