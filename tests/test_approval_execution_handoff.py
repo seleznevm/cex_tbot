@@ -68,6 +68,17 @@ class ApprovalExecutionHandoffTests(unittest.TestCase):
         self.assertIsNotNone(result.execution)
         self.assertEqual(store.get("proposal_1").status, ProposalStatus.REJECTED_PRE_EXECUTION)
 
+    def test_reapprove_executed_proposal_does_not_execute_again(self) -> None:
+        store = InMemoryProposalStore()
+        proposal = self._proposal(status=ProposalStatus.EXECUTED)
+        store.upsert(proposal)
+        approval = ApprovalFlow(store)
+        execution = ExecutionOrchestrator(RiskEngine(BotConfig()), SimulatorService())
+        handoff = ApprovalExecutionHandoff(approval, execution)
+        result = handoff.approve_and_execute("Mike", "APPROVE proposal_1", PortfolioState(equity=1000.0), now=proposal.created_at)
+        self.assertIsNone(result.execution)
+        self.assertEqual(store.get("proposal_1").status, ProposalStatus.EXECUTED)
+
 
 if __name__ == "__main__":
     unittest.main()

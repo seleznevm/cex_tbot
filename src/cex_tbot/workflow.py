@@ -46,9 +46,12 @@ class TradeWorkflowService:
         effective_now = now or utc_now()
         result = self.handoff.approve_and_execute(actor, raw_text, portfolio, now=effective_now)
         proposal_id = result.approval.proposal_id
-        if result.execution is None:
-            return WorkflowResult(approval_execution=result, report=None)
         proposal = self.approval_flow.store.require(proposal_id)
+        if result.execution is None:
+            review_card = self.review_cards.build(proposal)
+            timeline = self.timeline_builder.build(proposal_id)
+            report = self.report_builder.build(review_card, timeline, None)
+            return WorkflowResult(approval_execution=result, report=report)
         review_card = self.review_cards.build(proposal)
         timeline = self.timeline_builder.build(proposal_id)
         report = self.report_builder.build(review_card, timeline, result.execution.position)

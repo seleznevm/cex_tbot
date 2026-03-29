@@ -30,6 +30,14 @@ class ApprovalExecutionHandoff:
         now: datetime | None = None,
     ) -> ApprovalExecutionResult:
         effective_now = now or utc_now()
+        existing = None
+        parsed = self.approval_flow.parse_command(raw_text)
+        if parsed.is_valid and parsed.command is not None:
+            existing = self.approval_flow.store.get(parsed.command.proposal_id)
+            if existing is not None and existing.status == ProposalStatus.EXECUTED:
+                approval = self.approval_flow.record_decision(actor, raw_text)
+                self.approval_flow.store.append_decision(approval)
+                return ApprovalExecutionResult(approval=ApprovalApplyResult(decision=approval, resulting_status=ProposalStatus.EXECUTED, proposal_id=existing.proposal_id), execution=None)
         approval = self.approval_flow.apply_command(actor, raw_text)
         if approval.resulting_status != ProposalStatus.APPROVED_PENDING_EXECUTION_CHECK:
             return ApprovalExecutionResult(approval=approval, execution=None)
