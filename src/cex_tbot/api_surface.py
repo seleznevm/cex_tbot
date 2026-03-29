@@ -144,6 +144,9 @@ class ApiSurface:
             "policy": self.backend.get_demo_policy_assessment_payload(proposal_id),
         }
 
+    def conservative_alert_payload(self, proposal_id: str) -> dict[str, object]:
+        return self.backend.get_demo_policy_assessment_payload(proposal_id)
+
     def clear_safety(self) -> dict[str, object]:
         self.backend.clear_safety_controls()
         return self.backend.get_session_summary_payload()

@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from cex_tbot.decision_contracts import NoTradeDecision, TradeProposal
+from cex_tbot.execution.policy import ConservativePolicyAssessment
 from cex_tbot.openclaw_wrapper import OpenClawOutboundMessage, OpenClawTopicWrapper
 
 
@@ -38,6 +39,22 @@ class TopicProposalEmitter:
             f"- timeframe={proposal.timeframe}",
             f"- reason={reason}",
         ]
+        return OpenClawOutboundMessage(
+            text="\n".join(lines),
+            chat_id=self.wrapper.default_chat_id,
+            thread_id=self.wrapper.default_thread_id,
+        )
+
+    def emit_conservative_alert(self, assessment: ConservativePolicyAssessment) -> OpenClawOutboundMessage:
+        lines = [
+            "Gate demo conservative alert",
+            f"- proposal_id={assessment.proposal_id}",
+            f"- mode={assessment.mode}",
+        ]
+        for alert in assessment.alerts:
+            lines.append(f"- alert={alert}")
+        if not assessment.alerts:
+            lines.append("- alert=none")
         return OpenClawOutboundMessage(
             text="\n".join(lines),
             chat_id=self.wrapper.default_chat_id,

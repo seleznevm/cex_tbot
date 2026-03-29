@@ -15,6 +15,7 @@ from cex_tbot.bootstrap import build_app
 from cex_tbot.decision_contracts import EntrySplitLeg, TradeProposal
 from cex_tbot.enums import ContractType, Exchange, MarketType, ProposalStatus, TradeDirection
 from cex_tbot.spa import frontend_dir
+from cex_tbot.topic_producer import TopicProposalProducer
 from cex_tbot.web_schemas import (
     CommandPayload,
     DashboardPayload,
@@ -401,6 +402,24 @@ def create_rest_app(*, storage_dir: str | Path | None = None, api_token: str | N
             return api.sync_demo_orders(proposal_id)
         except KeyError as exc:
             raise http_error(404, "PROPOSAL_NOT_FOUND", f"Unknown proposal_id: {proposal_id}") from exc
+
+    @app.post("/trades/{proposal_id}/emit-conservative-alert", dependencies=[Depends(require_auth)], responses={401: {"model": ErrorEnvelope}, 404: {"model": ErrorEnvelope}})
+    def emit_conservative_alert(proposal_id: str) -> dict[str, object]:
+        try:
+            assessment = api.conservative_alert_payload(proposal_id)
+        except KeyError as exc:
+            raise http_error(404, "PROPOSAL_NOT_FOUND", f"Unknown proposal_id: {proposal_id}") from exc
+        producer = TopicProposalProducer(
+            trading_app.backend,
+            OpenClawTopicWrapper(None, default_chat_id="telegram:-1003832858724", default_thread_id="7"),
+        )
+        outbound = producer.emit_conservative_alert(type("Assessment", (), assessment)())
+        return {
+            "text": outbound.text,
+            "chat_id": outbound.chat_id,
+            "thread_id": outbound.thread_id,
+            "policy": assessment,
+        }
 
     @app.post("/trades/{proposal_id}/execute", dependencies=[Depends(require_auth)], response_model=RenderedResponsePayload, responses={401: {"model": ErrorEnvelope}, 404: {"model": ErrorEnvelope}})
     def execute(proposal_id: str, payload: PortfolioContextPayload | None = None) -> RenderedResponsePayload:

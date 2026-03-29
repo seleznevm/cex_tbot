@@ -14,6 +14,7 @@ from cex_tbot.enums import NoTradeReasonCode, ProposalStatus, TradeDirection
 from cex_tbot.market_pipeline import BinanceMarketDataPipeline
 from cex_tbot.openclaw_wrapper import OpenClawTopicWrapper
 from cex_tbot.topic_producer import TopicProposalProducer
+from cex_tbot.execution.policy import ConservativePolicyAssessment
 from cex_tbot.proposal_contract import proposal_contract_text, validate_proposal_payload
 from cex_tbot.rest_api import RestApiDependencyError, create_rest_app
 from cex_tbot.shared import utc_now
@@ -187,6 +188,11 @@ def build_parser() -> argparse.ArgumentParser:
     autosync_parser.add_argument("--interval-sec", type=int, default=30)
     autosync_parser.add_argument("--runs", type=int, default=1)
     autosync_parser.add_argument("--format", choices=("text", "json"), default="text", help="Output format")
+
+    alert_parser = subparsers.add_parser("emit-conservative-alert", help="Render conservative alert payload for Telegram topic delivery")
+    alert_parser.add_argument("proposal_id")
+    alert_parser.add_argument("--storage-dir", type=Path, help="Optional base directory for file-backed session state")
+    alert_parser.add_argument("--format", choices=("text", "json"), default="text", help="Output format")
 
     return parser
 
@@ -558,6 +564,21 @@ def main() -> int:
                 for item in snap["proposals"]:
                     lines.append(f"- {item['proposal_id']} orders={len(item['orders'])}")
             print("\n".join(lines))
+        return 0
+
+    if command == "emit-conservative-alert":
+        assessment = api.conservative_alert_payload(args.proposal_id)
+        wrapper = OpenClawTopicWrapper(None, default_chat_id="telegram:-1003832858724", default_thread_id="7")
+        producer = TopicProposalProducer(app.backend, wrapper)
+        outbound = producer.emit_conservative_alert(ConservativePolicyAssessment(**assessment))
+        payload = {
+            "proposal_id": args.proposal_id,
+            "chat_id": outbound.chat_id,
+            "thread_id": outbound.thread_id,
+            "text": outbound.text,
+            "policy": assessment,
+        }
+        print(_print_payload(payload, fmt) if fmt == "json" else outbound.text)
         return 0
 
     if command == "dashboard":
