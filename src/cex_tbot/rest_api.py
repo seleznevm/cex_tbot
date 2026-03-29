@@ -413,13 +413,36 @@ def create_rest_app(*, storage_dir: str | Path | None = None, api_token: str | N
             trading_app.backend,
             OpenClawTopicWrapper(None, default_chat_id="telegram:-1003832858724", default_thread_id="7"),
         )
-        outbound = producer.emit_conservative_alert(type("Assessment", (), assessment)())
+        outbound = producer.emit_conservative_alert(ConservativePolicyAssessment(**assessment))
         return {
             "text": outbound.text,
             "chat_id": outbound.chat_id,
             "thread_id": outbound.thread_id,
             "policy": assessment,
         }
+
+    @app.post("/cron/autosync-demo", dependencies=[Depends(require_auth)], responses={401: {"model": ErrorEnvelope}})
+    def cron_autosync_demo() -> dict[str, object]:
+        producer = TopicProposalProducer(
+            trading_app.backend,
+            OpenClawTopicWrapper(None, default_chat_id="telegram:-1003832858724", default_thread_id="7"),
+        )
+        results = []
+        proposal_ids = [item["proposal_id"] for item in api.list_trades() if trading_app.backend.session.demo_orders.list_for_proposal(str(item["proposal_id"]))]
+        for proposal_id in proposal_ids:
+            synced = api.sync_demo_orders(str(proposal_id))
+            policy = synced["policy"]
+            alert_texts = [a for a in policy["alerts"] if "No policy alerts" not in a]
+            payload = {"proposal_id": proposal_id, "sync": synced}
+            if alert_texts:
+                outbound = producer.emit_conservative_alert(ConservativePolicyAssessment(**policy))
+                payload["telegram_alert"] = {
+                    "chat_id": outbound.chat_id,
+                    "thread_id": outbound.thread_id,
+                    "text": outbound.text,
+                }
+            results.append(payload)
+        return {"items": results, "count": len(results)}
 
     @app.post("/trades/{proposal_id}/execute", dependencies=[Depends(require_auth)], response_model=RenderedResponsePayload, responses={401: {"model": ErrorEnvelope}, 404: {"model": ErrorEnvelope}})
     def execute(proposal_id: str, payload: PortfolioContextPayload | None = None) -> RenderedResponsePayload:

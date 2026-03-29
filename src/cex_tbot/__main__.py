@@ -187,6 +187,7 @@ def build_parser() -> argparse.ArgumentParser:
     autosync_parser.add_argument("--storage-dir", type=Path, help="Optional base directory for file-backed session state")
     autosync_parser.add_argument("--interval-sec", type=int, default=30)
     autosync_parser.add_argument("--runs", type=int, default=1)
+    autosync_parser.add_argument("--emit-telegram-alerts", action="store_true", help="Render Telegram topic payloads for conservative alerts after sync")
     autosync_parser.add_argument("--format", choices=("text", "json"), default="text", help="Output format")
 
     alert_parser = subparsers.add_parser("emit-conservative-alert", help="Render conservative alert payload for Telegram topic delivery")
@@ -547,11 +548,24 @@ def main() -> int:
     if command == "autosync-demo":
         runs = max(1, args.runs)
         snapshots: list[dict[str, object]] = []
+        wrapper = OpenClawTopicWrapper(None, default_chat_id="telegram:-1003832858724", default_thread_id="7")
+        producer = TopicProposalProducer(app.backend, wrapper)
         for idx in range(runs):
             proposal_ids = [item["proposal_id"] for item in api.list_trades() if app.backend.session.demo_orders.list_for_proposal(str(item["proposal_id"]))]
             cycle = []
             for proposal_id in proposal_ids:
-                cycle.append(api.sync_demo_orders(str(proposal_id)))
+                synced = api.sync_demo_orders(str(proposal_id))
+                if args.emit_telegram_alerts:
+                    policy = synced["policy"]
+                    alert_texts = [a for a in policy["alerts"] if "No policy alerts" not in a]
+                    if alert_texts:
+                        outbound = producer.emit_conservative_alert(ConservativePolicyAssessment(**policy))
+                        synced["telegram_alert"] = {
+                            "chat_id": outbound.chat_id,
+                            "thread_id": outbound.thread_id,
+                            "text": outbound.text,
+                        }
+                cycle.append(synced)
             snapshots.append({"run": idx + 1, "proposals": cycle})
             if idx + 1 < runs:
                 time.sleep(max(1, args.interval_sec))
@@ -563,6 +577,8 @@ def main() -> int:
                 lines.append(f"run={snap['run']} synced={len(snap['proposals'])}")
                 for item in snap["proposals"]:
                     lines.append(f"- {item['proposal_id']} orders={len(item['orders'])}")
+                    if item.get("telegram_alert"):
+                        lines.append(f"  telegram_alert -> {item['telegram_alert']['chat_id']} thread={item['telegram_alert']['thread_id']}")
             print("\n".join(lines))
         return 0
 
