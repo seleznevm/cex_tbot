@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from cex_tbot.decision_contracts import TradeProposal
 from cex_tbot.enums import ProposalStatus, TradeDirection
 from cex_tbot.execution.journal import ExecutionEvent, InMemoryExecutionJournal
-from cex_tbot.execution.orchestrator import ExecutionResult
+from cex_tbot.execution.result import ExecutionResult
 from cex_tbot.execution.state_store import InMemoryExecutionStateStore
 from cex_tbot.execution.demo_sync import DemoOrderRecord, InMemoryDemoOrderStore
 from cex_tbot.risk_engine import PortfolioState, RiskEngine

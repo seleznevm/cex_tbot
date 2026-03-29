@@ -1,5 +1,6 @@
 from .journal import ExecutionEvent, InMemoryExecutionJournal
-from .orchestrator import ExecutionOrchestrator, ExecutionResult
+from .orchestrator import ExecutionOrchestrator
+from .result import ExecutionResult
 from .gate_demo_executor import GateDemoExecutionAdapter, GateDemoBracketOrders
 from .lifecycle import DemoLifecycleSync
 from .policy import ConservativeDemoPolicy, ConservativePolicyAssessment

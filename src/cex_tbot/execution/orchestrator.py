@@ -1,24 +1,16 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from datetime import datetime
 
 from cex_tbot.decision_contracts import TradeProposal
 from cex_tbot.enums import ProposalStatus
 from cex_tbot.execution.journal import ExecutionEvent, InMemoryExecutionJournal
+from cex_tbot.execution.result import ExecutionResult
 from cex_tbot.execution.state_store import InMemoryExecutionStateStore
 from cex_tbot.risk_engine import PortfolioState, RiskEngine
 from cex_tbot.shared import utc_now
 from cex_tbot.simulator import Position, SimulatorService
 from cex_tbot.execution.gate_demo_executor import GateDemoExecutionAdapter
-
-
-@dataclass(frozen=True)
-class ExecutionResult:
-    proposal_id: str
-    status: ProposalStatus
-    position: Position | None = None
-    reason: str = ""
 
 
 class ExecutionOrchestrator:
