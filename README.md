@@ -311,6 +311,22 @@ Available render modes for operator output:
 
 This gives us a cleaner operator UX and a stable shell-level integration surface for a later Telegram bot or UI layer.
 
+## Runnable live-market pipeline entrypoint
+
+The repo now also includes a minimal cron-friendly orchestrator that:
+
+- refreshes public Binance market files into a market directory
+- runs `LiveMarketProposalFlow`
+- emits either a same-topic trade approval request or a same-topic no-trade notice
+- persists the resulting proposal/no-trade into the existing operator/session workflow
+
+Run it with file-backed session storage:
+
+```bash
+PYTHONPATH=src python3 -m cex_tbot live-market-run --storage-dir .runtime/session --market-dir /data/.openclaw/workspace/market --chat-id telegram:-1003832858724 --thread-id 7
+PYTHONPATH=src python3 -m cex_tbot live-market-run --storage-dir .runtime/session --format json
+```
+
 ## Minimal REST bridge (FastAPI, optional)
 
 The repo now also includes an optional FastAPI bridge layer in `cex_tbot.rest_api`.

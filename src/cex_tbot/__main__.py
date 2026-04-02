@@ -11,6 +11,7 @@ from cex_tbot.api_surface import CommandRequest, ProposalSubmitRequest, TradeLis
 from cex_tbot.decision_contracts import EntrySplitLeg, NoTradeDecision, TradeProposal
 from cex_tbot.demo import build_demo_proposal, render_demo
 from cex_tbot.enums import NoTradeReasonCode, ProposalStatus, TradeDirection
+from cex_tbot.live_market_runner import LiveMarketPipelineRunner
 from cex_tbot.market_pipeline import BinanceMarketDataPipeline
 from cex_tbot.openclaw_wrapper import OpenClawTopicWrapper
 from cex_tbot.topic_producer import TopicProposalProducer
@@ -182,6 +183,14 @@ def build_parser() -> argparse.ArgumentParser:
     market_sync_parser.add_argument("--loop", action="store_true", help="Keep refreshing on a fixed interval")
     market_sync_parser.add_argument("--runs", type=int, help="Optional max runs when used with --loop")
     market_sync_parser.add_argument("--format", choices=("text", "json"), default="text", help="Output format")
+
+    live_market_run_parser = subparsers.add_parser("live-market-run", help="Refresh market data, run live market proposal flow, and emit same-topic proposal/no-trade output")
+    live_market_run_parser.add_argument("--storage-dir", type=Path, help="Optional base directory for file-backed session state")
+    live_market_run_parser.add_argument("--market-dir", type=Path, default=Path("/data/.openclaw/workspace/market"), help="Directory for refreshed market JSON payloads")
+    live_market_run_parser.add_argument("--chat-id", default="telegram:-1003832858724", help="Target chat id for rendered outbound payload")
+    live_market_run_parser.add_argument("--thread-id", default="7", help="Target thread/topic id for rendered outbound payload")
+    live_market_run_parser.add_argument("--universe-limit", type=int, default=150)
+    live_market_run_parser.add_argument("--format", choices=("text", "json"), default="text", help="Output format")
 
     autosync_parser = subparsers.add_parser("autosync-demo", help="Continuously sync Gate demo order states for all tracked proposals")
     autosync_parser.add_argument("--storage-dir", type=Path, help="Optional base directory for file-backed session state")
@@ -542,6 +551,31 @@ def main() -> int:
             lines.append(f"policy_mode={payload['policy']['mode']}")
             for alert in payload["policy"]["alerts"]:
                 lines.append(f"- alert: {alert}")
+            print("\n".join(lines))
+        return 0
+
+    if command == "live-market-run":
+        runner = LiveMarketPipelineRunner(
+            app.backend,
+            config=app.config,
+            market_dir=args.market_dir,
+            chat_id=args.chat_id,
+            thread_id=args.thread_id,
+            pipeline=BinanceMarketDataPipeline(output_dir=args.market_dir, universe_limit=args.universe_limit),
+        )
+        payload = runner.run_once().to_payload()
+        if fmt == "json":
+            print(_print_payload(payload, fmt))
+        else:
+            lines = [
+                "Live market pipeline run",
+                f"decision={payload['decision_kind']}",
+                f"selected_symbol={payload.get('selected_symbol')}",
+                f"chat_id={payload['chat_id']} thread_id={payload['thread_id']}",
+                f"refresh_status={payload['refresh'].get('status')} selected_symbols={payload['refresh'].get('selected_symbols')}",
+                "--- outbound ---",
+                payload["text"],
+            ]
             print("\n".join(lines))
         return 0
 

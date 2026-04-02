@@ -14,6 +14,7 @@ from .bootstrap import TradingApplication, build_app
 from .exceptions import GateDemoTransportError, GateLiveModeBlockedError, MissingGateDemoApiError
 from .gate_demo_sdk_client import GateDemoSdkClient
 from .live_market_flow import LiveMarketFlowDecision, LiveMarketProposalFlow
+from .live_market_runner import LiveMarketPipelineRunner, LiveMarketRunResult
 from .market_data import (
     GateDemoInstrumentClient,
     GateDemoInstrumentFetcher,
@@ -102,6 +103,8 @@ __all__ = [
     "ProposalWorkflowGlue",
     "LiveMarketFlowDecision",
     "LiveMarketProposalFlow",
+    "LiveMarketPipelineRunner",
+    "LiveMarketRunResult",
     "TradeQuery",
     "QueryService",
     "TradeListItem",
