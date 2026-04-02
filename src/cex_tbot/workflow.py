@@ -80,9 +80,13 @@ class TradeWorkflowService:
         actor: str,
         raw_text: str,
         replacement: TradeProposal,
-        portfolio: PortfolioState,
+        portfolio: PortfolioState | None = None,
     ) -> WorkflowResult:
-        risk_evaluation = self.risk_engine.evaluate(replacement, portfolio) if self.risk_engine is not None else None
+        risk_evaluation = (
+            self.risk_engine.evaluate(replacement, portfolio)
+            if self.risk_engine is not None and portfolio is not None
+            else None
+        )
         replacement_status = replacement.status
         if risk_evaluation is not None:
             replacement_status = ProposalStatus.PENDING_APPROVAL if risk_evaluation.is_approved else ProposalStatus.REJECTED_BY_RISK

@@ -13,6 +13,7 @@ from .backend_service import TradingBackendService
 from .bootstrap import TradingApplication, build_app
 from .exceptions import GateDemoTransportError, GateLiveModeBlockedError, MissingGateDemoApiError
 from .gate_demo_sdk_client import GateDemoSdkClient
+from .live_market_flow import LiveMarketFlowDecision, LiveMarketProposalFlow
 from .market_data import (
     GateDemoInstrumentClient,
     GateDemoInstrumentFetcher,
@@ -28,6 +29,8 @@ from .handoff import ApprovalExecutionHandoff, ApprovalExecutionResult
 from .operator_router import OperatorCommandRouter, RenderedResponse
 from .post_analysis import PostAnalysisBuilder, PostAnalysisSummary
 from .proposal_store import InMemoryProposalStore
+from .proposal_workflow_glue import ProposalWorkflowGlue
+from .proposal_emitter import TopicProposalEmitter
 from .query_params import TradeQuery
 from .read_models import QueryService, TradeDetailView, TradeListItem
 from .reporting import TradeReport, TradeReportBuilder
@@ -97,6 +100,8 @@ __all__ = [
     "PostAnalysisSummary",
     "TopicProposalEmitter",
     "ProposalWorkflowGlue",
+    "LiveMarketFlowDecision",
+    "LiveMarketProposalFlow",
     "TradeQuery",
     "QueryService",
     "TradeListItem",
