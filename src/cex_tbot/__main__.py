@@ -14,6 +14,7 @@ from cex_tbot.enums import NoTradeReasonCode, ProposalStatus, TradeDirection
 from cex_tbot.live_market_runner import LiveMarketPipelineRunner
 from cex_tbot.market_pipeline import BinanceMarketDataPipeline
 from cex_tbot.openclaw_wrapper import OpenClawTopicWrapper
+from cex_tbot.periodic_runner import PeriodicRunner
 from cex_tbot.topic_producer import TopicProposalProducer
 from cex_tbot.execution.policy import ConservativePolicyAssessment
 from cex_tbot.proposal_contract import proposal_contract_text, validate_proposal_payload
@@ -190,6 +191,9 @@ def build_parser() -> argparse.ArgumentParser:
     live_market_run_parser.add_argument("--chat-id", default="telegram:-1003832858724", help="Target chat id for rendered outbound payload")
     live_market_run_parser.add_argument("--thread-id", default="7", help="Target thread/topic id for rendered outbound payload")
     live_market_run_parser.add_argument("--universe-limit", type=int, default=150)
+    live_market_run_parser.add_argument("--loop", action="store_true", help="Keep running the internal live-market loop instead of a single pass")
+    live_market_run_parser.add_argument("--interval-sec", type=int, default=300, help="Periodic live-market loop interval in seconds")
+    live_market_run_parser.add_argument("--runs", type=int, help="Optional max runs when used with --loop")
     live_market_run_parser.add_argument("--format", choices=("text", "json"), default="text", help="Output format")
 
     autosync_parser = subparsers.add_parser("autosync-demo", help="Continuously sync Gate demo order states for all tracked proposals")
@@ -563,19 +567,28 @@ def main() -> int:
             thread_id=args.thread_id,
             pipeline=BinanceMarketDataPipeline(output_dir=args.market_dir, universe_limit=args.universe_limit),
         )
-        payload = runner.run_once().to_payload()
+        periodic = PeriodicRunner(runner, interval_sec=args.interval_sec)
+        summary = periodic.run_periodic(runs=args.runs) if args.loop else periodic.run_single()
+        payload = summary.to_payload()
         if fmt == "json":
             print(_print_payload(payload, fmt))
         else:
+            last = payload.get("last_payload") or {}
             lines = [
                 "Live market pipeline run",
-                f"decision={payload['decision_kind']}",
-                f"selected_symbol={payload.get('selected_symbol')}",
-                f"chat_id={payload['chat_id']} thread_id={payload['thread_id']}",
-                f"refresh_status={payload['refresh'].get('status')} selected_symbols={payload['refresh'].get('selected_symbols')}",
-                "--- outbound ---",
-                payload["text"],
+                f"periodic={payload['periodic']} runs_completed={payload['runs_completed']} interval_sec={payload['interval_sec']}",
             ]
+            if last:
+                lines.extend(
+                    [
+                        f"decision={last.get('decision_kind')}",
+                        f"selected_symbol={last.get('selected_symbol')}",
+                        f"chat_id={last.get('chat_id')} thread_id={last.get('thread_id')}",
+                        f"refresh_status={last.get('refresh', {}).get('status')} selected_symbols={last.get('refresh', {}).get('selected_symbols')}",
+                        "--- outbound ---",
+                        str(last.get("text", "")),
+                    ]
+                )
             print("\n".join(lines))
         return 0
 

@@ -327,6 +327,19 @@ PYTHONPATH=src python3 -m cex_tbot live-market-run --storage-dir .runtime/sessio
 PYTHONPATH=src python3 -m cex_tbot live-market-run --storage-dir .runtime/session --format json
 ```
 
+The same entrypoint can now also act as the bot's internal scheduler/orchestrator instead of relying on OpenClaw cron as the primary trigger:
+
+```bash
+PYTHONPATH=src python3 -m cex_tbot live-market-run --storage-dir .runtime/session --market-dir /data/.openclaw/workspace/market --loop --interval-sec 300
+PYTHONPATH=src python3 -m cex_tbot live-market-run --storage-dir .runtime/session --market-dir /data/.openclaw/workspace/market --loop --interval-sec 60 --runs 2 --format json
+```
+
+Behavior:
+- default mode stays single-run for safe/manual invocation
+- `--loop` enables the internal periodic runner
+- `--runs` makes the loop bounded and testable
+- re-entrant loop execution is blocked inside the runner
+
 ## Minimal REST bridge (FastAPI, optional)
 
 The repo now also includes an optional FastAPI bridge layer in `cex_tbot.rest_api`.

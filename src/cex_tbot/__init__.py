@@ -15,6 +15,7 @@ from .exceptions import GateDemoTransportError, GateLiveModeBlockedError, Missin
 from .gate_demo_sdk_client import GateDemoSdkClient
 from .live_market_flow import LiveMarketFlowDecision, LiveMarketProposalFlow
 from .live_market_runner import LiveMarketPipelineRunner, LiveMarketRunResult
+from .periodic_runner import PeriodicRunner, PeriodicRunSummary
 from .market_data import (
     GateDemoInstrumentClient,
     GateDemoInstrumentFetcher,
@@ -105,6 +106,8 @@ __all__ = [
     "LiveMarketProposalFlow",
     "LiveMarketPipelineRunner",
     "LiveMarketRunResult",
+    "PeriodicRunner",
+    "PeriodicRunSummary",
     "TradeQuery",
     "QueryService",
     "TradeListItem",

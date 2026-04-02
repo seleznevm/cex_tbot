@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
+import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -64,6 +67,11 @@ class StubRefreshPipeline:
 
 
 class LiveMarketPipelineRunnerTests(unittest.TestCase):
+    def _env(self) -> dict[str, str]:
+        env = os.environ.copy()
+        env["PYTHONPATH"] = "src"
+        return env
+
     def test_run_once_refreshes_market_and_emits_proposal(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             market_dir = Path(tmp) / "market"
@@ -116,6 +124,40 @@ class LiveMarketPipelineRunnerTests(unittest.TestCase):
             payload = result.to_payload()
             self.assertEqual(payload["decision_kind"], "no_trade")
             self.assertEqual(payload["reason_code"], "CONFIDENCE_BELOW_THRESHOLD")
+
+    def test_cli_loop_mode_runs_internal_periodic_runner(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            storage_dir = Path(tmp) / "session"
+            market_dir = Path(tmp) / "market"
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "cex_tbot",
+                    "live-market-run",
+                    "--storage-dir",
+                    str(storage_dir),
+                    "--market-dir",
+                    str(market_dir),
+                    "--loop",
+                    "--runs",
+                    "2",
+                    "--interval-sec",
+                    "1",
+                    "--format",
+                    "json",
+                ],
+                cwd=Path(__file__).resolve().parents[1],
+                check=True,
+                capture_output=True,
+                text=True,
+                env=self._env(),
+            )
+            payload = json.loads(result.stdout)
+            self.assertTrue(payload["periodic"])
+            self.assertEqual(payload["runs_completed"], 2)
+            self.assertEqual(payload["interval_sec"], 1)
+            self.assertIn(payload["last_payload"]["decision_kind"], {"proposal", "no_trade"})
 
 
 if __name__ == "__main__":
