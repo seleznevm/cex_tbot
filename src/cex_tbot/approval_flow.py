@@ -108,15 +108,17 @@ class ApprovalFlow:
         actor: str,
         raw_text: str,
         replacement: TradeProposal,
+        *,
+        risk_evaluation: RiskEvaluation | None = None,
     ) -> ApprovalApplyResult:
         decision = self.record_decision(actor, raw_text)
         self.store.append_decision(decision)
         if not decision.is_strict_match or decision.action != ApprovalAction.MODIFY.value:
             return ApprovalApplyResult(decision, None, decision.proposal_id)
         previous = self.store.require(decision.proposal_id)
-        replacement = replace(replacement, status=ProposalStatus.PENDING_APPROVAL, proposal_version=previous.proposal_version + 1)
+        replacement = replace(replacement, proposal_version=previous.proposal_version + 1)
         self.store.supersede_and_add(previous.proposal_id, replacement)
-        review_card = self.review_cards.build(replacement)
+        review_card = self.review_cards.build(replacement, risk_evaluation)
         return ApprovalApplyResult(
             decision=decision,
             resulting_status=replacement.status,

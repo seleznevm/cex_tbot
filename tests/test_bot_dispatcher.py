@@ -64,6 +64,7 @@ class BotDispatcherTests(unittest.TestCase):
         self.assertIn("Report for proposal_dispatch", dispatcher.dispatch("/trade_report proposal_dispatch").text)
         self.assertIn("Reject processed for proposal_dispatch", dispatcher.dispatch("/trade_reject proposal_dispatch").text)
         self.assertIn("Modify processed for proposal_dispatch", dispatcher.dispatch("/trade_modify proposal_dispatch stop_loss=98.5, thesis=clean retest").text)
+        self.assertIn("Modify processed for proposal_dispatch", dispatcher.dispatch("/modify proposal_dispatch stop_loss=98.5, thesis=clean retest").text)
 
     def test_dispatcher_handles_usage_and_unknown(self) -> None:
         service = TradingBackendService.from_session(TradeSessionStore())

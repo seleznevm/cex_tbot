@@ -1,15 +1,16 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 
 from cex_tbot.approval_flow import ApprovalFlow, ApprovalApplyResult
 from cex_tbot.decision_contracts import TradeProposal
+from cex_tbot.enums import ProposalStatus
 from cex_tbot.execution import TradeTimelineBuilder
 from cex_tbot.handoff import ApprovalExecutionHandoff, ApprovalExecutionResult
 from cex_tbot.reporting import TradeReport, TradeReportBuilder
 from cex_tbot.review_cards import ReviewCardBuilder
-from cex_tbot.risk_engine import PortfolioState
+from cex_tbot.risk_engine import PortfolioState, RiskEngine
 from cex_tbot.shared import utc_now
 
 
@@ -28,12 +29,14 @@ class TradeWorkflowService:
         timeline_builder: TradeTimelineBuilder,
         report_builder: TradeReportBuilder | None = None,
         review_cards: ReviewCardBuilder | None = None,
+        risk_engine: RiskEngine | None = None,
     ) -> None:
         self.approval_flow = approval_flow
         self.handoff = handoff
         self.timeline_builder = timeline_builder
         self.report_builder = report_builder or TradeReportBuilder()
         self.review_cards = review_cards or ReviewCardBuilder()
+        self.risk_engine = risk_engine
 
     def approve_execute_and_report(
         self,
@@ -77,8 +80,26 @@ class TradeWorkflowService:
         actor: str,
         raw_text: str,
         replacement: TradeProposal,
+        portfolio: PortfolioState,
     ) -> WorkflowResult:
-        result = self.approval_flow.revalidate_modified_proposal(actor, raw_text, replacement)
+        risk_evaluation = self.risk_engine.evaluate(replacement, portfolio) if self.risk_engine is not None else None
+        replacement_status = replacement.status
+        if risk_evaluation is not None:
+            replacement_status = ProposalStatus.PENDING_APPROVAL if risk_evaluation.is_approved else ProposalStatus.REJECTED_BY_RISK
+        result = self.approval_flow.revalidate_modified_proposal(
+            actor,
+            raw_text,
+            replace(replacement, status=replacement_status),
+            risk_evaluation=risk_evaluation,
+        )
+        if (
+            self.risk_engine is not None
+            and risk_evaluation is not None
+            and risk_evaluation.is_approved
+            and result.superseded_proposal_id is not None
+        ):
+            self.risk_engine.release_pending_risk(result.superseded_proposal_id)
+            self.risk_engine.reserve_pending_risk(self.approval_flow.store.require(result.proposal_id))
         report = result.review_card and self.report_builder.build(
             result.review_card,
             self.timeline_builder.build(result.proposal_id),

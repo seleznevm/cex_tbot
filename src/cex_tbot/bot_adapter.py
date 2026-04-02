@@ -64,6 +64,8 @@ class BotCommandAdapter:
                     "/trade_report <proposal_id> — telegram-ready trade report",
                     "/trade_approve <proposal_id> — approve and execute",
                     "/trade_approve_only <proposal_id> — approve without execution",
+                    "/trade_modify <proposal_id> key=value[, key=value] — modify + revalidate",
+                    "/modify <proposal_id> key=value[, key=value] — same as /trade_modify for topic workflows",
                     "/trade_execute <proposal_id> — execute approved proposal",
                     "/halt <reason> — activate emergency halt",
                     "/unhalt — clear emergency halt",

@@ -116,7 +116,7 @@ def build_app(
         gate_demo_executor=gate_demo_executor,
     )
     handoff = ApprovalExecutionHandoff(approval_flow, execution)
-    workflow = TradeWorkflowService(approval_flow, handoff, timeline_builder, report_builder, review_cards)
+    workflow = TradeWorkflowService(approval_flow, handoff, timeline_builder, report_builder, review_cards, risk_engine)
     router = OperatorCommandRouter(workflow, approval_flow, transcript=resolved_session.operator_transcript)
     query_service = QueryService(resolved_session, timeline_builder)
     serializer = ApiSerializer()

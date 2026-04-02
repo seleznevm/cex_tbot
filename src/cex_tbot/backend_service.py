@@ -63,7 +63,14 @@ class TradingBackendService:
             journal=session.execution_journal,
             state_store=session.execution_state,
         )
-        workflow = TradeWorkflowService(approval_flow, ApprovalExecutionHandoff(approval_flow, execution), timeline_builder, report_builder, review_cards)
+        workflow = TradeWorkflowService(
+            approval_flow,
+            ApprovalExecutionHandoff(approval_flow, execution),
+            timeline_builder,
+            report_builder,
+            review_cards,
+            risk_engine,
+        )
         router = OperatorCommandRouter(workflow, approval_flow, transcript=session.operator_transcript)
         safety_controller = SafetyController(session.system_state, session.operator_transcript, execution.risk_engine)
         post_analysis_builder = PostAnalysisBuilder(session, QueryService(session, timeline_builder))

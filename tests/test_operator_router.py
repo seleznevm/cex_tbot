@@ -45,41 +45,46 @@ class OperatorRouterTests(unittest.TestCase):
             status=ProposalStatus.PENDING_APPROVAL,
         )
 
-    def _router(self, store: InMemoryProposalStore) -> OperatorCommandRouter:
+    def _router(self, store: InMemoryProposalStore) -> tuple[OperatorCommandRouter, RiskEngine]:
         approval = ApprovalFlow(store)
         journal = InMemoryExecutionJournal()
         state_store = InMemoryExecutionStateStore()
-        execution = ExecutionOrchestrator(RiskEngine(BotConfig()), SimulatorService(), journal=journal, state_store=state_store)
+        risk_engine = RiskEngine(BotConfig())
+        execution = ExecutionOrchestrator(risk_engine, SimulatorService(), journal=journal, state_store=state_store)
         handoff = ApprovalExecutionHandoff(approval, execution)
-        workflow = TradeWorkflowService(approval, handoff, TradeTimelineBuilder(journal, state_store))
-        return OperatorCommandRouter(workflow, approval)
+        workflow = TradeWorkflowService(approval, handoff, TradeTimelineBuilder(journal, state_store), risk_engine=risk_engine)
+        return OperatorCommandRouter(workflow, approval), risk_engine
 
     def test_routes_approve_for_execution(self) -> None:
         store = InMemoryProposalStore()
         proposal = self._proposal()
         store.upsert(proposal)
-        response = self._router(store).route("Mike", "APPROVE proposal_1", PortfolioState(equity=1000.0), now=proposal.created_at)
+        router, _ = self._router(store)
+        response = router.route("Mike", "APPROVE proposal_1", PortfolioState(equity=1000.0), now=proposal.created_at)
         self.assertIn("Trade Report", response.text)
         self.assertEqual(store.get("proposal_1").status, ProposalStatus.EXECUTED)
 
     def test_routes_reject_with_report(self) -> None:
         store = InMemoryProposalStore()
         store.upsert(self._proposal())
-        response = self._router(store).route("Mike", "REJECT proposal_1", PortfolioState(equity=1000.0), execute_on_approve=False)
+        router, _ = self._router(store)
+        response = router.route("Mike", "REJECT proposal_1", PortfolioState(equity=1000.0), execute_on_approve=False)
         self.assertIn("Trade Report", response.text)
         self.assertEqual(store.get("proposal_1").status, ProposalStatus.REJECTED_BY_HUMAN)
 
     def test_requires_replacement_for_modify(self) -> None:
         store = InMemoryProposalStore()
         store.upsert(self._proposal())
-        response = self._router(store).route("Mike", "MODIFY proposal_1: stop_loss=98.5", PortfolioState(equity=1000.0))
+        router, _ = self._router(store)
+        response = router.route("Mike", "MODIFY proposal_1: stop_loss=98.5", PortfolioState(equity=1000.0))
         self.assertIn("requires replacement proposal", response.text)
 
     def test_renders_operator_mode_with_spacing(self) -> None:
         store = InMemoryProposalStore()
         proposal = self._proposal()
         store.upsert(proposal)
-        response = self._router(store).route(
+        router, _ = self._router(store)
+        response = router.route(
             "Mike",
             "APPROVE proposal_1",
             PortfolioState(equity=1000.0),
@@ -92,7 +97,8 @@ class OperatorRouterTests(unittest.TestCase):
         store = InMemoryProposalStore()
         proposal = self._proposal()
         store.upsert(proposal)
-        response = self._router(store).route(
+        router, _ = self._router(store)
+        response = router.route(
             "Mike",
             "APPROVE proposal_1",
             PortfolioState(equity=1000.0),
@@ -101,6 +107,50 @@ class OperatorRouterTests(unittest.TestCase):
         )
         self.assertIn("Trade Report", response.text)
         self.assertIn("Timeline events:", response.text)
+
+    def test_modify_revalidation_reserves_replacement_risk(self) -> None:
+        store = InMemoryProposalStore()
+        proposal = self._proposal()
+        store.upsert(proposal)
+        replacement = self._proposal("proposal_1_v2")
+        replacement = TradeProposal(
+            proposal_id=replacement.proposal_id,
+            agent_name=replacement.agent_name,
+            strategy_id=replacement.strategy_id,
+            strategy_version=replacement.strategy_version,
+            market_context_id=replacement.market_context_id,
+            symbol=replacement.symbol,
+            timeframe=replacement.timeframe,
+            direction=replacement.direction,
+            entry_zone_min=replacement.entry_zone_min,
+            entry_zone_max=replacement.entry_zone_max,
+            entry_split=replacement.entry_split,
+            stop_loss=98.5,
+            take_profit_1=replacement.take_profit_1,
+            take_profit_2=replacement.take_profit_2,
+            risk_percent=replacement.risk_percent,
+            risk_usd=replacement.risk_usd,
+            position_size=replacement.position_size,
+            confidence_score=replacement.confidence_score,
+            thesis=replacement.thesis,
+            invalidity_condition=replacement.invalidity_condition,
+            liquidity_check=replacement.liquidity_check,
+            data_freshness_ms=replacement.data_freshness_ms,
+            created_at=replacement.created_at,
+            expires_at=replacement.expires_at,
+            status=ProposalStatus.PENDING_APPROVAL,
+        )
+        router, risk_engine = self._router(store)
+        response = router.route(
+            "Mike",
+            "MODIFY proposal_1: stop_loss=98.5",
+            PortfolioState(equity=1000.0),
+            replacement=replacement,
+        )
+        self.assertIn("Trade Report", response.text)
+        self.assertEqual(store.get("proposal_1").status, ProposalStatus.SUPERSEDED)
+        self.assertEqual(store.get("proposal_1_v2").status, ProposalStatus.PENDING_APPROVAL)
+        self.assertEqual(risk_engine.pending_risk_book.reservations.get("proposal_1_v2"), replacement.risk_percent)
 
 
 if __name__ == "__main__":

@@ -27,7 +27,7 @@ class OpenClawOutboundMessage:
 class OpenClawTopicWrapper:
     def __init__(
         self,
-        bridge: TransportCommandBridge,
+        bridge: TransportCommandBridge | None,
         *,
         default_chat_id: str | None = None,
         default_thread_id: str | None = None,
@@ -37,6 +37,12 @@ class OpenClawTopicWrapper:
         self.default_thread_id = default_thread_id
 
     def handle_inbound(self, inbound: OpenClawInboundMessage) -> OpenClawOutboundMessage:
+        if self.bridge is None:
+            return OpenClawOutboundMessage(
+                text="Topic bridge unavailable: no transport bridge configured.",
+                chat_id=inbound.chat_id or self.default_chat_id,
+                thread_id=inbound.thread_id or self.default_thread_id,
+            )
         reply = self.bridge.handle_message(
             TransportMessage(
                 sender_id=inbound.sender_id,
@@ -60,9 +66,10 @@ class OpenClawTopicWrapper:
             f"entry {proposal.entry_zone_min}..{proposal.entry_zone_max} | sl {proposal.stop_loss} | tp1 {proposal.take_profit_1} | tp2 {proposal.take_profit_2}",
             f"confidence {proposal.confidence_score} | risk {proposal.risk_percent}%",
             f"thesis: {proposal.thesis}",
-            f"/approve {proposal.proposal_id}",
-            f"/reject {proposal.proposal_id}",
-            f"/report {proposal.proposal_id}",
+            f"/trade_approve {proposal.proposal_id}",
+            f"/trade_reject {proposal.proposal_id}",
+            f"/modify {proposal.proposal_id} stop_loss=<value>, take_profit_1=<value>, take_profit_2=<value>, thesis=<text>",
+            f"/trade_report {proposal.proposal_id}",
         ]
         return OpenClawOutboundMessage(
             text="\n".join(lines),

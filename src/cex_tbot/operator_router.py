@@ -64,7 +64,7 @@ class OperatorCommandRouter:
                 rendered = RenderedResponse(render_mode, "MODIFY requires replacement proposal")
                 self.transcript.append(AuditEntry(actor=actor, raw_command=raw_text, outcome="MODIFY_MISSING_REPLACEMENT", proposal_id=parsed.command.proposal_id))
                 return rendered
-            result = self.workflow.modify_revalidate_and_report(actor, raw_text, replacement)
+            result = self.workflow.modify_revalidate_and_report(actor, raw_text, replacement, portfolio)
             rendered = RenderedResponse(render_mode, self.render(result, render_mode))
             self.transcript.append(AuditEntry(actor=actor, raw_command=raw_text, outcome="MODIFY", proposal_id=parsed.command.proposal_id))
             return rendered

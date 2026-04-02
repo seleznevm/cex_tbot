@@ -52,7 +52,8 @@ class TopicProposalProducerTests(unittest.TestCase):
         self.assertEqual(outbound.chat_id, "telegram:-1003832858724")
         self.assertEqual(outbound.thread_id, "7")
         self.assertIn("Trade approval request", outbound.text)
-        self.assertIn("/approve proposal_topic_live_1", outbound.text)
+        self.assertIn("/trade_approve proposal_topic_live_1", outbound.text)
+        self.assertIn("/modify proposal_topic_live_1", outbound.text)
 
 
 if __name__ == "__main__":
