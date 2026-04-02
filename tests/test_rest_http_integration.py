@@ -72,6 +72,64 @@ class RestHttpIntegrationTests(unittest.TestCase):
         self.assertEqual(response.status_code, 401)
         self.assertEqual(response.json()["detail"]["error"]["code"], "UNAUTHORIZED")
 
+    def test_topic_command_endpoint_routes_same_topic(self) -> None:
+        response = self.client.post(
+            "/topic/command",
+            json={
+                "sender_id": "125619710",
+                "text": "/trade_status",
+                "chat_id": "telegram:-1003832858724",
+                "thread_id": "7",
+            },
+            headers=self.headers,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Session Summary", response.json()["text"])
+        self.assertEqual(response.json()["thread_id"], "7")
+
+    def test_topic_proposal_endpoint_persists_and_returns_same_topic_payload(self) -> None:
+        response = self.client.post("/topic/proposals", json=self.proposal_payload, headers=self.headers)
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["proposal_id"], "proposal_http_1")
+        self.assertIn("Trade approval request", payload["text"])
+        self.assertIn("/trade_approve proposal_http_1", payload["text"])
+
+        detail = self.client.get("/proposals/proposal_http_1", headers=self.headers)
+        self.assertEqual(detail.status_code, 200)
+        self.assertEqual(detail.json()["proposal_id"], "proposal_http_1")
+
+    def test_topic_no_trade_endpoint_persists_and_returns_same_topic_payload(self) -> None:
+        response = self.client.post(
+            "/topic/no-trades",
+            json={
+                "decision_id": "no_trade_http_1",
+                "agent_name": "Luma",
+                "strategy_id": "breakout_reclaim",
+                "strategy_version": "v3",
+                "symbol": "BTC_USDT",
+                "timeframe": "15m",
+                "confidence_score": 0.41,
+                "reason_code": "confidence_below_threshold",
+                "reason_text": "signal stayed too weak after validation",
+                "market_context_id": "ctx_demo_btc_20260326",
+                "liquidity_check": "ok",
+                "data_freshness_ms": 5000,
+                "created_at": self.now.isoformat(),
+            },
+            headers=self.headers,
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["decision_id"], "no_trade_http_1")
+        self.assertIn("No-trade notice", payload["text"])
+        self.assertIn("reason=confidence_below_threshold", payload["text"])
+
+        listed = self.client.get("/no-trades", headers=self.headers)
+        self.assertEqual(listed.status_code, 200)
+        self.assertEqual(len(listed.json()), 1)
+        self.assertEqual(listed.json()[0]["decision_id"], "no_trade_http_1")
+
     def test_submit_approve_execute_and_report_flow(self) -> None:
         response = self.client.post("/proposals", json=self.proposal_payload, headers=self.headers)
         self.assertEqual(response.status_code, 200)
@@ -128,9 +186,12 @@ class RestHttpIntegrationTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         schema = response.json()
         self.assertIn("/proposals", schema["paths"])
+        self.assertIn("/topic/proposals", schema["paths"])
+        self.assertIn("/topic/no-trades", schema["paths"])
         self.assertIn("/proposals/{proposal_id}/approve", schema["paths"])
         self.assertIn("/system/halt", schema["paths"])
         self.assertIn("ProposalPayload", schema["components"]["schemas"])
+        self.assertIn("NoTradeSubmitPayload", schema["components"]["schemas"])
         self.assertIn("TradeDetailPayload", schema["components"]["schemas"])
         self.assertIn("DashboardPayload", schema["components"]["schemas"])
         self.assertIn("DashboardUniversePayload", schema["components"]["schemas"])

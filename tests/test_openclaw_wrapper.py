@@ -74,8 +74,20 @@ class OpenClawWrapperTests(unittest.TestCase):
         self.assertIn("Trade approval request", outbound.text)
         self.assertIn("BTC_USDT LONG · 15m", outbound.text)
         self.assertIn("proposal_id=proposal_topic_1", outbound.text)
-        self.assertIn("/approve proposal_topic_1", outbound.text)
+        self.assertIn("/trade_approve proposal_topic_1", outbound.text)
         self.assertEqual(outbound.chat_id, "telegram:-100")
+        self.assertEqual(outbound.thread_id, "7")
+    def test_handle_inbound_without_bridge_returns_explicit_error(self) -> None:
+        wrapper = OpenClawTopicWrapper(None, default_chat_id="telegram:-100", default_thread_id="7")
+        outbound = wrapper.handle_inbound(
+            OpenClawInboundMessage(
+                sender_id="125619710",
+                text="/trade_status",
+                chat_id="telegram:-100",
+                thread_id="7",
+            )
+        )
+        self.assertIn("Topic bridge unavailable", outbound.text)
         self.assertEqual(outbound.thread_id, "7")
 
 

@@ -69,7 +69,7 @@ class RiskEngine:
             return ProposalReasonCode.STOP_LOSS_INVALID
         if proposal.direction == TradeDirection.LONG and any(leg.planned_entry_price < avg_entry for leg in proposal.entry_split[1:]):
             return ProposalReasonCode.AVERAGING_DOWN_FORBIDDEN
-        if proposal.direction == TradeDirection.SHORT and any(leg.planned_entry_price > avg_entry for leg in proposal.entry_split[1:]):
+        if proposal.direction == TradeDirection.SHORT and any(leg.planned_entry_price < avg_entry for leg in proposal.entry_split[1:]):
             return ProposalReasonCode.AVERAGING_DOWN_FORBIDDEN
         if proposal.risk_usd <= 0 or equity <= 0:
             return ProposalReasonCode.RISK_CALCULATION_MISMATCH

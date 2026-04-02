@@ -60,6 +60,46 @@ class RiskEngineConsistencyTests(unittest.TestCase):
         result = engine.check_proposal_consistency(proposal, equity=1000.0)
         self.assertEqual(result, ProposalReasonCode.AVERAGING_DOWN_FORBIDDEN)
 
+    def test_allows_scale_in_higher_for_short(self) -> None:
+        engine = RiskEngine(BotConfig())
+        now = datetime.now(UTC)
+        proposal = self._proposal(
+            direction=TradeDirection.SHORT,
+            entry_zone_min=100.0,
+            entry_zone_max=102.0,
+            entry_split=[
+                EntrySplitLeg(1, 100.0, 50.0, 0.5, now + timedelta(minutes=15)),
+                EntrySplitLeg(2, 101.0, 50.0, 0.5, now + timedelta(minutes=15)),
+            ],
+            stop_loss=103.0,
+            take_profit_1=98.0,
+            take_profit_2=96.0,
+            risk_usd=5.0,
+            risk_percent=0.5,
+        )
+        result = engine.check_proposal_consistency(proposal, equity=1000.0)
+        self.assertIsNone(result)
+
+    def test_rejects_averaging_down_pattern_for_short(self) -> None:
+        engine = RiskEngine(BotConfig())
+        now = datetime.now(UTC)
+        proposal = self._proposal(
+            direction=TradeDirection.SHORT,
+            entry_zone_min=99.0,
+            entry_zone_max=100.0,
+            entry_split=[
+                EntrySplitLeg(1, 100.0, 50.0, 0.5, now + timedelta(minutes=15)),
+                EntrySplitLeg(2, 99.0, 50.0, 0.5, now + timedelta(minutes=15)),
+            ],
+            stop_loss=101.0,
+            take_profit_1=98.0,
+            take_profit_2=97.0,
+            risk_usd=5.0,
+            risk_percent=0.5,
+        )
+        result = engine.check_proposal_consistency(proposal, equity=1000.0)
+        self.assertEqual(result, ProposalReasonCode.AVERAGING_DOWN_FORBIDDEN)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -90,7 +90,7 @@ class CliCommandTests(unittest.TestCase):
             result = self._run(tmp, "emit-demo-proposal", "--storage-dir", storage)
             self.assertIn("Trade approval request", result.stdout)
             self.assertIn("BTC_USDT LONG · 15m", result.stdout)
-            self.assertIn("/approve proposal_topic_demo_btc", result.stdout)
+            self.assertIn("/trade_approve proposal_topic_demo_btc", result.stdout)
 
     def test_submit_and_emit_demo_command(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -142,7 +142,7 @@ class CliCommandTests(unittest.TestCase):
             result = self._run(tmp, "submit-and-emit", str(proposal_path), "--storage-dir", storage, "--format", "json")
             payload = json.loads(result.stdout)
             self.assertEqual(payload["proposal_id"], "proposal_file_live_1")
-            self.assertIn("/approve proposal_file_live_1", payload["text"])
+            self.assertIn("/trade_approve proposal_file_live_1", payload["text"])
 
     def test_submit_and_emit_print_contract(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

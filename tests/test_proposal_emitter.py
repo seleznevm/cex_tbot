@@ -70,7 +70,7 @@ class ProposalEmitterTests(unittest.TestCase):
 
         self.assertEqual(approval.chat_id, "telegram:-1003832858724")
         self.assertEqual(approval.thread_id, "7")
-        self.assertIn("/approve proposal_emit_1", approval.text)
+        self.assertIn("/trade_approve proposal_emit_1", approval.text)
         self.assertIn("Trade proposal rejected", rejected.text)
         self.assertIn("No-trade notice", no_trade_msg.text)
         self.assertEqual(no_trade_msg.thread_id, "7")
