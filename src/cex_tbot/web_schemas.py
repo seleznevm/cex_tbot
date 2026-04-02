@@ -190,6 +190,24 @@ class NoTradeDecisionPayload(BaseModel):
     created_at: datetime
 
 
+class NoTradeSubmitPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    decision_id: str | None = None
+    agent_name: str
+    strategy_id: str
+    strategy_version: str
+    symbol: str
+    timeframe: str
+    confidence_score: float
+    reason_code: str
+    reason_text: str
+    market_context_id: str
+    liquidity_check: str
+    data_freshness_ms: int
+    created_at: datetime | None = None
+
+
 class SessionSummaryPayload(BaseModel):
     total_proposals: int
     total_no_trade_decisions: int

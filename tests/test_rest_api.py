@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+import builtins
 import unittest
 from unittest.mock import patch
 
-from cex_tbot.decision_contracts import TradeProposal
-from cex_tbot.enums import TradeDirection
-from cex_tbot.rest_api import ProposalPayloadMapper, RestApiDependencyError, RestAuth, RestErrorFactory, create_rest_app
+from cex_tbot.decision_contracts import NoTradeDecision, TradeProposal
+from cex_tbot.enums import NoTradeReasonCode, TradeDirection
+from cex_tbot.rest_api import NoTradePayloadMapper, ProposalPayloadMapper, RestApiDependencyError, RestAuth, RestErrorFactory, create_rest_app
 
 
 class ProposalPayloadMapperTests(unittest.TestCase):
@@ -94,6 +95,31 @@ class ProposalPayloadMapperTests(unittest.TestCase):
         proposal = ProposalPayloadMapper.from_dict(payload)
         self.assertTrue(proposal.proposal_id.startswith("proposal_"))
 
+    def test_no_trade_mapper_builds_decision(self) -> None:
+        now = datetime(2026, 3, 26, 12, 0, tzinfo=UTC)
+        payload = {
+            "decision_id": "no_trade_rest_1",
+            "agent_name": "Luma",
+            "strategy_id": "breakout_reclaim",
+            "strategy_version": "v3",
+            "symbol": "BTC_USDT",
+            "timeframe": "15m",
+            "confidence_score": 0.41,
+            "reason_code": "confidence_below_threshold",
+            "reason_text": "signal stayed too weak after validation",
+            "market_context_id": "ctx_demo_btc_20260326",
+            "liquidity_check": "ok",
+            "data_freshness_ms": 5000,
+            "created_at": now.isoformat(),
+        }
+
+        decision = NoTradePayloadMapper.from_dict(payload)
+
+        self.assertIsInstance(decision, NoTradeDecision)
+        self.assertEqual(decision.decision_id, "no_trade_rest_1")
+        self.assertEqual(decision.reason_code, NoTradeReasonCode.CONFIDENCE_BELOW_THRESHOLD)
+        self.assertEqual(decision.symbol, "BTC_USDT")
+
     def test_auth_and_error_helpers(self) -> None:
         auth = RestAuth("secret")
         self.assertTrue(auth.enabled)
@@ -105,15 +131,14 @@ class ProposalPayloadMapperTests(unittest.TestCase):
         )
 
     def test_create_rest_app_raises_when_fastapi_missing(self) -> None:
-        with patch("builtins.__import__") as import_mock:
-            real_import = __import__
+        real_import = builtins.__import__
 
-            def side_effect(name, *args, **kwargs):
-                if name == "fastapi":
-                    raise ModuleNotFoundError("No module named 'fastapi'")
-                return real_import(name, *args, **kwargs)
+        def side_effect(name, *args, **kwargs):
+            if name == "fastapi":
+                raise ModuleNotFoundError("No module named 'fastapi'")
+            return real_import(name, *args, **kwargs)
 
-            import_mock.side_effect = side_effect
+        with patch("builtins.__import__", side_effect=side_effect):
             with self.assertRaises(RestApiDependencyError):
                 create_rest_app()
 

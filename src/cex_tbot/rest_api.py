@@ -12,8 +12,8 @@ from cex_tbot.bot_dispatcher import BotCommandDispatcher
 from cex_tbot.openclaw_wrapper import OpenClawInboundMessage, OpenClawOutboundMessage, OpenClawTopicWrapper
 from cex_tbot.transport_bridge import SenderPolicy, TransportCommandBridge
 from cex_tbot.bootstrap import build_app
-from cex_tbot.decision_contracts import EntrySplitLeg, TradeProposal
-from cex_tbot.enums import ContractType, Exchange, MarketType, ProposalStatus, TradeDirection
+from cex_tbot.decision_contracts import EntrySplitLeg, NoTradeDecision, TradeProposal
+from cex_tbot.enums import ContractType, Exchange, MarketType, NoTradeReasonCode, ProposalStatus, TradeDirection
 from cex_tbot.spa import frontend_dir
 from cex_tbot.topic_producer import TopicProposalProducer
 from cex_tbot.web_schemas import (
@@ -25,6 +25,7 @@ from cex_tbot.web_schemas import (
     HealthPayload,
     ModifyProposalPayload,
     NoTradeDecisionPayload,
+    NoTradeSubmitPayload,
     PortfolioContextPayload,
     ProposalPayload,
     ProposalStoredResponse,
@@ -107,6 +108,36 @@ class ProposalPayloadMapper:
         return datetime.fromisoformat(str(value).replace("Z", "+00:00")).astimezone(UTC)
 
 
+class NoTradePayloadMapper:
+    @staticmethod
+    def from_dict(payload: dict[str, Any] | NoTradeSubmitPayload) -> NoTradeDecision:
+        if isinstance(payload, NoTradeSubmitPayload):
+            payload = payload.model_dump(mode="python")
+        decision_kwargs: dict[str, Any] = {
+            "agent_name": payload["agent_name"],
+            "strategy_id": payload["strategy_id"],
+            "strategy_version": payload["strategy_version"],
+            "symbol": payload["symbol"],
+            "timeframe": payload["timeframe"],
+            "confidence_score": float(payload["confidence_score"]),
+            "reason_code": NoTradePayloadMapper._reason_code(payload["reason_code"]),
+            "reason_text": payload["reason_text"],
+            "market_context_id": payload["market_context_id"],
+            "liquidity_check": payload["liquidity_check"],
+            "data_freshness_ms": int(payload["data_freshness_ms"]),
+            "created_at": ProposalPayloadMapper._parse_datetime(payload.get("created_at")),
+        }
+        if payload.get("decision_id"):
+            decision_kwargs["decision_id"] = payload["decision_id"]
+        return NoTradeDecision(**decision_kwargs)
+
+    @staticmethod
+    def _reason_code(value: Any) -> NoTradeReasonCode:
+        if isinstance(value, NoTradeReasonCode):
+            return value
+        return NoTradeReasonCode(str(value).strip().upper())
+
+
 class RestAuth:
     def __init__(self, token: str | None = None) -> None:
         self.token = (token if token is not None else os.environ.get("CEX_TBOT_API_TOKEN", "")).strip()
@@ -186,6 +217,7 @@ def create_rest_app(*, storage_dir: str | Path | None = None, api_token: str | N
         audit_transcript=trading_app.backend.session.operator_transcript,
     )
     topic_wrapper = OpenClawTopicWrapper(bridge)
+    topic_producer = TopicProposalProducer(trading_app.backend, topic_wrapper)
     static_dir = frontend_dir()
 
     def require_auth(x_api_key: str | None = Header(default=None)) -> None:
@@ -296,6 +328,34 @@ def create_rest_app(*, storage_dir: str | Path | None = None, api_token: str | N
         except ValueError as exc:
             raise http_error(400, "INVALID_PAYLOAD", str(exc)) from exc
         return ProposalStoredResponse.model_validate(api.submit_proposal(ProposalSubmitRequest(proposal)))
+
+    @app.post("/topic/proposals", dependencies=[Depends(require_auth)], responses={401: {"model": ErrorEnvelope}, 400: {"model": ErrorEnvelope}})
+    def submit_topic_proposal(payload: ProposalPayload) -> dict[str, str | None]:
+        try:
+            proposal = ProposalPayloadMapper.from_dict(payload)
+        except ValueError as exc:
+            raise http_error(400, "INVALID_PAYLOAD", str(exc)) from exc
+        outbound = topic_producer.submit_and_emit(proposal)
+        return {
+            "proposal_id": proposal.proposal_id,
+            "text": outbound.text,
+            "chat_id": outbound.chat_id,
+            "thread_id": outbound.thread_id,
+        }
+
+    @app.post("/topic/no-trades", dependencies=[Depends(require_auth)], responses={401: {"model": ErrorEnvelope}, 400: {"model": ErrorEnvelope}})
+    def submit_topic_no_trade(payload: NoTradeSubmitPayload) -> dict[str, str | None]:
+        try:
+            decision = NoTradePayloadMapper.from_dict(payload)
+        except ValueError as exc:
+            raise http_error(400, "INVALID_PAYLOAD", str(exc)) from exc
+        outbound = topic_producer.submit_no_trade_and_emit(decision)
+        return {
+            "decision_id": decision.decision_id,
+            "text": outbound.text,
+            "chat_id": outbound.chat_id,
+            "thread_id": outbound.thread_id,
+        }
 
     @app.post("/commands", dependencies=[Depends(require_auth)], response_model=RenderedResponsePayload, responses={401: {"model": ErrorEnvelope}, 400: {"model": ErrorEnvelope}})
     def command(payload: CommandPayload) -> RenderedResponsePayload:
