@@ -440,6 +440,7 @@ Compose notes:
 - `cex_tbot_telegram` installs `.[dev,telegram]` and passes both `--allowed-sender-ids` and `--allowed-json-sender-ids`
 - `httpx` is pinned to the `python-telegram-bot v20` compatible range in optional dependencies so both services can build cleanly
 - file-backed session stores are refreshed on each REST request and Telegram update, so both processes can observe the same shared `.runtime/session` state
+- `cex_tbot_rest` is now bound to `127.0.0.1:8000` in compose, so it is not exposed directly to the internet; publish it through a reverse proxy or SSH tunnel
 
 Local smoke-run:
 
@@ -467,6 +468,7 @@ Hostinger/VPS quick notes:
 
 - copy [`.env.hostinger.example`](c:\dev\cex_tbot\cex_tbot\.env.hostinger.example) to `.env`
 - Telegram bot token env var name is `CEX_TBOT_TELEGRAM_BOT_TOKEN`
+- the UI `X-API-Key` value is the same string you set in `CEX_TBOT_API_TOKEN`
 - your group is already prefilled as `-1003832858724`
 - your topic/thread is already prefilled as `7`
 - you still need to set your own Telegram user id lists in `CEX_TBOT_ALLOWED_SENDER_IDS` and `CEX_TBOT_JSON_SUBMITTER_IDS`
@@ -532,6 +534,7 @@ The REST layer now uses typed Pydantic request/response schemas, which makes the
 
 For MVP safety, the bridge also supports a simple API key gate via `CEX_TBOT_API_TOKEN`.
 When it is set, clients must send `X-API-Key: <token>`.
+In the built-in UI, the API key field should contain exactly the `CEX_TBOT_API_TOKEN` value from your `.env`.
 
 Run it once optional deps are installed:
 
@@ -542,6 +545,7 @@ PYTHONPATH=src python3 -m cex_tbot serve-rest --storage-dir .runtime/session --h
 This now also serves a built-in static SPA at `/` and frontend assets at `/app/...`.
 The SPA polls the REST endpoints for dashboard, proposals, detail/report, and no-trade updates without full-page reloads.
 It now also includes submit-proposal and halt/unhalt controls for operator-side MVP use.
+For safety, the UI only stores the API key in browser session storage when you explicitly opt in, not persistent local storage.
 
 If FastAPI/uvicorn are missing, the command fails fast with a clear message instead of breaking the core runtime.
 

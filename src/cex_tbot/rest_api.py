@@ -232,7 +232,22 @@ def create_rest_app(*, storage_dir: str | Path | None = None, api_token: str | N
     async def sync_shared_runtime(request, call_next):
         if callable(refresh_shared_state):
             refresh_shared_state()
-        return await call_next(request)
+        response = await call_next(request)
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self'; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data:; "
+            "base-uri 'self'; "
+            "form-action 'self'; "
+            "frame-ancestors 'none'"
+        )
+        return response
 
     def http_error(status_code: int, code: str, message: str, *, details: dict[str, Any] | None = None) -> HTTPException:
         return HTTPException(status_code=status_code, detail=RestErrorFactory.payload(code, message, details=details))

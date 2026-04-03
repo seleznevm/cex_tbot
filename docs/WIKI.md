@@ -435,6 +435,7 @@ The web layer now uses typed Pydantic schemas for request/response contracts, so
 
 For minimal operator safety, the bridge can be protected with `CEX_TBOT_API_TOKEN`.
 If set, every request must include `X-API-Key`.
+In the built-in UI, that field should contain the same value as `CEX_TBOT_API_TOKEN`.
 
 Serve it like this once optional deps are available:
 
@@ -473,11 +474,13 @@ Compose services:
 
 Both services use the same `.runtime/session` storage.
 The file-backed session is refreshed at request/update boundaries, so REST and Telegram workers can see each other's persisted changes without a manual restart.
+The compose port for REST/UI is bound to `127.0.0.1:8000`, so expose it through Nginx/Caddy or an SSH tunnel instead of publishing uvicorn directly.
 
 Hostinger deployment template:
 
 - use [`.env.hostinger.example`](c:\dev\cex_tbot\cex_tbot\.env.hostinger.example) as the starting point
 - Telegram bot token variable name: `CEX_TBOT_TELEGRAM_BOT_TOKEN`
+- UI API key value: the same string you set in `CEX_TBOT_API_TOKEN`
 - target Telegram group id is preset to `-1003832858724`
 - target topic/thread id is preset to `7`
 

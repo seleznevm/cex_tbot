@@ -11,7 +11,7 @@ services:
       sh -c "pip install --no-cache-dir -e .[dev] &&
              PYTHONPATH=src python -m cex_tbot serve-rest --storage-dir .runtime/session --host 0.0.0.0 --port 8000"
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     restart: unless-stopped
 
   cex_tbot_telegram:

@@ -75,6 +75,10 @@ class RestHttpIntegrationTests(unittest.TestCase):
         response = self.client.get("/")
         self.assertEqual(response.status_code, 200)
         self.assertIn("cex_tbot UI Bridge", response.text)
+        self.assertEqual(response.headers["X-Content-Type-Options"], "nosniff")
+        self.assertEqual(response.headers["X-Frame-Options"], "DENY")
+        self.assertEqual(response.headers["Cache-Control"], "no-store")
+        self.assertIn("default-src 'self'", response.headers["Content-Security-Policy"])
 
     def test_health_requires_api_key(self) -> None:
         response = self.client.get("/health")
