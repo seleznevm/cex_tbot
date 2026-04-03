@@ -33,6 +33,7 @@ from .post_analysis import PostAnalysisBuilder, PostAnalysisSummary
 from .proposal_store import InMemoryProposalStore
 from .proposal_workflow_glue import ProposalWorkflowGlue
 from .proposal_emitter import TopicProposalEmitter
+from .proposal_json_parser import JsonTradeProposalParser
 from .tg_runner import TelegramRunnerPolicy, TelegramTransportRunner
 from .query_params import TradeQuery
 from .read_models import QueryService, TradeDetailView, TradeListItem
@@ -128,6 +129,7 @@ __all__ = [
     "PostAnalysisSummary",
     "TopicProposalEmitter",
     "ProposalWorkflowGlue",
+    "JsonTradeProposalParser",
     "TelegramRunnerPolicy",
     "TelegramTransportRunner",
     "LiveMarketFlowDecision",

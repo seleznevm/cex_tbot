@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Callable
 
+from cex_tbot.decision_contracts import TradeProposal
 from cex_tbot.transport_bridge import TransportCommandBridge, TransportMessage
 
 
@@ -13,10 +14,20 @@ class TelegramRunnerPolicy:
 
 
 class TelegramTransportRunner:
-    def __init__(self, bridge: TransportCommandBridge, *, bot_token: str, policy: TelegramRunnerPolicy | None = None) -> None:
+    def __init__(
+        self,
+        bridge: TransportCommandBridge,
+        *,
+        bot_token: str,
+        policy: TelegramRunnerPolicy | None = None,
+        proposal_parser: Callable[[str], TradeProposal] | None = None,
+        proposal_submitter: Callable[[TradeProposal, str, str | None], str] | None = None,
+    ) -> None:
         self.bridge = bridge
         self.bot_token = bot_token.strip()
         self.policy = policy or TelegramRunnerPolicy()
+        self.proposal_parser = proposal_parser
+        self.proposal_submitter = proposal_submitter
 
     async def handle_update(self, update: Any, _context: Any) -> None:
         message = getattr(update, "effective_message", None)
@@ -34,6 +45,18 @@ class TelegramTransportRunner:
             return
         text = (getattr(message, "text", None) or "").strip()
         if not text:
+            return
+        if text.startswith("{") and self.proposal_parser is not None and self.proposal_submitter is not None:
+            try:
+                proposal = self.proposal_parser(text)
+            except ValueError as exc:
+                await message.reply_text(f"Invalid proposal JSON: {exc}")
+                return
+            reply_text = self.proposal_submitter(proposal, f"telegram:{chat_id}", str(thread_id) if thread_id is not None else None)
+            kwargs: dict[str, object] = {}
+            if thread_id is not None:
+                kwargs["message_thread_id"] = int(thread_id)
+            await message.reply_text(reply_text, **kwargs)
             return
         reply = self.bridge.handle_message(
             TransportMessage(

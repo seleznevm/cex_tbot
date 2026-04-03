@@ -18,7 +18,8 @@ from cex_tbot.openclaw_wrapper import OpenClawTopicWrapper
 from cex_tbot.periodic_runner import PeriodicRunner
 from cex_tbot.topic_producer import TopicProposalProducer
 from cex_tbot.execution.policy import ConservativePolicyAssessment
-from cex_tbot.proposal_contract import proposal_contract_text, validate_proposal_payload
+from cex_tbot.proposal_contract import proposal_contract_text
+from cex_tbot.proposal_json_parser import JsonTradeProposalParser
 from cex_tbot.rest_api import RestApiDependencyError, create_rest_app
 from cex_tbot.shared import utc_now
 
@@ -353,47 +354,11 @@ def render_demo_audit_report(app) -> str:
 
 
 def load_proposal_from_json(path: Path) -> TradeProposal:
-    payload = json.loads(path.read_text(encoding="utf-8"))
-    validation = validate_proposal_payload(payload)
-    if not validation.ok:
-        raise ValueError("Invalid proposal JSON: " + "; ".join(validation.errors))
-    entry_split = [
-        EntrySplitLeg(
-            leg_number=int(item["leg_number"]),
-            planned_entry_price=float(item["planned_entry_price"]),
-            allocation_pct=float(item["allocation_pct"]),
-            size_fraction=float(item["size_fraction"]),
-            valid_until=datetime.fromisoformat(item["valid_until"]),
-        )
-        for item in payload["entry_split"]
-    ]
-    return TradeProposal(
-        proposal_id=payload["proposal_id"],
-        agent_name=payload["agent_name"],
-        strategy_id=payload["strategy_id"],
-        strategy_version=payload["strategy_version"],
-        market_context_id=payload["market_context_id"],
-        symbol=payload["symbol"],
-        timeframe=payload["timeframe"],
-        direction=TradeDirection(payload["direction"]),
-        entry_zone_min=float(payload["entry_zone_min"]),
-        entry_zone_max=float(payload["entry_zone_max"]),
-        entry_split=entry_split,
-        stop_loss=float(payload["stop_loss"]),
-        take_profit_1=float(payload["take_profit_1"]),
-        take_profit_2=float(payload["take_profit_2"]),
-        risk_percent=float(payload["risk_percent"]),
-        risk_usd=float(payload["risk_usd"]),
-        position_size=float(payload["position_size"]),
-        confidence_score=float(payload["confidence_score"]),
-        thesis=payload["thesis"],
-        invalidity_condition=payload["invalidity_condition"],
-        liquidity_check=payload["liquidity_check"],
-        data_freshness_ms=int(payload["data_freshness_ms"]),
-        created_at=datetime.fromisoformat(payload["created_at"]),
-        expires_at=datetime.fromisoformat(payload["expires_at"]),
-        status=ProposalStatus(payload.get("status", ProposalStatus.PENDING_APPROVAL.value)),
-    )
+    parser = JsonTradeProposalParser(force_pending_approval=True)
+    try:
+        return parser.parse_text(path.read_text(encoding="utf-8"))
+    except ValueError as exc:
+        raise ValueError(f"Invalid proposal JSON: {exc}") from exc
 
 
 def build_demo_topic_proposal(chat_id: str, thread_id: str):
@@ -709,6 +674,13 @@ def main() -> int:
             write_sender_policy=sender_policy,
             audit_transcript=app.backend.session.operator_transcript,
         )
+        proposal_parser = JsonTradeProposalParser(force_pending_approval=True)
+
+        def _submit_proposal_to_topic(proposal: TradeProposal, chat_id: str, thread_id: str | None) -> str:
+            wrapper = OpenClawTopicWrapper(None, default_chat_id=chat_id, default_thread_id=thread_id)
+            producer = TopicProposalProducer(app.backend, wrapper)
+            return producer.submit_and_emit(proposal).text
+
         runner = TelegramTransportRunner(
             bridge,
             bot_token=token,
@@ -716,6 +688,8 @@ def main() -> int:
                 allowed_chat_ids=_parse_csv_set(args.allowed_chat_ids),
                 allowed_thread_ids=_parse_csv_set(args.allowed_thread_ids),
             ),
+            proposal_parser=proposal_parser.parse_text,
+            proposal_submitter=_submit_proposal_to_topic,
         )
         runner.run_polling()
         return 0

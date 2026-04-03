@@ -318,6 +318,8 @@ The repo now includes a minimal polling runner (`python-telegram-bot v20`) that:
 - listens to group/supergroup text messages
 - forwards them into `TransportCommandBridge`
 - sends `BotReply` back into the same chat/topic thread
+- parses inbound JSON proposal messages into `TradeProposal` with validation and stores them as `PENDING_APPROVAL`
+- responds with same-topic approval request (`/trade_approve`, `/trade_reject`, `/modify`, `/trade_report`)
 
 Install optional Telegram dependency:
 
@@ -336,6 +338,46 @@ Or via environment:
 ```bash
 export CEX_TBOT_TELEGRAM_BOT_TOKEN="<telegram_bot_token>"
 PYTHONPATH=src python3 -m cex_tbot tg-runner --storage-dir .runtime/session --allowed-sender-ids 125619710
+```
+
+Example JSON message body for Telegram topic input:
+
+```json
+{
+  "proposal_id": "proposal_live_btc_001",
+  "agent_name": "Luma",
+  "strategy_id": "pullback",
+  "strategy_version": "v1",
+  "market_context_id": "ctx_live_btc_001",
+  "symbol": "BTC_USDT",
+  "timeframe": "15m",
+  "direction": "LONG",
+  "entry_zone_min": 66000.0,
+  "entry_zone_max": 66100.0,
+  "entry_split": [
+    {
+      "leg_number": 1,
+      "planned_entry_price": 66050.0,
+      "allocation_pct": 100.0,
+      "size_fraction": 1.0,
+      "valid_until": "2026-04-03T12:20:00+00:00"
+    }
+  ],
+  "stop_loss": 65750.0,
+  "take_profit_1": 66400.0,
+  "take_profit_2": 66750.0,
+  "risk_percent": 0.5,
+  "risk_usd": 5.0,
+  "position_size": 1.0,
+  "confidence_score": 0.78,
+  "thesis": "Pullback reclaim and continuation setup.",
+  "invalidity_condition": "Loss of reclaimed support.",
+  "liquidity_check": "ok",
+  "data_freshness_ms": 100,
+  "created_at": "2026-04-03T12:00:00+00:00",
+  "expires_at": "2026-04-03T12:30:00+00:00",
+  "status": "PENDING_APPROVAL"
+}
 ```
 
 ## Runnable live-market pipeline entrypoint

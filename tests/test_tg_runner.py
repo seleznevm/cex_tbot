@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import unittest
+from datetime import UTC, datetime, timedelta
 
 from cex_tbot.bot_adapter import BotReply
+from cex_tbot.proposal_json_parser import JsonTradeProposalParser
 from cex_tbot.tg_runner import TelegramRunnerPolicy, TelegramTransportRunner
 
 
@@ -83,6 +86,67 @@ class TelegramTransportRunnerTests(unittest.TestCase):
         self.assertEqual(len(bridge.messages), 1)
         self.assertEqual(message_ok.replies[0][0], "ok")
         self.assertEqual(message_blocked.replies, [])
+
+    def test_runner_parses_json_and_submits_proposal(self) -> None:
+        bridge = _BridgeStub()
+        parser = JsonTradeProposalParser(force_pending_approval=True)
+        received: list[tuple[str, str | None, str]] = []
+
+        def submitter(proposal, chat_id: str, thread_id: str | None) -> str:
+            received.append((chat_id, thread_id, proposal.proposal_id))
+            return "Trade approval request\n/trade_approve " + proposal.proposal_id
+
+        now = datetime.now(UTC)
+        payload = json.dumps(
+            {
+                "proposal_id": "proposal_json_1",
+                "agent_name": "Luma",
+                "strategy_id": "pullback",
+                "strategy_version": "v1",
+                "market_context_id": "ctx_1",
+                "symbol": "BTC_USDT",
+                "timeframe": "15m",
+                "direction": "LONG",
+                "entry_zone_min": 99.0,
+                "entry_zone_max": 100.0,
+                "entry_split": [
+                    {
+                        "leg_number": 1,
+                        "planned_entry_price": 99.5,
+                        "allocation_pct": 100.0,
+                        "size_fraction": 1.0,
+                        "valid_until": (now + timedelta(minutes=15)).isoformat(),
+                    }
+                ],
+                "stop_loss": 98.0,
+                "take_profit_1": 101.0,
+                "take_profit_2": 102.0,
+                "risk_percent": 0.5,
+                "risk_usd": 5.0,
+                "position_size": 1.0,
+                "confidence_score": 0.8,
+                "thesis": "json from tg",
+                "invalidity_condition": "support breaks",
+                "liquidity_check": "ok",
+                "data_freshness_ms": 100,
+                "created_at": now.isoformat(),
+                "expires_at": (now + timedelta(minutes=20)).isoformat(),
+                "status": "PENDING_APPROVAL",
+            }
+        )
+        runner = TelegramTransportRunner(
+            bridge,
+            bot_token="token",
+            proposal_parser=parser.parse_text,
+            proposal_submitter=submitter,
+        )
+        update, message = self._update(text=payload)
+
+        asyncio.run(runner.handle_update(update, None))
+
+        self.assertEqual(len(bridge.messages), 0)
+        self.assertEqual(received, [("telegram:-100", "7", "proposal_json_1")])
+        self.assertIn("/trade_approve proposal_json_1", message.replies[0][0])
 
 
 if __name__ == "__main__":
