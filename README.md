@@ -223,7 +223,8 @@ The repo now exposes a demo-safe integration path for Gate metadata wiring witho
 - `gate_demo` mode requires `GATE_DEMO_API` and fails predictably if it is missing
 - bootstrap wires a `GateDemoInstrumentFetcher` only in `gate_demo` mode
 - the fetcher talks to a `GateDemoInstrumentClient` boundary that returns normal `GateInstrumentRecord` items, so the existing universe pipeline stays unchanged
-- no concrete HTTP/live trading transport is shipped in this commit; integrations must inject a demo client explicitly
+- includes an optional `HttpxGateDemoInstrumentClient` for demo HTTP paths (metadata, account/order reads, `place_test_order`, `cancel_order`) without SDK dependency
+- live-mode transport remains blocked by config guardrails
 
 ### Bootstrap usage
 

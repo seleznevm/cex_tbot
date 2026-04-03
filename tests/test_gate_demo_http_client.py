@@ -85,11 +85,76 @@ class GateDemoHttpClientTests(unittest.TestCase):
         self.assertEqual(orders[0]["id"], "42")
         self.assertEqual(order["status"], "open")
 
-    def test_httpx_gate_demo_client_place_test_order_not_enabled_yet(self) -> None:
-        client = HttpxGateDemoInstrumentClient("https://demo.gate", gate_demo_key="k", gate_demo_secret="s")
+    def test_httpx_gate_demo_client_place_test_order_uses_http_post(self) -> None:
+        httpx = __import__("httpx")
+        captured: dict[str, object] = {}
 
-        with self.assertRaisesRegex(NotImplementedError, "write trading is not enabled"):
-            client.place_test_order("BTC_USDT", size=1.0, side="buy")
+        def handler(request: httpx.Request) -> httpx.Response:
+            url = str(request.url)
+            if url.endswith("/futures/usdt/contracts"):
+                return httpx.Response(
+                    200,
+                    json=[
+                        {
+                            "name": "BTC_USDT",
+                            "quanto_multiplier": 0.001,
+                            "order_size_min": 1,
+                            "trade_status": "tradable",
+                        }
+                    ],
+                )
+            if url.endswith("/futures/usdt/orders"):
+                captured["method"] = request.method
+                captured["path"] = request.url.path
+                captured["body"] = request.content.decode("utf-8")
+                captured["key"] = request.headers.get("KEY")
+                captured["sign"] = request.headers.get("SIGN")
+                captured["timestamp"] = request.headers.get("Timestamp")
+                return httpx.Response(200, json={"id": "42", "contract": "BTC_USDT", "size": 1000, "status": "open"})
+            raise AssertionError(f"unexpected request url: {url}")
+
+        client = HttpxGateDemoInstrumentClient(
+            "https://demo.gate/api/v4",
+            transport=httpx.MockTransport(handler),
+            gate_demo_key="k",
+            gate_demo_secret="s",
+        )
+
+        payload = client.place_test_order("BTC_USDT", size=1.0, side="buy")
+
+        self.assertEqual(payload["id"], "42")
+        self.assertEqual(payload["normalized_contracts"], 1000)
+        self.assertEqual(captured["method"], "POST")
+        self.assertEqual(captured["path"], "/api/v4/futures/usdt/orders")
+        self.assertIn('"contract":"BTC_USDT"', str(captured["body"]))
+        self.assertEqual(captured["key"], "k")
+        self.assertTrue(captured["sign"])
+        self.assertTrue(captured["timestamp"])
+
+    def test_httpx_gate_demo_client_cancel_order_uses_http_delete(self) -> None:
+        httpx = __import__("httpx")
+        captured: dict[str, object] = {}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            captured["method"] = request.method
+            captured["path"] = request.url.path
+            captured["key"] = request.headers.get("KEY")
+            return httpx.Response(200, json={"id": "42", "status": "cancelled"})
+
+        client = HttpxGateDemoInstrumentClient(
+            "https://demo.gate/api/v4",
+            transport=httpx.MockTransport(handler),
+            gate_demo_key="k",
+            gate_demo_secret="s",
+        )
+
+        payload = client.cancel_order("42")
+
+        self.assertEqual(payload["id"], "42")
+        self.assertEqual(payload["status"], "cancelled")
+        self.assertEqual(captured["method"], "DELETE")
+        self.assertEqual(captured["path"], "/api/v4/futures/usdt/orders/42")
+        self.assertEqual(captured["key"], "k")
 
 
 if __name__ == "__main__":

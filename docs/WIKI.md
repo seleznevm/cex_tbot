@@ -388,6 +388,18 @@ Behavior:
 
 ---
 
+## Gate demo HTTP write path
+
+`HttpxGateDemoInstrumentClient` now supports SDK-free demo order actions:
+
+- `place_test_order(contract, size, side)`
+- `cancel_order(order_id)`
+
+This uses signed HTTP requests to Gate demo API.
+Live-mode transport is still blocked by execution-mode guardrails.
+
+---
+
 ## 13. Minimal REST bridge
 
 The repo now also contains an optional FastAPI-based REST bridge in `cex_tbot.rest_api`.

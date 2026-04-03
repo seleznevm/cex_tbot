@@ -2,7 +2,13 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass, field
+import hashlib
+import hmac
+import json
+import math
+import time
 from typing import Any, Protocol
+from urllib.parse import urlencode, urlparse
 
 from cex_tbot.exceptions import GateDemoDependencyError, GateDemoTransportError, GateLiveModeBlockedError, MissingGateDemoApiError, MissingGateDemoCredentialsError
 from cex_tbot.market_data.gate_metadata import GateInstrumentRecord
@@ -212,7 +218,11 @@ class HttpxGateDemoInstrumentClient:
             raise MissingGateDemoCredentialsError(
                 "GATE_DEMO_KEY and GATE_DEMO_SECRET are required for demo account status."
             )
-        payload = self._get_json(self.account_path, error_prefix="Gate demo account status failed")
+        payload = self._get_json(
+            self.account_path,
+            error_prefix="Gate demo account status failed",
+            authenticated=True,
+        )
         if not isinstance(payload, dict):
             raise GateDemoTransportError("Gate demo account status returned non-dict payload")
         return {
@@ -231,7 +241,11 @@ class HttpxGateDemoInstrumentClient:
             raise MissingGateDemoCredentialsError(
                 "GATE_DEMO_KEY and GATE_DEMO_SECRET are required for demo positions snapshot."
             )
-        payload = self._get_json("/futures/usdt/positions", error_prefix="Gate demo positions failed")
+        payload = self._get_json(
+            "/futures/usdt/positions",
+            error_prefix="Gate demo positions failed",
+            authenticated=True,
+        )
         if not isinstance(payload, list):
             raise GateDemoTransportError("Gate demo positions returned non-list payload")
         snapshots: list[dict[str, object]] = []
@@ -256,7 +270,11 @@ class HttpxGateDemoInstrumentClient:
             raise MissingGateDemoCredentialsError(
                 "GATE_DEMO_KEY and GATE_DEMO_SECRET are required for demo open orders."
             )
-        payload = self._get_json("/futures/usdt/orders", error_prefix="Gate demo open orders failed")
+        payload = self._get_json(
+            "/futures/usdt/orders",
+            error_prefix="Gate demo open orders failed",
+            authenticated=True,
+        )
         if not isinstance(payload, list):
             raise GateDemoTransportError("Gate demo open orders returned non-list payload")
         orders: list[dict[str, object]] = []
@@ -280,7 +298,11 @@ class HttpxGateDemoInstrumentClient:
             raise MissingGateDemoCredentialsError(
                 "GATE_DEMO_KEY and GATE_DEMO_SECRET are required for demo order status."
             )
-        payload = self._get_json(f"/futures/usdt/orders/{order_id}", error_prefix="Gate demo order status failed")
+        payload = self._get_json(
+            f"/futures/usdt/orders/{order_id}",
+            error_prefix="Gate demo order status failed",
+            authenticated=True,
+        )
         if not isinstance(payload, dict):
             raise GateDemoTransportError("Gate demo order status returned non-dict payload")
         return {
@@ -298,16 +320,74 @@ class HttpxGateDemoInstrumentClient:
             raise MissingGateDemoCredentialsError(
                 "GATE_DEMO_KEY and GATE_DEMO_SECRET are required for demo test orders."
             )
-        raise NotImplementedError("Gate demo write trading is not enabled in HttpxGateDemoInstrumentClient yet.")
+        normalized_side = side.strip().lower()
+        if normalized_side not in {"buy", "sell"}:
+            raise GateDemoTransportError("Gate demo place order failed: side must be buy or sell")
+        contracts = self._normalize_contract_size(contract, size)
+        signed_contracts = contracts if normalized_side == "buy" else -contracts
+        payload = self._request_json(
+            "POST",
+            "/futures/usdt/orders",
+            payload={"contract": contract, "size": signed_contracts, "price": "0", "tif": "ioc"},
+            authenticated=True,
+            error_prefix="Gate demo place order failed",
+        )
+        if not isinstance(payload, dict):
+            raise GateDemoTransportError("Gate demo place order returned non-dict payload")
+        return {
+            "id": payload.get("id") or payload.get("order_id"),
+            "contract": payload.get("contract") or contract,
+            "side": normalized_side,
+            "size": payload.get("size", signed_contracts),
+            "requested_base_size": size,
+            "normalized_contracts": contracts,
+            "status": payload.get("status"),
+        }
 
     def cancel_order(self, order_id: str) -> dict[str, object]:
         if not self.gate_demo_key or not self.gate_demo_secret:
             raise MissingGateDemoCredentialsError(
                 "GATE_DEMO_KEY and GATE_DEMO_SECRET are required for demo cancel order."
             )
-        raise NotImplementedError("Gate demo write trading is not enabled in HttpxGateDemoInstrumentClient yet.")
+        payload = self._request_json(
+            "DELETE",
+            f"/futures/usdt/orders/{order_id}",
+            authenticated=True,
+            error_prefix="Gate demo cancel order failed",
+        )
+        if not isinstance(payload, dict):
+            raise GateDemoTransportError("Gate demo cancel order returned non-dict payload")
+        return {
+            "id": payload.get("id") or payload.get("order_id") or order_id,
+            "status": payload.get("status"),
+        }
 
-    def _get_json(self, path: str, *, error_prefix: str) -> Any:
+    def _normalize_contract_size(self, contract: str, base_size: float) -> int:
+        if base_size <= 0:
+            raise GateDemoTransportError("Gate demo place order failed: size must be positive")
+        instruments = self.list_instruments()
+        record = next((item for item in instruments if item.name == contract), None)
+        if record is None:
+            raise GateDemoTransportError(f"Gate demo contract lookup failed: unknown contract {contract}")
+        if record.quanto_multiplier <= 0:
+            raise GateDemoTransportError(f"Gate demo contract lookup failed: invalid quanto_multiplier for {contract}")
+        min_contracts = max(1, int(record.order_size_min or 1))
+        normalized = math.ceil(float(base_size) / float(record.quanto_multiplier))
+        return max(min_contracts, normalized)
+
+    def _get_json(self, path: str, *, error_prefix: str, authenticated: bool = False) -> Any:
+        return self._request_json("GET", path, error_prefix=error_prefix, authenticated=authenticated)
+
+    def _request_json(
+        self,
+        method: str,
+        path: str,
+        *,
+        error_prefix: str,
+        payload: dict[str, Any] | None = None,
+        params: dict[str, Any] | None = None,
+        authenticated: bool = False,
+    ) -> Any:
         try:
             import httpx
         except ImportError as exc:  # pragma: no cover - depends on optional env
@@ -316,10 +396,44 @@ class HttpxGateDemoInstrumentClient:
             ) from exc
 
         url = self.gate_demo_api.rstrip("/") + path
+        body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False) if payload is not None else ""
+        query = urlencode(params or {}, doseq=True)
+        headers = {"Accept": "application/json"}
+        if payload is not None:
+            headers["Content-Type"] = "application/json"
+        if authenticated:
+            headers.update(self._auth_headers(method, path, query, body))
         try:
             with httpx.Client(timeout=self.timeout_seconds, transport=self.transport) as client:
-                response = client.get(url, headers={"Accept": "application/json"})
+                response = client.request(
+                    method.upper(),
+                    url,
+                    headers=headers,
+                    params=params,
+                    content=body if payload is not None else None,
+                )
                 response.raise_for_status()
                 return response.json()
         except Exception as exc:  # pragma: no cover - thin wrapper
             raise GateDemoTransportError(f"{error_prefix}: {exc}") from exc
+
+    def _auth_headers(self, method: str, path: str, query: str, body: str) -> dict[str, str]:
+        timestamp = str(int(time.time()))
+        payload_hash = hashlib.sha512(body.encode("utf-8")).hexdigest()
+        signing_path = self._signing_path(path)
+        sign_payload = "\n".join([method.upper(), signing_path, query, payload_hash, timestamp])
+        sign = hmac.new(self.gate_demo_secret.encode("utf-8"), sign_payload.encode("utf-8"), hashlib.sha512).hexdigest()
+        return {
+            "KEY": self.gate_demo_key,
+            "Timestamp": timestamp,
+            "SIGN": sign,
+        }
+
+    def _signing_path(self, path: str) -> str:
+        path = path if path.startswith("/") else f"/{path}"
+        base_path = urlparse(self.gate_demo_api).path.rstrip("/")
+        if not base_path:
+            return path
+        if path == base_path or path.startswith(base_path + "/"):
+            return path
+        return base_path + path
