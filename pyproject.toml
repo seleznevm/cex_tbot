@@ -20,6 +20,9 @@ dependencies = [
 dev = [
   "httpx>=0.28,<1.0",
 ]
+telegram = [
+  "python-telegram-bot>=20,<21",
+]
 
 [tool.setuptools]
 package-dir = {"" = "src"}

@@ -311,6 +311,33 @@ Available render modes for operator output:
 
 This gives us a cleaner operator UX and a stable shell-level integration surface for a later Telegram bot or UI layer.
 
+## Telegram transport runner (group/topic -> bridge)
+
+The repo now includes a minimal polling runner (`python-telegram-bot v20`) that:
+
+- listens to group/supergroup text messages
+- forwards them into `TransportCommandBridge`
+- sends `BotReply` back into the same chat/topic thread
+
+Install optional Telegram dependency:
+
+```bash
+pip install .[telegram]
+```
+
+Run with explicit token:
+
+```bash
+PYTHONPATH=src python3 -m cex_tbot tg-runner --storage-dir .runtime/session --token "<telegram_bot_token>" --allowed-sender-ids 125619710 --allowed-chat-ids -1003832858724 --allowed-thread-ids 7
+```
+
+Or via environment:
+
+```bash
+export CEX_TBOT_TELEGRAM_BOT_TOKEN="<telegram_bot_token>"
+PYTHONPATH=src python3 -m cex_tbot tg-runner --storage-dir .runtime/session --allowed-sender-ids 125619710
+```
+
 ## Runnable live-market pipeline entrypoint
 
 The repo now also includes a minimal cron-friendly orchestrator that:

@@ -351,6 +351,26 @@ This is the most direct handoff point for a real Telegram/OpenClaw chat integrat
 
 ---
 
+## Telegram runner
+
+There is now a direct Telegram polling runner that bridges group/topic messages into `TransportCommandBridge`.
+
+Install optional dependency:
+
+```bash
+pip install .[telegram]
+```
+
+Run it:
+
+```bash
+PYTHONPATH=src python3 -m cex_tbot tg-runner --storage-dir .runtime/session --token "<telegram_bot_token>" --allowed-sender-ids 125619710 --allowed-chat-ids -1003832858724 --allowed-thread-ids 7
+```
+
+Token can also be supplied with `CEX_TBOT_TELEGRAM_BOT_TOKEN`.
+
+---
+
 ## 13. Minimal REST bridge
 
 The repo now also contains an optional FastAPI-based REST bridge in `cex_tbot.rest_api`.

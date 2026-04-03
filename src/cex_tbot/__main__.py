@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 from datetime import UTC, datetime
 import json
+import os
 from pathlib import Path
 import time
 
@@ -210,6 +211,13 @@ def build_parser() -> argparse.ArgumentParser:
     alert_parser.add_argument("--storage-dir", type=Path, help="Optional base directory for file-backed session state")
     alert_parser.add_argument("--format", choices=("text", "json"), default="text", help="Output format")
 
+    tg_runner_parser = subparsers.add_parser("tg-runner", help="Run Telegram group/topic polling bridge")
+    tg_runner_parser.add_argument("--storage-dir", type=Path, help="Optional base directory for file-backed session state")
+    tg_runner_parser.add_argument("--token", help="Telegram bot token; falls back to CEX_TBOT_TELEGRAM_BOT_TOKEN")
+    tg_runner_parser.add_argument("--allowed-sender-ids", default="125619710", help="Comma-separated Telegram user ids allowed to operate the bot")
+    tg_runner_parser.add_argument("--allowed-chat-ids", default="", help="Optional comma-separated Telegram chat ids")
+    tg_runner_parser.add_argument("--allowed-thread-ids", default="", help="Optional comma-separated Telegram topic ids")
+
     return parser
 
 
@@ -226,6 +234,12 @@ def _print_payload(payload: object, fmt: str) -> str:
     if isinstance(payload, str):
         return payload
     return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def _parse_csv_set(raw: str | None) -> frozenset[str]:
+    if raw is None:
+        return frozenset()
+    return frozenset(item.strip() for item in str(raw).split(",") if item.strip())
 
 
 def render_status(*, storage_dir: Path | None, fmt: str) -> str:
@@ -673,6 +687,37 @@ def main() -> int:
             "policy": assessment,
         }
         print(_print_payload(payload, fmt) if fmt == "json" else outbound.text)
+        return 0
+
+    if command == "tg-runner":
+        from cex_tbot.bot_adapter import BotCommandAdapter
+        from cex_tbot.bot_dispatcher import BotCommandDispatcher
+        from cex_tbot.tg_runner import TelegramRunnerPolicy, TelegramTransportRunner
+        from cex_tbot.transport_bridge import SenderPolicy, TransportCommandBridge
+
+        token = (args.token or os.environ.get("CEX_TBOT_TELEGRAM_BOT_TOKEN", "")).strip()
+        if not token:
+            print("Telegram token missing. Set --token or CEX_TBOT_TELEGRAM_BOT_TOKEN.")
+            return 2
+        sender_policy = SenderPolicy(
+            allowed_sender_ids=_parse_csv_set(args.allowed_sender_ids),
+            allow_empty_policy=False,
+        )
+        bridge = TransportCommandBridge(
+            BotCommandDispatcher(BotCommandAdapter(app.backend, config=app.config, app=app)),
+            sender_policy=sender_policy,
+            write_sender_policy=sender_policy,
+            audit_transcript=app.backend.session.operator_transcript,
+        )
+        runner = TelegramTransportRunner(
+            bridge,
+            bot_token=token,
+            policy=TelegramRunnerPolicy(
+                allowed_chat_ids=_parse_csv_set(args.allowed_chat_ids),
+                allowed_thread_ids=_parse_csv_set(args.allowed_thread_ids),
+            ),
+        )
+        runner.run_polling()
         return 0
 
     if command == "dashboard":
