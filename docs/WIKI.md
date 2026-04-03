@@ -474,7 +474,8 @@ Compose services:
 
 Both services use the same `.runtime/session` storage.
 The file-backed session is refreshed at request/update boundaries, so REST and Telegram workers can see each other's persisted changes without a manual restart.
-The compose port for REST/UI is bound to `127.0.0.1:8000`, so expose it through Nginx/Caddy or an SSH tunnel instead of publishing uvicorn directly.
+If `/app` does not contain the repo already, the root compose bootstraps code from `CEX_TBOT_REPO_ARCHIVE_URL` before installing the package.
+Public REST/UI publishing is controlled by `CEX_TBOT_PUBLIC_PORT`.
 
 Hostinger deployment template:
 
@@ -492,6 +493,7 @@ Hostinger `Compose from URL` deployment:
 - both services download the repo archive from `CEX_TBOT_REPO_ARCHIVE_URL`, install it, and then start
 - shared state is stored in the named Docker volume `cex_tbot_runtime`
 - public UI/REST port is controlled by `CEX_TBOT_PUBLIC_PORT`
+- if the panel resolves the repo-root [`docker-compose.yml`](c:\dev\cex_tbot\cex_tbot\docker-compose.yml) instead, that file now also self-bootstraps when `/app` is empty
 
 Proposal UX in Telegram:
 

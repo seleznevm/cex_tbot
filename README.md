@@ -440,7 +440,8 @@ Compose notes:
 - `cex_tbot_telegram` installs `.[dev,telegram]` and passes both `--allowed-sender-ids` and `--allowed-json-sender-ids`
 - `httpx` is pinned to the `python-telegram-bot v20` compatible range in optional dependencies so both services can build cleanly
 - file-backed session stores are refreshed on each REST request and Telegram update, so both processes can observe the same shared `.runtime/session` state
-- `cex_tbot_rest` is now bound to `127.0.0.1:8000` in compose, so it is not exposed directly to the internet; publish it through a reverse proxy or SSH tunnel
+- when `/app` does not already contain the repo, the compose startup bootstraps code from `CEX_TBOT_REPO_ARCHIVE_URL` before installing dependencies; that makes the root compose usable in Hostinger `Compose from URL`
+- port publishing is controlled by `CEX_TBOT_PUBLIC_PORT`
 
 Local smoke-run:
 
@@ -482,6 +483,7 @@ Hostinger `Compose from URL`:
 - shared runtime state is kept in the named volume `cex_tbot_runtime`
 - set `CEX_TBOT_PUBLIC_PORT=8000` or another port in the Hostinger env screen if you want the UI exposed publicly
 - the original [`docker-compose.yml`](c:\dev\cex_tbot\cex_tbot\docker-compose.yml) remains the better choice for SSH/VPS deploys where you already cloned the repo onto disk
+- if Hostinger points to the repo root compose automatically, that root [`docker-compose.yml`](c:\dev\cex_tbot\cex_tbot\docker-compose.yml) now also self-bootstraps from `CEX_TBOT_REPO_ARCHIVE_URL` when `/app` is empty
 
 Telegram proposal reply behavior:
 
