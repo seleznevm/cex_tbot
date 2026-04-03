@@ -380,6 +380,27 @@ Example JSON message body for Telegram topic input:
 }
 ```
 
+## Gate demo order status poller
+
+`autosync-demo` now runs as a `PeriodicRunner` task:
+
+- every cycle scans tracked proposals
+- syncs only proposals that still have open demo orders
+- calls Gate demo status endpoints via existing sync flow
+- updates local position lifecycle state from synced order statuses
+
+Run one cycle:
+
+```bash
+PYTHONPATH=src python3 -m cex_tbot autosync-demo --storage-dir .runtime/session --runs 1 --interval-sec 30 --format json
+```
+
+Run periodic cycles with optional Telegram conservative alerts:
+
+```bash
+PYTHONPATH=src python3 -m cex_tbot autosync-demo --storage-dir .runtime/session --runs 20 --interval-sec 15 --emit-telegram-alerts --format text
+```
+
 ## Runnable live-market pipeline entrypoint
 
 The repo now also includes a minimal cron-friendly orchestrator that:

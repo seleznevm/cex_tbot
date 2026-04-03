@@ -372,6 +372,22 @@ Token can also be supplied with `CEX_TBOT_TELEGRAM_BOT_TOKEN`.
 
 ---
 
+## Demo order poller
+
+Use periodic Gate demo order sync with:
+
+```bash
+PYTHONPATH=src python3 -m cex_tbot autosync-demo --storage-dir .runtime/session --runs 10 --interval-sec 15 --format json
+```
+
+Behavior:
+
+- only proposals with open demo orders are polled
+- synced statuses are applied to local position lifecycle state
+- optional `--emit-telegram-alerts` emits conservative policy alerts for risky states
+
+---
+
 ## 13. Minimal REST bridge
 
 The repo now also contains an optional FastAPI-based REST bridge in `cex_tbot.rest_api`.

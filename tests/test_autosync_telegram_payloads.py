@@ -15,6 +15,7 @@ class AutoSyncTelegramPayloadsTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             env = os.environ.copy()
             env["PYTHONPATH"] = "src"
+            env["PYTHONIOENCODING"] = "utf-8"
             storage = str(Path(tmp) / "runtime")
 
             submit = subprocess.run(
@@ -45,7 +46,9 @@ class AutoSyncTelegramPayloadsTests(unittest.TestCase):
                 env=env,
             )
             payload = json.loads(result.stdout)
-            self.assertIsInstance(payload, list)
+            self.assertIsInstance(payload, dict)
+            self.assertIn("runs_completed", payload)
+            self.assertIn("last_payload", payload)
 
 
 if __name__ == "__main__":

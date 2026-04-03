@@ -5,13 +5,13 @@ from datetime import UTC, datetime
 import json
 import os
 from pathlib import Path
-import time
 
 from cex_tbot import build_app
 from cex_tbot.api_surface import CommandRequest, ProposalSubmitRequest, TradeListRequest
 from cex_tbot.decision_contracts import EntrySplitLeg, NoTradeDecision, TradeProposal
 from cex_tbot.demo import build_demo_proposal, render_demo
 from cex_tbot.enums import NoTradeReasonCode, ProposalStatus, TradeDirection
+from cex_tbot.execution.demo_order_status_poller import DemoOrderStatusPoller
 from cex_tbot.live_market_runner import LiveMarketPipelineRunner
 from cex_tbot.market_pipeline import BinanceMarketDataPipeline
 from cex_tbot.openclaw_wrapper import OpenClawTopicWrapper
@@ -487,6 +487,35 @@ def _render_live_market_summary_text(payload: dict[str, object]) -> str:
     return "\n".join(lines)
 
 
+def _render_autosync_summary_text(payload: dict[str, object]) -> str:
+    lines = [
+        "Gate demo autosync",
+        (
+            f"periodic={payload['periodic']} runs_completed={payload['runs_completed']} interval_sec={payload['interval_sec']} "
+            f"success_runs={payload.get('success_runs', 0)} failed_runs={payload.get('failed_runs', 0)}"
+        ),
+    ]
+    if payload.get("last_error"):
+        last_error = payload["last_error"]
+        lines.append(
+            "last_error="
+            f"{last_error.get('error_type')}: {last_error.get('error_message')}"
+        )
+    last = payload.get("last_payload") or {}
+    if last:
+        lines.append(
+            f"scanned={last.get('scanned_proposals', 0)} synced={last.get('synced_proposals', 0)} "
+            f"synced_orders={last.get('synced_orders', 0)}"
+        )
+        for item in last.get("items", []):
+            lines.append(f"- {item['proposal_id']} orders={len(item['orders'])}")
+            if item.get("telegram_alert"):
+                lines.append(f"  telegram_alert -> {item['telegram_alert']['chat_id']} thread={item['telegram_alert']['thread_id']}")
+        for error in last.get("errors", []):
+            lines.append(f"- error {error['proposal_id']}: {error['error_type']} {error['error_message']}")
+    return "\n".join(lines)
+
+
 def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
@@ -603,40 +632,23 @@ def main() -> int:
         return 0
 
     if command == "autosync-demo":
-        runs = max(1, args.runs)
-        snapshots: list[dict[str, object]] = []
         wrapper = OpenClawTopicWrapper(None, default_chat_id="telegram:-1003832858724", default_thread_id="7")
-        producer = TopicProposalProducer(app.backend, wrapper)
-        for idx in range(runs):
-            proposal_ids = [item["proposal_id"] for item in api.list_trades() if app.backend.session.demo_orders.list_for_proposal(str(item["proposal_id"]))]
-            cycle = []
-            for proposal_id in proposal_ids:
-                synced = api.sync_demo_orders(str(proposal_id))
-                if args.emit_telegram_alerts:
-                    policy = synced["policy"]
-                    alert_texts = [a for a in policy["alerts"] if "No policy alerts" not in a]
-                    if alert_texts:
-                        outbound = producer.emit_conservative_alert(ConservativePolicyAssessment(**policy))
-                        synced["telegram_alert"] = {
-                            "chat_id": outbound.chat_id,
-                            "thread_id": outbound.thread_id,
-                            "text": outbound.text,
-                        }
-                cycle.append(synced)
-            snapshots.append({"run": idx + 1, "proposals": cycle})
-            if idx + 1 < runs:
-                time.sleep(max(1, args.interval_sec))
+        producer = TopicProposalProducer(app.backend, wrapper) if args.emit_telegram_alerts else None
+        poller = DemoOrderStatusPoller(
+            app.backend,
+            emit_telegram_alerts=args.emit_telegram_alerts,
+            alert_producer=producer,
+        )
+        periodic = PeriodicRunner(
+            poller,
+            interval_sec=max(1, args.interval_sec),
+            continue_on_error=True,
+        )
+        payload = periodic.run_periodic(runs=max(1, args.runs)).to_payload()
         if fmt == "json":
-            print(_print_payload(snapshots, fmt))
+            print(_print_payload(payload, fmt))
         else:
-            lines = ["Gate demo autosync"]
-            for snap in snapshots:
-                lines.append(f"run={snap['run']} synced={len(snap['proposals'])}")
-                for item in snap["proposals"]:
-                    lines.append(f"- {item['proposal_id']} orders={len(item['orders'])}")
-                    if item.get("telegram_alert"):
-                        lines.append(f"  telegram_alert -> {item['telegram_alert']['chat_id']} thread={item['telegram_alert']['thread_id']}")
-            print("\n".join(lines))
+            print(_render_autosync_summary_text(payload))
         return 0
 
     if command == "emit-conservative-alert":
