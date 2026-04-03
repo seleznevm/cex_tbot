@@ -484,6 +484,15 @@ Hostinger deployment template:
 - target Telegram group id is preset to `-1003832858724`
 - target topic/thread id is preset to `7`
 
+Hostinger `Compose from URL` deployment:
+
+- use [`docker-compose.hostinger-url.yml`](c:\dev\cex_tbot\cex_tbot\docker-compose.hostinger-url.yml)
+- raw URL: `https://raw.githubusercontent.com/seleznevm/cex_tbot/main/docker-compose.hostinger-url.yml`
+- this compose file is panel-friendly: it does not expect `./:/app`
+- both services download the repo archive from `CEX_TBOT_REPO_ARCHIVE_URL`, install it, and then start
+- shared state is stored in the named Docker volume `cex_tbot_runtime`
+- public UI/REST port is controlled by `CEX_TBOT_PUBLIC_PORT`
+
 Proposal UX in Telegram:
 
 - after raw JSON is accepted in the topic, the bot posts a readable approval card in the same topic
@@ -538,8 +547,8 @@ Important: the project is still pre-product.
 
 Current limits:
 
-- no real Telegram transport in this repo yet
-- no real exchange live trading transport
+- Telegram group/topic transport exists, but it is still MVP-grade and polling-based
+- no production live exchange trading transport beyond the current Gate demo HTTP path
 - no production-grade historical analytics warehouse yet (current review snapshots are file-based)
 - no production-grade policy automation beyond current MVP warning/block/halt stack
 - demo proposal timestamps are deterministic, so delayed execution can legitimately fail pre-exec checks

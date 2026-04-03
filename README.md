@@ -473,6 +473,16 @@ Hostinger/VPS quick notes:
 - your topic/thread is already prefilled as `7`
 - you still need to set your own Telegram user id lists in `CEX_TBOT_ALLOWED_SENDER_IDS` and `CEX_TBOT_JSON_SUBMITTER_IDS`
 
+Hostinger `Compose from URL`:
+
+- use [`docker-compose.hostinger-url.yml`](c:\dev\cex_tbot\cex_tbot\docker-compose.hostinger-url.yml) instead of the local-dev [`docker-compose.yml`](c:\dev\cex_tbot\cex_tbot\docker-compose.yml)
+- raw compose URL: `https://raw.githubusercontent.com/seleznevm/cex_tbot/main/docker-compose.hostinger-url.yml`
+- this variant does not rely on `./:/app` bind mounts
+- each container bootstraps the repo from `CEX_TBOT_REPO_ARCHIVE_URL`, installs the package, and then starts REST or Telegram
+- shared runtime state is kept in the named volume `cex_tbot_runtime`
+- set `CEX_TBOT_PUBLIC_PORT=8000` or another port in the Hostinger env screen if you want the UI exposed publicly
+- the original [`docker-compose.yml`](c:\dev\cex_tbot\cex_tbot\docker-compose.yml) remains the better choice for SSH/VPS deploys where you already cloned the repo onto disk
+
 Telegram proposal reply behavior:
 
 - after a JSON proposal is accepted, the bot replies in the same topic with a human-readable approval card

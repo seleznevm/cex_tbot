@@ -1,0 +1,67 @@
+services:
+  cex_tbot_rest:
+    image: python:3.12-slim
+    working_dir: /srv/cex_tbot
+    environment:
+      CEX_TBOT_APP_DIR: /srv/cex_tbot
+      CEX_TBOT_REPO_ARCHIVE_URL: ${CEX_TBOT_REPO_ARCHIVE_URL:-https://github.com/seleznevm/cex_tbot/archive/refs/heads/main.zip}
+    volumes:
+      - cex_tbot_runtime:/srv/cex_tbot/.runtime
+    command: >
+      sh -lc "set -eu &&
+      python -c \"import os, shutil, tempfile, urllib.request, zipfile; from pathlib import Path; app_dir = Path(os.environ.get('CEX_TBOT_APP_DIR', '/srv/cex_tbot')); archive_url = os.environ.get('CEX_TBOT_REPO_ARCHIVE_URL', 'https://github.com/seleznevm/cex_tbot/archive/refs/heads/main.zip');
+      if not (app_dir / 'pyproject.toml').exists():
+          tmpdir = Path(tempfile.mkdtemp(prefix='cex_tbot_bootstrap_'));
+          archive_path = tmpdir / 'repo.zip';
+          urllib.request.urlretrieve(archive_url, archive_path);
+          with zipfile.ZipFile(archive_path) as zf:
+              zf.extractall(tmpdir);
+          extracted = next(path for path in tmpdir.iterdir() if path.is_dir());
+          app_dir.mkdir(parents=True, exist_ok=True);
+          for child in extracted.iterdir():
+              target = app_dir / child.name;
+              if target.exists():
+                  shutil.rmtree(target) if target.is_dir() else target.unlink();
+              shutil.move(str(child), str(target));
+          shutil.rmtree(tmpdir, ignore_errors=True)\" &&
+      pip install --no-cache-dir -e /srv/cex_tbot/[dev] &&
+      PYTHONPATH=/srv/cex_tbot/src python -m cex_tbot serve-rest --storage-dir /srv/cex_tbot/.runtime/session --host 0.0.0.0 --port 8000"
+    ports:
+      - "${CEX_TBOT_PUBLIC_PORT:-8000}:8000"
+    restart: unless-stopped
+
+  cex_tbot_telegram:
+    image: python:3.12-slim
+    working_dir: /srv/cex_tbot
+    environment:
+      CEX_TBOT_APP_DIR: /srv/cex_tbot
+      CEX_TBOT_REPO_ARCHIVE_URL: ${CEX_TBOT_REPO_ARCHIVE_URL:-https://github.com/seleznevm/cex_tbot/archive/refs/heads/main.zip}
+    volumes:
+      - cex_tbot_runtime:/srv/cex_tbot/.runtime
+    command: >
+      sh -lc "set -eu &&
+      python -c \"import os, shutil, tempfile, urllib.request, zipfile; from pathlib import Path; app_dir = Path(os.environ.get('CEX_TBOT_APP_DIR', '/srv/cex_tbot')); archive_url = os.environ.get('CEX_TBOT_REPO_ARCHIVE_URL', 'https://github.com/seleznevm/cex_tbot/archive/refs/heads/main.zip');
+      if not (app_dir / 'pyproject.toml').exists():
+          tmpdir = Path(tempfile.mkdtemp(prefix='cex_tbot_bootstrap_'));
+          archive_path = tmpdir / 'repo.zip';
+          urllib.request.urlretrieve(archive_url, archive_path);
+          with zipfile.ZipFile(archive_path) as zf:
+              zf.extractall(tmpdir);
+          extracted = next(path for path in tmpdir.iterdir() if path.is_dir());
+          app_dir.mkdir(parents=True, exist_ok=True);
+          for child in extracted.iterdir():
+              target = app_dir / child.name;
+              if target.exists():
+                  shutil.rmtree(target) if target.is_dir() else target.unlink();
+              shutil.move(str(child), str(target));
+          shutil.rmtree(tmpdir, ignore_errors=True)\" &&
+      pip install --no-cache-dir -e /srv/cex_tbot/[dev,telegram] &&
+      PYTHONPATH=/srv/cex_tbot/src python -m cex_tbot tg-runner --storage-dir /srv/cex_tbot/.runtime/session
+      --allowed-sender-ids $${CEX_TBOT_ALLOWED_SENDER_IDS:-125619710}
+      --allowed-json-sender-ids $${CEX_TBOT_JSON_SUBMITTER_IDS:-$${CEX_TBOT_ALLOWED_SENDER_IDS:-125619710}}
+      --allowed-chat-ids $${CEX_TBOT_TELEGRAM_ALLOWED_CHAT_IDS:-}
+      --allowed-thread-ids $${CEX_TBOT_TELEGRAM_ALLOWED_THREAD_IDS:-}"
+    restart: unless-stopped
+
+volumes:
+  cex_tbot_runtime:
