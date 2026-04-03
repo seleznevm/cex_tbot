@@ -402,6 +402,29 @@ Run periodic cycles with optional Telegram conservative alerts:
 PYTHONPATH=src python3 -m cex_tbot autosync-demo --storage-dir .runtime/session --runs 20 --interval-sec 15 --emit-telegram-alerts --format text
 ```
 
+## VPS deployment baseline (.env + docker compose)
+
+The repo now includes:
+
+- `.env.example` - baseline runtime/env variables
+- `docker-compose.yml` - REST + Telegram services
+- persistent mount for `.runtime/` into container `/app/.runtime`
+
+Quick start:
+
+```bash
+cp .env.example .env
+mkdir -p .runtime/session
+docker compose up -d
+```
+
+Services:
+
+- `cex_tbot_rest`: serves FastAPI bridge on `:8000`
+- `cex_tbot_telegram`: runs Telegram group/topic polling runner
+
+Both services share `.runtime/session` state through host-mounted `.runtime/`.
+
 ## Runnable live-market pipeline entrypoint
 
 The repo now also includes a minimal cron-friendly orchestrator that:

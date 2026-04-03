@@ -442,6 +442,31 @@ This is the current UI-first bridge layer for local REST integration.
 
 ---
 
+## Docker/VPS deploy
+
+Repository now includes:
+
+- `.env.example`
+- `docker-compose.yml`
+- shared `.runtime/` bind mount for persistent session state
+
+Bootstrap:
+
+```bash
+cp .env.example .env
+mkdir -p .runtime/session
+docker compose up -d
+```
+
+Compose services:
+
+- `cex_tbot_rest` -> FastAPI REST bridge (`:8000`)
+- `cex_tbot_telegram` -> Telegram polling runner
+
+Both services use the same `.runtime/session` storage.
+
+---
+
 ## 14. Safe usage pattern right now
 
 Recommended operator sequence:

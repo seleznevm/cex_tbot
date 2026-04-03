@@ -1,0 +1,33 @@
+version: "3.9"
+
+services:
+  cex_tbot_rest:
+    image: python:3.12-slim
+    working_dir: /app
+    env_file:
+      - .env
+    volumes:
+      - ./:/app
+      - ./.runtime:/app/.runtime
+    command: >
+      sh -c "pip install --no-cache-dir -e .[dev,telegram] &&
+             PYTHONPATH=src python -m cex_tbot serve-rest --storage-dir .runtime/session --host 0.0.0.0 --port 8000"
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  cex_tbot_telegram:
+    image: python:3.12-slim
+    working_dir: /app
+    env_file:
+      - .env
+    volumes:
+      - ./:/app
+      - ./.runtime:/app/.runtime
+    command: >
+      sh -c "pip install --no-cache-dir -e .[dev,telegram] &&
+             PYTHONPATH=src python -m cex_tbot tg-runner --storage-dir .runtime/session
+             --allowed-sender-ids $${CEX_TBOT_ALLOWED_SENDER_IDS:-125619710}
+             --allowed-chat-ids $${CEX_TBOT_TELEGRAM_ALLOWED_CHAT_IDS:-}
+             --allowed-thread-ids $${CEX_TBOT_TELEGRAM_ALLOWED_THREAD_IDS:-}"
+    restart: unless-stopped
