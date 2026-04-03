@@ -29,6 +29,12 @@ class TelegramTransportRunner:
         self.proposal_parser = proposal_parser
         self.proposal_submitter = proposal_submitter
 
+    def _is_authorized_sender(self, sender_id: str) -> bool:
+        sender_policy = getattr(self.bridge, "sender_policy", None)
+        if sender_policy is None:
+            return True
+        return bool(sender_policy.is_allowed(sender_id))
+
     async def handle_update(self, update: Any, _context: Any) -> None:
         message = getattr(update, "effective_message", None)
         chat = getattr(update, "effective_chat", None)
@@ -46,7 +52,11 @@ class TelegramTransportRunner:
         text = (getattr(message, "text", None) or "").strip()
         if not text:
             return
+        sender_id = str(getattr(user, "id", ""))
         if text.startswith("{") and self.proposal_parser is not None and self.proposal_submitter is not None:
+            if not self._is_authorized_sender(sender_id):
+                await message.reply_text("Unauthorized operator sender.")
+                return
             try:
                 proposal = self.proposal_parser(text)
             except ValueError as exc:
@@ -60,7 +70,7 @@ class TelegramTransportRunner:
             return
         reply = self.bridge.handle_message(
             TransportMessage(
-                sender_id=str(getattr(user, "id", "")),
+                sender_id=sender_id,
                 sender_name=getattr(user, "username", None),
                 text=text,
                 channel=str(getattr(chat, "type", "") or ""),

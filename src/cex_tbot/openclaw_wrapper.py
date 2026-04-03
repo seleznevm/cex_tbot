@@ -58,10 +58,16 @@ class OpenClawTopicWrapper:
             thread_id=inbound.thread_id or self.default_thread_id,
         )
 
-    def render_approval_request(self, proposal: TradeProposal, *, chat_id: str | None = None, thread_id: str | None = None) -> OpenClawOutboundMessage:
+    def render_approval_request(
+        self,
+        proposal: TradeProposal,
+        *,
+        chat_id: str | None = None,
+        thread_id: str | None = None,
+    ) -> OpenClawOutboundMessage:
         lines = [
             "Trade approval request",
-            f"{proposal.symbol} {proposal.direction.value} · {proposal.timeframe}",
+            f"{proposal.symbol} {proposal.direction.value} | {proposal.timeframe}",
             f"proposal_id={proposal.proposal_id}",
             f"entry {proposal.entry_zone_min}..{proposal.entry_zone_max} | sl {proposal.stop_loss} | tp1 {proposal.take_profit_1} | tp2 {proposal.take_profit_2}",
             f"confidence {proposal.confidence_score} | risk {proposal.risk_percent}%",

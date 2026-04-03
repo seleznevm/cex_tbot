@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 import json
 import os
 from pathlib import Path
+import sys
 
 from cex_tbot import build_app
 from cex_tbot.api_surface import CommandRequest, ProposalSubmitRequest, TradeListRequest
@@ -231,10 +232,15 @@ def _resolve_common_option(args: argparse.Namespace, name: str):
 
 def _print_payload(payload: object, fmt: str) -> str:
     if fmt == "json":
-        return json.dumps(payload, ensure_ascii=False)
+        return json.dumps(payload, ensure_ascii=not _stdout_supports_utf8())
     if isinstance(payload, str):
         return payload
-    return json.dumps(payload, ensure_ascii=False, indent=2)
+    return json.dumps(payload, ensure_ascii=not _stdout_supports_utf8(), indent=2)
+
+
+def _stdout_supports_utf8() -> bool:
+    encoding = (getattr(sys.stdout, "encoding", None) or "").lower()
+    return "utf" in encoding
 
 
 def _parse_csv_set(raw: str | None) -> frozenset[str]:
@@ -255,7 +261,7 @@ def render_status(*, storage_dir: Path | None, fmt: str) -> str:
         "session_summary": app.backend.get_session_summary_payload(),
     }
     if fmt == "json":
-        return json.dumps(payload, ensure_ascii=False)
+        return json.dumps(payload, ensure_ascii=not _stdout_supports_utf8())
     return "\n".join(
         [
             "cex_tbot bootstrap: OK",
@@ -283,12 +289,12 @@ def render_trade_list_text(items: list[dict[str, object]]) -> str:
 def render_trade_detail_text(detail: dict[str, object]) -> str:
     timeline = detail["timeline"]
     lines = [
-        f"Trade detail — {detail['proposal_id']}",
+        f"Trade detail - {detail['proposal_id']}",
         f"Status: {detail['status']}",
         f"Agent/strategy: {detail['agent_name']} / {detail['strategy_id']}@{detail['strategy_version']}",
         f"Symbol: {detail['symbol']} {detail['direction']} {detail['timeframe']}",
         f"Confidence: {detail['confidence_score']:.2f}",
-        f"Entry zone: {detail['entry_zone_min']} → {detail['entry_zone_max']}",
+        f"Entry zone: {detail['entry_zone_min']} -> {detail['entry_zone_max']}",
         f"Stop: {detail['stop_loss']} | TP1: {detail['take_profit_1']} | TP2: {detail['take_profit_2']}",
         f"Risk: {detail['risk_percent']:.2f}% / ${detail['risk_usd']:.2f} | size={detail['position_size']}",
         f"Liquidity: {detail['liquidity_check']}",

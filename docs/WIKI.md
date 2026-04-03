@@ -355,6 +355,7 @@ This is the most direct handoff point for a real Telegram/OpenClaw chat integrat
 
 There is now a direct Telegram polling runner that bridges group/topic messages into `TransportCommandBridge`.
 It also accepts proposal JSON payloads from the topic, validates them, stores them as `PENDING_APPROVAL`, and replies with an approval request message.
+JSON proposal submissions use the same allowed-sender policy as operator commands.
 
 Install optional dependency:
 

@@ -11,9 +11,17 @@ from datetime import datetime, UTC, timedelta
 
 
 class CliCommandTests(unittest.TestCase):
-    def _run(self, tmp: str, *args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
+    def _run(
+        self,
+        tmp: str,
+        *args: str,
+        check: bool = True,
+        extra_env: dict[str, str] | None = None,
+    ) -> subprocess.CompletedProcess[str]:
         env = os.environ.copy()
         env["PYTHONPATH"] = "src"
+        if extra_env:
+            env.update(extra_env)
         return subprocess.run(
             [sys.executable, "-m", "cex_tbot", *args],
             cwd=Path(__file__).resolve().parents[1],
@@ -89,7 +97,7 @@ class CliCommandTests(unittest.TestCase):
             storage = str(Path(tmp) / "runtime")
             result = self._run(tmp, "emit-demo-proposal", "--storage-dir", storage)
             self.assertIn("Trade approval request", result.stdout)
-            self.assertIn("BTC_USDT LONG · 15m", result.stdout)
+            self.assertIn("BTC_USDT LONG | 15m", result.stdout)
             self.assertIn("/trade_approve proposal_topic_demo_btc", result.stdout)
 
     def test_submit_and_emit_demo_command(self) -> None:
@@ -163,6 +171,25 @@ class CliCommandTests(unittest.TestCase):
             result = self._run(tmp, "submit-and-emit", str(proposal_path), "--storage-dir", storage, check=False)
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("Invalid proposal JSON", result.stdout or result.stderr)
+
+    def test_json_output_survives_non_utf_stdout(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            storage = str(Path(tmp) / "runtime")
+            self._run(tmp, "submit-demo", "--storage-dir", storage, "--format", "json")
+            result = self._run(
+                tmp,
+                "command",
+                "APPROVE proposal_demo_btc_breakout",
+                "--approve-only",
+                "--storage-dir",
+                storage,
+                "--format",
+                "json",
+                extra_env={"PYTHONIOENCODING": "cp1252"},
+            )
+
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["mode"], "operator")
 
 
 if __name__ == "__main__":

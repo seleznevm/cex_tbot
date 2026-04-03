@@ -57,11 +57,11 @@ class TradeReportBuilder:
         position: Position | None = None,
         demo_orders: list[DemoOrderRecord] | None = None,
     ) -> TradeReport:
-        headline = f"Trade Report — {review_card.symbol} {review_card.direction} [{review_card.proposal_id}]"
+        headline = f"Trade Report - {review_card.symbol} {review_card.direction} [{review_card.proposal_id}]"
         summary_lines = [
             f"Timeframe: {review_card.timeframe}",
             f"Confidence: {review_card.confidence_score:.2f}",
-            f"Entry zone: {review_card.entry_zone_min} → {review_card.entry_zone_max}",
+            f"Entry zone: {review_card.entry_zone_min} -> {review_card.entry_zone_max}",
             f"Entry split: {review_card.entry_summary}",
             f"Stop: {review_card.stop_loss}",
             f"Targets: {review_card.tp_summary}",

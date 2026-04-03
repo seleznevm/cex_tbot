@@ -321,6 +321,7 @@ The repo now includes a minimal polling runner (`python-telegram-bot v20`) that:
 - sends `BotReply` back into the same chat/topic thread
 - parses inbound JSON proposal messages into `TradeProposal` with validation and stores them as `PENDING_APPROVAL`
 - responds with same-topic approval request (`/trade_approve`, `/trade_reject`, `/modify`, `/trade_report`)
+- applies `--allowed-sender-ids` to JSON proposal submissions too, not only slash-commands
 
 Install optional Telegram dependency:
 
