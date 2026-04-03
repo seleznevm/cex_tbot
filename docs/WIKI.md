@@ -454,6 +454,7 @@ This is the current UI-first bridge layer for local REST integration.
 Repository now includes:
 
 - `.env.example`
+- `.env.hostinger.example`
 - `docker-compose.yml`
 - shared `.runtime/` bind mount for persistent session state
 
@@ -472,6 +473,18 @@ Compose services:
 
 Both services use the same `.runtime/session` storage.
 The file-backed session is refreshed at request/update boundaries, so REST and Telegram workers can see each other's persisted changes without a manual restart.
+
+Hostinger deployment template:
+
+- use [`.env.hostinger.example`](c:\dev\cex_tbot\cex_tbot\.env.hostinger.example) as the starting point
+- Telegram bot token variable name: `CEX_TBOT_TELEGRAM_BOT_TOKEN`
+- target Telegram group id is preset to `-1003832858724`
+- target topic/thread id is preset to `7`
+
+Proposal UX in Telegram:
+
+- after raw JSON is accepted in the topic, the bot posts a readable approval card in the same topic
+- the card includes the main trade fields plus `/trade_approve`, `/trade_reject`, `/modify`, and `/trade_report`
 
 Smoke-run flow:
 

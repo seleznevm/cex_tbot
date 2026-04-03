@@ -415,6 +415,7 @@ PYTHONPATH=src python3 -m cex_tbot autosync-demo --storage-dir .runtime/session 
 The repo now includes:
 
 - `.env.example` - baseline runtime/env variables
+- `.env.hostinger.example` - VPS-ready template with your Telegram group/topic wiring
 - `docker-compose.yml` - REST + Telegram services
 - persistent mount for `.runtime/` into container `/app/.runtime`
 
@@ -461,6 +462,19 @@ That smoke-run verifies:
 - proposal is persisted into shared `.runtime/session`
 - slash approve command from a different allowed operator is accepted
 - REST sees the same stored proposal state through the shared runtime mount
+
+Hostinger/VPS quick notes:
+
+- copy [`.env.hostinger.example`](c:\dev\cex_tbot\cex_tbot\.env.hostinger.example) to `.env`
+- Telegram bot token env var name is `CEX_TBOT_TELEGRAM_BOT_TOKEN`
+- your group is already prefilled as `-1003832858724`
+- your topic/thread is already prefilled as `7`
+- you still need to set your own Telegram user id lists in `CEX_TBOT_ALLOWED_SENDER_IDS` and `CEX_TBOT_JSON_SUBMITTER_IDS`
+
+Telegram proposal reply behavior:
+
+- after a JSON proposal is accepted, the bot replies in the same topic with a human-readable approval card
+- that card now includes symbol, direction, timeframe, proposal id, entry zone, stop loss, targets, risk, confidence, thesis, and ready-to-use action commands
 
 ## Runnable live-market pipeline entrypoint
 
