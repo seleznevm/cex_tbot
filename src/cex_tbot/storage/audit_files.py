@@ -17,6 +17,11 @@ class FileOperatorTranscript(InMemoryOperatorTranscript):
         if self.path.exists():
             self._load()
 
+    def refresh_from_disk(self) -> None:
+        self._entries.clear()
+        if self.path.exists():
+            self._load()
+
     def append(self, entry: AuditEntry) -> AuditEntry:
         saved = super().append(entry)
         with self.path.open("a", encoding="utf-8") as fh:

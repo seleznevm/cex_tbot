@@ -17,6 +17,11 @@ class FileDemoOrderStore(InMemoryDemoOrderStore):
         if self.path.exists():
             self._load()
 
+    def refresh_from_disk(self) -> None:
+        self._by_proposal.clear()
+        if self.path.exists():
+            self._load()
+
     def replace_for_proposal(self, proposal_id: str, records: list[DemoOrderRecord]) -> None:
         super().replace_for_proposal(proposal_id, records)
         all_rows: list[dict[str, object]] = []

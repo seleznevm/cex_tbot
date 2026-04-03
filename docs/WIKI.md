@@ -355,7 +355,7 @@ This is the most direct handoff point for a real Telegram/OpenClaw chat integrat
 
 There is now a direct Telegram polling runner that bridges group/topic messages into `TransportCommandBridge`.
 It also accepts proposal JSON payloads from the topic, validates them, stores them as `PENDING_APPROVAL`, and replies with an approval request message.
-JSON proposal submissions use the same allowed-sender policy as operator commands.
+JSON proposal submissions can now use a different sender policy than slash-command operators.
 
 Install optional dependency:
 
@@ -366,10 +366,16 @@ pip install .[telegram]
 Run it:
 
 ```bash
-PYTHONPATH=src python3 -m cex_tbot tg-runner --storage-dir .runtime/session --token "<telegram_bot_token>" --allowed-sender-ids 125619710 --allowed-chat-ids -1003832858724 --allowed-thread-ids 7
+PYTHONPATH=src python3 -m cex_tbot tg-runner --storage-dir .runtime/session --token "<telegram_bot_token>" --allowed-sender-ids 125619710 --allowed-json-sender-ids 225619711 --allowed-chat-ids -1003832858724 --allowed-thread-ids 7
 ```
 
 Token can also be supplied with `CEX_TBOT_TELEGRAM_BOT_TOKEN`.
+
+Role split:
+
+- `CEX_TBOT_ALLOWED_SENDER_IDS` -> slash-command operators
+- `CEX_TBOT_JSON_SUBMITTER_IDS` -> JSON proposal submitters
+- if JSON sender ids are omitted, runner falls back to operator ids
 
 ---
 
@@ -465,6 +471,28 @@ Compose services:
 - `cex_tbot_telegram` -> Telegram polling runner
 
 Both services use the same `.runtime/session` storage.
+The file-backed session is refreshed at request/update boundaries, so REST and Telegram workers can see each other's persisted changes without a manual restart.
+
+Smoke-run flow:
+
+```bash
+docker compose up -d cex_tbot_rest
+docker compose run --rm -T cex_tbot_telegram sh -lc \
+  "pip install --no-cache-dir -e .[dev,telegram] >/tmp/pip.log && \
+   PYTHONPATH=src python scripts/docker_smoke_flow.py \
+     --storage-dir .runtime/session \
+     --chat-id -1003832858724 \
+     --thread-id 7 \
+     --operator-id 125619710 \
+     --json-submitter-id 225619711"
+curl -H "X-API-Key: ${CEX_TBOT_API_TOKEN}" http://127.0.0.1:8000/proposals/proposal_smoke_btc_001
+```
+
+Expected result:
+
+- JSON is accepted only from the configured JSON-submitter ids
+- `/trade_approve_only` is accepted only from the configured operator ids
+- proposal status is visible through the REST bridge because both services share `.runtime/session`
 
 ---
 

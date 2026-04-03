@@ -217,6 +217,11 @@ def build_parser() -> argparse.ArgumentParser:
     tg_runner_parser.add_argument("--storage-dir", type=Path, help="Optional base directory for file-backed session state")
     tg_runner_parser.add_argument("--token", help="Telegram bot token; falls back to CEX_TBOT_TELEGRAM_BOT_TOKEN")
     tg_runner_parser.add_argument("--allowed-sender-ids", default="125619710", help="Comma-separated Telegram user ids allowed to operate the bot")
+    tg_runner_parser.add_argument(
+        "--allowed-json-sender-ids",
+        default=None,
+        help="Optional comma-separated Telegram user ids allowed to submit proposal JSON; defaults to --allowed-sender-ids",
+    )
     tg_runner_parser.add_argument("--allowed-chat-ids", default="", help="Optional comma-separated Telegram chat ids")
     tg_runner_parser.add_argument("--allowed-thread-ids", default="", help="Optional comma-separated Telegram topic ids")
 
@@ -682,14 +687,21 @@ def main() -> int:
         if not token:
             print("Telegram token missing. Set --token or CEX_TBOT_TELEGRAM_BOT_TOKEN.")
             return 2
-        sender_policy = SenderPolicy(
+        operator_sender_policy = SenderPolicy(
             allowed_sender_ids=_parse_csv_set(args.allowed_sender_ids),
+            allow_empty_policy=False,
+        )
+        json_sender_ids_raw = args.allowed_json_sender_ids
+        if json_sender_ids_raw is None:
+            json_sender_ids_raw = os.environ.get("CEX_TBOT_JSON_SUBMITTER_IDS") or os.environ.get("CEX_TBOT_TELEGRAM_JSON_SENDER_IDS")
+        json_sender_policy = SenderPolicy(
+            allowed_sender_ids=_parse_csv_set(json_sender_ids_raw) if json_sender_ids_raw is not None else operator_sender_policy.allowed_sender_ids,
             allow_empty_policy=False,
         )
         bridge = TransportCommandBridge(
             BotCommandDispatcher(BotCommandAdapter(app.backend, config=app.config, app=app)),
-            sender_policy=sender_policy,
-            write_sender_policy=sender_policy,
+            sender_policy=operator_sender_policy,
+            write_sender_policy=operator_sender_policy,
             audit_transcript=app.backend.session.operator_transcript,
         )
         proposal_parser = JsonTradeProposalParser(force_pending_approval=True)
@@ -708,6 +720,8 @@ def main() -> int:
             ),
             proposal_parser=proposal_parser.parse_text,
             proposal_submitter=_submit_proposal_to_topic,
+            json_sender_policy=json_sender_policy,
+            state_sync=getattr(app.session, "refresh_from_disk", None),
         )
         runner.run_polling()
         return 0

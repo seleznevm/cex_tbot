@@ -203,6 +203,7 @@ def create_rest_app(*, storage_dir: str | Path | None = None, api_token: str | N
     api = trading_app.api
     auth = RestAuth(api_token)
     app = FastAPI(title="cex_tbot REST bridge", version="0.3.0")
+    refresh_shared_state = getattr(trading_app.session, "refresh_from_disk", None)
     allowed_sender_ids = os.environ.get("CEX_TBOT_ALLOWED_SENDER_IDS", "125619710")
     bridge = TransportCommandBridge(
         BotCommandDispatcher(BotCommandAdapter(trading_app.backend, config=trading_app.config, app=trading_app)),
@@ -226,6 +227,12 @@ def create_rest_app(*, storage_dir: str | Path | None = None, api_token: str | N
                 status_code=401,
                 detail=RestErrorFactory.payload("UNAUTHORIZED", "Missing or invalid X-API-Key header"),
             )
+
+    @app.middleware("http")
+    async def sync_shared_runtime(request, call_next):
+        if callable(refresh_shared_state):
+            refresh_shared_state()
+        return await call_next(request)
 
     def http_error(status_code: int, code: str, message: str, *, details: dict[str, Any] | None = None) -> HTTPException:
         return HTTPException(status_code=status_code, detail=RestErrorFactory.payload(code, message, details=details))

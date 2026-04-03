@@ -27,3 +27,17 @@ class FileTradeSessionStore(TradeSessionStore):
             operator_transcript=FileOperatorTranscript(root / "operator-transcript.jsonl"),
             system_state=FileSystemState(root / "system-state.json"),
         )
+
+    def refresh_from_disk(self) -> None:
+        for store in (
+            self.proposals,
+            self.no_trades,
+            self.execution_journal,
+            self.execution_state,
+            self.demo_orders,
+            self.operator_transcript,
+            self.system_state,
+        ):
+            refresh = getattr(store, "refresh_from_disk", None)
+            if callable(refresh):
+                refresh()

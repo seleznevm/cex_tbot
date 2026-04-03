@@ -23,6 +23,14 @@ class FileProposalStore(InMemoryProposalStore):
         if self.decisions_path.exists():
             self._load_decisions()
 
+    def refresh_from_disk(self) -> None:
+        self._proposals.clear()
+        self._history.clear()
+        if self.proposals_path.exists():
+            self._load_proposals()
+        if self.decisions_path.exists():
+            self._load_decisions()
+
     def upsert(self, proposal: TradeProposal) -> TradeProposal:
         saved = super().upsert(proposal)
         self._append_proposal(saved)

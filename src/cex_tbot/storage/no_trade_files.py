@@ -19,6 +19,11 @@ class FileNoTradeStore(InMemoryNoTradeStore):
         if self.path.exists():
             self._load()
 
+    def refresh_from_disk(self) -> None:
+        self._decisions.clear()
+        if self.path.exists():
+            self._load()
+
     def add(self, decision: NoTradeDecision) -> NoTradeDecision:
         saved = super().add(decision)
         with self.path.open("a", encoding="utf-8") as fh:

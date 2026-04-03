@@ -321,7 +321,7 @@ The repo now includes a minimal polling runner (`python-telegram-bot v20`) that:
 - sends `BotReply` back into the same chat/topic thread
 - parses inbound JSON proposal messages into `TradeProposal` with validation and stores them as `PENDING_APPROVAL`
 - responds with same-topic approval request (`/trade_approve`, `/trade_reject`, `/modify`, `/trade_report`)
-- applies `--allowed-sender-ids` to JSON proposal submissions too, not only slash-commands
+- supports separate sender policies for JSON proposal submitters and slash-command operators
 
 Install optional Telegram dependency:
 
@@ -332,15 +332,22 @@ pip install .[telegram]
 Run with explicit token:
 
 ```bash
-PYTHONPATH=src python3 -m cex_tbot tg-runner --storage-dir .runtime/session --token "<telegram_bot_token>" --allowed-sender-ids 125619710 --allowed-chat-ids -1003832858724 --allowed-thread-ids 7
+PYTHONPATH=src python3 -m cex_tbot tg-runner --storage-dir .runtime/session --token "<telegram_bot_token>" --allowed-sender-ids 125619710 --allowed-json-sender-ids 225619711 --allowed-chat-ids -1003832858724 --allowed-thread-ids 7
 ```
 
 Or via environment:
 
 ```bash
 export CEX_TBOT_TELEGRAM_BOT_TOKEN="<telegram_bot_token>"
+export CEX_TBOT_JSON_SUBMITTER_IDS="225619711"
 PYTHONPATH=src python3 -m cex_tbot tg-runner --storage-dir .runtime/session --allowed-sender-ids 125619710
 ```
+
+Role split:
+
+- `--allowed-sender-ids` / `CEX_TBOT_ALLOWED_SENDER_IDS` control slash-command operators (`/trade_approve`, `/trade_reject`, `/modify`, status commands)
+- `--allowed-json-sender-ids` / `CEX_TBOT_JSON_SUBMITTER_IDS` control who may submit proposal JSON into the topic
+- if JSON submitters are not set explicitly, `tg-runner` falls back to the operator sender list
 
 Example JSON message body for Telegram topic input:
 
@@ -425,6 +432,35 @@ Services:
 - `cex_tbot_telegram`: runs Telegram group/topic polling runner
 
 Both services share `.runtime/session` state through host-mounted `.runtime/`.
+
+Compose notes:
+
+- `cex_tbot_rest` installs `.[dev]` only, because the REST bridge does not require Telegram runtime dependencies
+- `cex_tbot_telegram` installs `.[dev,telegram]` and passes both `--allowed-sender-ids` and `--allowed-json-sender-ids`
+- `httpx` is pinned to the `python-telegram-bot v20` compatible range in optional dependencies so both services can build cleanly
+- file-backed session stores are refreshed on each REST request and Telegram update, so both processes can observe the same shared `.runtime/session` state
+
+Local smoke-run:
+
+```bash
+docker compose up -d cex_tbot_rest
+docker compose run --rm -T cex_tbot_telegram sh -lc \
+  "pip install --no-cache-dir -e .[dev,telegram] >/tmp/pip.log && \
+   PYTHONPATH=src python scripts/docker_smoke_flow.py \
+     --storage-dir .runtime/session \
+     --chat-id -1003832858724 \
+     --thread-id 7 \
+     --operator-id 125619710 \
+     --json-submitter-id 225619711"
+curl -H "X-API-Key: ${CEX_TBOT_API_TOKEN}" http://127.0.0.1:8000/proposals/proposal_smoke_btc_001
+```
+
+That smoke-run verifies:
+
+- Telegram JSON from the allowed topic is accepted
+- proposal is persisted into shared `.runtime/session`
+- slash approve command from a different allowed operator is accepted
+- REST sees the same stored proposal state through the shared runtime mount
 
 ## Runnable live-market pipeline entrypoint
 

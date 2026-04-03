@@ -15,6 +15,15 @@ class FileSystemState(SystemState):
         if self.path.exists():
             self._load()
 
+    def refresh_from_disk(self) -> None:
+        self.emergency_halt_active = False
+        self.halt_reason = None
+        self.safety_state = SafetyState.NORMAL
+        self.block_new_trades = False
+        self.block_reason = None
+        if self.path.exists():
+            self._load()
+
     def activate_halt(self, reason: str) -> None:
         super().activate_halt(reason)
         self._save()

@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable
 
 from cex_tbot.decision_contracts import TradeProposal
-from cex_tbot.transport_bridge import TransportCommandBridge, TransportMessage
+from cex_tbot.transport_bridge import SenderPolicy, TransportCommandBridge, TransportMessage
 
 
 @dataclass(frozen=True)
@@ -22,20 +22,23 @@ class TelegramTransportRunner:
         policy: TelegramRunnerPolicy | None = None,
         proposal_parser: Callable[[str], TradeProposal] | None = None,
         proposal_submitter: Callable[[TradeProposal, str, str | None], str] | None = None,
+        json_sender_policy: SenderPolicy | None = None,
+        state_sync: Callable[[], None] | None = None,
     ) -> None:
         self.bridge = bridge
         self.bot_token = bot_token.strip()
         self.policy = policy or TelegramRunnerPolicy()
         self.proposal_parser = proposal_parser
         self.proposal_submitter = proposal_submitter
+        self.json_sender_policy = json_sender_policy or getattr(self.bridge, "sender_policy", SenderPolicy())
+        self.state_sync = state_sync
 
     def _is_authorized_sender(self, sender_id: str) -> bool:
-        sender_policy = getattr(self.bridge, "sender_policy", None)
-        if sender_policy is None:
-            return True
-        return bool(sender_policy.is_allowed(sender_id))
+        return bool(self.json_sender_policy.is_allowed(sender_id))
 
     async def handle_update(self, update: Any, _context: Any) -> None:
+        if self.state_sync is not None:
+            self.state_sync()
         message = getattr(update, "effective_message", None)
         chat = getattr(update, "effective_chat", None)
         user = getattr(update, "effective_user", None)

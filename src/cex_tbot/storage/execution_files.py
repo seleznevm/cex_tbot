@@ -17,6 +17,11 @@ class FileExecutionJournal(InMemoryExecutionJournal):
         if self.path.exists():
             self._load()
 
+    def refresh_from_disk(self) -> None:
+        self._events.clear()
+        if self.path.exists():
+            self._load()
+
     def append(self, event: ExecutionEvent) -> ExecutionEvent:
         saved = super().append(event)
         with self.path.open("a", encoding="utf-8") as fh:
@@ -52,6 +57,11 @@ class FileExecutionStateStore(InMemoryExecutionStateStore):
         super().__init__()
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        if self.path.exists():
+            self._load()
+
+    def refresh_from_disk(self) -> None:
+        self._snapshots.clear()
         if self.path.exists():
             self._load()
 

@@ -10,7 +10,10 @@ try:
 except ModuleNotFoundError:  # optional REST dependency
     TestClient = None
 
+from cex_tbot import build_app
+from cex_tbot.api_surface import CommandRequest, ProposalSubmitRequest
 from cex_tbot.rest_api import RestApiDependencyError, create_rest_app
+from cex_tbot.rest_api import ProposalPayloadMapper
 
 
 @unittest.skipIf(TestClient is None, "fastapi test dependencies are not installed")
@@ -104,6 +107,24 @@ class RestHttpIntegrationTests(unittest.TestCase):
         detail = self.client.get("/proposals/proposal_http_1", headers=self.headers)
         self.assertEqual(detail.status_code, 200)
         self.assertEqual(detail.json()["proposal_id"], "proposal_http_1")
+
+    def test_rest_refreshes_shared_file_runtime_between_requests(self) -> None:
+        external_app = build_app(storage_dir=self.tempdir.name)
+        proposal = ProposalPayloadMapper.from_dict(self.proposal_payload)
+        external_app.api.submit_proposal(ProposalSubmitRequest(proposal))
+        external_app.api.command(
+            CommandRequest(
+                actor="Mike",
+                command="APPROVE proposal_http_1",
+                portfolio_equity=1000.0,
+                execute_on_approve=False,
+                now=self.now,
+            )
+        )
+
+        detail = self.client.get("/proposals/proposal_http_1", headers=self.headers)
+        self.assertEqual(detail.status_code, 200)
+        self.assertEqual(detail.json()["status"], "APPROVED_PENDING_EXECUTION_CHECK")
 
     def test_topic_no_trade_endpoint_persists_and_returns_same_topic_payload(self) -> None:
         response = self.client.post(
