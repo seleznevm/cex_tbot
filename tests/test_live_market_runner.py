@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import os
+from dataclasses import replace
+from datetime import timedelta
 from pathlib import Path
 import subprocess
 import sys
@@ -12,6 +14,7 @@ from cex_tbot.backend_service import TradingBackendService
 from cex_tbot.config import BotConfig
 from cex_tbot.live_market_runner import LiveMarketPipelineRunner
 from cex_tbot.session_store import TradeSessionStore
+from cex_tbot.shared import utc_now
 
 
 class StubRefreshPipeline:
@@ -125,6 +128,82 @@ class LiveMarketPipelineRunnerTests(unittest.TestCase):
             self.assertEqual(payload["decision_kind"], "no_trade")
             self.assertEqual(payload["reason_code"], "CONFIDENCE_BELOW_THRESHOLD")
 
+    def test_run_once_suppresses_duplicate_active_proposal_within_cooldown(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            market_dir = Path(tmp) / "market"
+            session = TradeSessionStore()
+            backend = TradingBackendService.from_session(session)
+            pipeline = StubRefreshPipeline(market_dir, change_pct=8.0)
+            runner = LiveMarketPipelineRunner(
+                backend,
+                config=BotConfig(min_confidence_score=0.70),
+                market_dir=market_dir,
+                chat_id="chat-1",
+                thread_id="topic-7",
+                pipeline=pipeline,
+                emission_cooldown_sec=300,
+            )
+
+            first = runner.run_once()
+            second = runner.run_once()
+
+            self.assertTrue(first.emitted)
+            self.assertFalse(second.emitted)
+            self.assertEqual(second.suppress_reason, "proposal_cooldown_active")
+            self.assertEqual(len(session.proposals._proposals), 1)
+            self.assertIn("Live market emission suppressed", second.outbound.text)
+
+    def test_run_once_suppresses_duplicate_no_trade_within_cooldown(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            market_dir = Path(tmp) / "market"
+            session = TradeSessionStore()
+            backend = TradingBackendService.from_session(session)
+            pipeline = StubRefreshPipeline(market_dir, change_pct=1.0)
+            runner = LiveMarketPipelineRunner(
+                backend,
+                config=BotConfig(min_confidence_score=0.80),
+                market_dir=market_dir,
+                chat_id="chat-1",
+                thread_id="topic-7",
+                pipeline=pipeline,
+                emission_cooldown_sec=300,
+            )
+
+            first = runner.run_once()
+            second = runner.run_once()
+
+            self.assertTrue(first.emitted)
+            self.assertFalse(second.emitted)
+            self.assertEqual(second.suppress_reason, "no_trade_cooldown_active")
+            self.assertEqual(len(session.no_trades.list()), 1)
+            self.assertIn("Live market emission suppressed", second.outbound.text)
+
+    def test_run_once_allows_repeat_after_cooldown_window(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            market_dir = Path(tmp) / "market"
+            session = TradeSessionStore()
+            backend = TradingBackendService.from_session(session)
+            pipeline = StubRefreshPipeline(market_dir, change_pct=8.0)
+            runner = LiveMarketPipelineRunner(
+                backend,
+                config=BotConfig(min_confidence_score=0.70),
+                market_dir=market_dir,
+                chat_id="chat-1",
+                thread_id="topic-7",
+                pipeline=pipeline,
+                emission_cooldown_sec=300,
+            )
+
+            first = runner.run_once()
+            existing = next(iter(session.proposals._proposals.values()))
+            session.proposals._proposals[existing.proposal_id] = replace(existing, created_at=utc_now() - timedelta(minutes=10))
+
+            second = runner.run_once()
+
+            self.assertTrue(first.emitted)
+            self.assertTrue(second.emitted)
+            self.assertEqual(len(session.proposals._proposals), 2)
+
     def test_cli_loop_mode_runs_internal_periodic_runner(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             storage_dir = Path(tmp) / "session"
@@ -158,6 +237,7 @@ class LiveMarketPipelineRunnerTests(unittest.TestCase):
             self.assertEqual(payload["runs_completed"], 2)
             self.assertEqual(payload["interval_sec"], 1)
             self.assertIn(payload["last_payload"]["decision_kind"], {"proposal", "no_trade"})
+            self.assertIn("emitted", payload["last_payload"])
 
 
 if __name__ == "__main__":

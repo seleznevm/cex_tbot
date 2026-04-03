@@ -194,6 +194,8 @@ def build_parser() -> argparse.ArgumentParser:
     live_market_run_parser.add_argument("--loop", action="store_true", help="Keep running the internal live-market loop instead of a single pass")
     live_market_run_parser.add_argument("--interval-sec", type=int, default=300, help="Periodic live-market loop interval in seconds")
     live_market_run_parser.add_argument("--runs", type=int, help="Optional max runs when used with --loop")
+    live_market_run_parser.add_argument("--continue-on-error", action="store_true", help="Keep the loop alive when a run_once call raises or returns a structured failure")
+    live_market_run_parser.add_argument("--stop-after-consecutive-failures", type=int, help="Optional failure threshold for tolerant loop mode")
     live_market_run_parser.add_argument("--format", choices=("text", "json"), default="text", help="Output format")
 
     autosync_parser = subparsers.add_parser("autosync-demo", help="Continuously sync Gate demo order states for all tracked proposals")
@@ -466,6 +468,46 @@ def _diff_post_analysis_snapshots(current: dict[str, object], previous: dict[str
     }
 
 
+def _render_live_market_summary_text(payload: dict[str, object]) -> str:
+    last = payload.get("last_payload") or {}
+    lines = [
+        "Live market pipeline run",
+        (
+            f"periodic={payload['periodic']} runs_completed={payload['runs_completed']} interval_sec={payload['interval_sec']} "
+            f"success_runs={payload.get('success_runs', 0)} failed_runs={payload.get('failed_runs', 0)} "
+            f"consecutive_failures={payload.get('consecutive_failures', 0)} max_consecutive_failures={payload.get('max_consecutive_failures', 0)}"
+        ),
+    ]
+    if payload.get("stopped_on_failure_threshold"):
+        lines.append("stopped_on_failure_threshold=true")
+    if payload.get("last_error"):
+        last_error = payload["last_error"]
+        lines.append(
+            "last_error="
+            f"{last_error.get('error_type')}"
+            f": {last_error.get('error_message')}"
+        )
+    if last:
+        lines.append(f"decision={last.get('decision_kind')}")
+        lines.append(f"selected_symbol={last.get('selected_symbol')}")
+        lines.append(f"chat_id={last.get('chat_id')} thread_id={last.get('thread_id')}")
+        refresh = last.get("refresh") or {}
+        lines.append(
+            f"refresh_status={refresh.get('status')} selected_symbols={refresh.get('selected_symbols')}"
+        )
+        if last.get("error"):
+            error = last["error"]
+            lines.append(
+                "failure="
+                f"stage={error.get('stage')} "
+                f"type={error.get('error_type')} "
+                f"message={error.get('error_message')}"
+            )
+        elif last.get("text"):
+            lines.extend(["--- outbound ---", str(last.get("text", ""))])
+    return "\n".join(lines)
+
+
 def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
@@ -567,29 +609,18 @@ def main() -> int:
             thread_id=args.thread_id,
             pipeline=BinanceMarketDataPipeline(output_dir=args.market_dir, universe_limit=args.universe_limit),
         )
-        periodic = PeriodicRunner(runner, interval_sec=args.interval_sec)
+        periodic = PeriodicRunner(
+            runner,
+            interval_sec=args.interval_sec,
+            continue_on_error=args.continue_on_error,
+            stop_after_consecutive_failures=args.stop_after_consecutive_failures,
+        )
         summary = periodic.run_periodic(runs=args.runs) if args.loop else periodic.run_single()
         payload = summary.to_payload()
         if fmt == "json":
             print(_print_payload(payload, fmt))
         else:
-            last = payload.get("last_payload") or {}
-            lines = [
-                "Live market pipeline run",
-                f"periodic={payload['periodic']} runs_completed={payload['runs_completed']} interval_sec={payload['interval_sec']}",
-            ]
-            if last:
-                lines.extend(
-                    [
-                        f"decision={last.get('decision_kind')}",
-                        f"selected_symbol={last.get('selected_symbol')}",
-                        f"chat_id={last.get('chat_id')} thread_id={last.get('thread_id')}",
-                        f"refresh_status={last.get('refresh', {}).get('status')} selected_symbols={last.get('refresh', {}).get('selected_symbols')}",
-                        "--- outbound ---",
-                        str(last.get("text", "")),
-                    ]
-                )
-            print("\n".join(lines))
+            print(_render_live_market_summary_text(payload))
         return 0
 
     if command == "autosync-demo":

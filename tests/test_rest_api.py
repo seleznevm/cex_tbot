@@ -5,6 +5,11 @@ import builtins
 import unittest
 from unittest.mock import patch
 
+try:
+    import fastapi  # noqa: F401
+except ModuleNotFoundError:  # optional REST dependency
+    fastapi = None
+
 from cex_tbot.decision_contracts import NoTradeDecision, TradeProposal
 from cex_tbot.enums import NoTradeReasonCode, TradeDirection
 from cex_tbot.rest_api import NoTradePayloadMapper, ProposalPayloadMapper, RestApiDependencyError, RestAuth, RestErrorFactory, create_rest_app
@@ -130,6 +135,7 @@ class ProposalPayloadMapperTests(unittest.TestCase):
             {"error": {"code": "X", "message": "boom", "details": {}}},
         )
 
+    @unittest.skipIf(fastapi is None, "fastapi/pydantic REST dependencies are not installed")
     def test_create_rest_app_raises_when_fastapi_missing(self) -> None:
         real_import = builtins.__import__
 

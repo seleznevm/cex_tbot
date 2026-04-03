@@ -8,7 +8,10 @@ import sys
 import tempfile
 import unittest
 
-from fastapi.testclient import TestClient
+try:
+    from fastapi.testclient import TestClient
+except ModuleNotFoundError:  # optional REST dependency
+    TestClient = None
 
 from cex_tbot.rest_api import create_rest_app
 
@@ -25,6 +28,7 @@ class Z12CliRestTests(unittest.TestCase):
             self.assertIn("total_trades", payload)
             self.assertIn("calibration_hints", payload)
 
+    @unittest.skipIf(TestClient is None, "fastapi test dependencies are not installed")
     def test_post_analysis_rest_endpoint_exists(self) -> None:
         bundle = create_rest_app()
         client = TestClient(bundle.app)

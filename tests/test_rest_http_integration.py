@@ -5,9 +5,15 @@ import os
 import tempfile
 import unittest
 
-from fastapi.testclient import TestClient
+try:
+    from fastapi.testclient import TestClient
+except ModuleNotFoundError:  # optional REST dependency
+    TestClient = None
 
-from cex_tbot.rest_api import create_rest_app
+from cex_tbot.rest_api import RestApiDependencyError, create_rest_app
+
+
+@unittest.skipIf(TestClient is None, "fastapi test dependencies are not installed")
 
 
 class RestHttpIntegrationTests(unittest.TestCase):

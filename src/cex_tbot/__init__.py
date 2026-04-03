@@ -40,13 +40,38 @@ from .serializers import ApiSerializer
 from .review_cards import ReviewCard, ReviewCardBuilder
 from .risk_engine import PendingRiskBook, PortfolioState, RiskEngine, RiskEvaluation
 from .safety_controls import SafetyController, SafetyEvaluationResult
-from .rest_api import ProposalPayloadMapper, RestApiDependencyError, RestAppBundle, create_rest_app
 from .session_store import TradeSessionStore
 from .session_summary import SessionSummary, SessionSummaryBuilder
 from .system_state import SystemState
 from .no_trade_store import InMemoryNoTradeStore
 from .storage import FileExecutionJournal, FileExecutionStateStore, FileNoTradeStore, FileOperatorTranscript, FileProposalStore, FileSystemState, FileTradeSessionStore
 from .workflow import TradeWorkflowService, WorkflowResult
+
+try:
+    from .rest_api import ProposalPayloadMapper, RestApiDependencyError, RestAppBundle, create_rest_app
+except ModuleNotFoundError as exc:
+    _rest_import_error = exc
+
+    class RestApiDependencyError(RuntimeError):
+        """Raised when optional REST dependencies are unavailable."""
+
+    class _MissingRestDependency:
+        def __init__(self, name: str) -> None:
+            self._name = name
+
+        def __call__(self, *args, **kwargs):
+            raise RestApiDependencyError(
+                f"{self._name} requires optional REST dependencies ({_rest_import_error.name})."
+            ) from _rest_import_error
+
+    def _missing_rest_dependency(*args, **kwargs):
+        raise RestApiDependencyError(
+            f"REST features require optional REST dependencies ({_rest_import_error.name})."
+        ) from _rest_import_error
+
+    ProposalPayloadMapper = _MissingRestDependency("ProposalPayloadMapper")
+    RestAppBundle = object
+    create_rest_app = _missing_rest_dependency
 
 __all__ = [
     "ApiSurface",
