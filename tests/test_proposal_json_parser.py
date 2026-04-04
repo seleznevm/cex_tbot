@@ -63,6 +63,13 @@ class JsonTradeProposalParserTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "missing fields"):
             parser.parse_text(json.dumps(payload))
 
+    def test_parser_accepts_quoted_json_payload(self) -> None:
+        parser = JsonTradeProposalParser(force_pending_approval=True)
+
+        proposal = parser.parse_text(json.dumps(json.dumps(self._payload())))
+
+        self.assertEqual(proposal.proposal_id, "proposal_parser_1")
+
 
 if __name__ == "__main__":
     unittest.main()

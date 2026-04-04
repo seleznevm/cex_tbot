@@ -499,6 +499,8 @@ Proposal UX in Telegram:
 
 - after raw JSON is accepted in the topic, the bot posts a readable approval card in the same topic
 - the card includes the main trade fields plus `/trade_approve`, `/trade_reject`, `/modify`, and `/trade_report`
+- the Telegram runner accepts raw JSON objects, quoted JSON strings, and fenced code-block JSON payloads
+- manual operator commands may be entered either with the slash form or as `trade_approve proposal <proposal_id>`
 
 Smoke-run flow:
 

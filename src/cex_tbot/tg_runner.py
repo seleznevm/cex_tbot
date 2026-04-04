@@ -36,6 +36,19 @@ class TelegramTransportRunner:
     def _is_authorized_sender(self, sender_id: str) -> bool:
         return bool(self.json_sender_policy.is_allowed(sender_id))
 
+    @staticmethod
+    def _extract_json_candidate(text: str) -> str | None:
+        stripped = text.strip()
+        if not stripped:
+            return None
+        if stripped.startswith("```"):
+            lines = stripped.splitlines()
+            if len(lines) >= 3 and lines[-1].strip() == "```":
+                stripped = "\n".join(lines[1:-1]).strip()
+        if stripped.startswith("{") or stripped.startswith('"'):
+            return stripped
+        return None
+
     async def handle_update(self, update: Any, _context: Any) -> None:
         if self.state_sync is not None:
             self.state_sync()
@@ -56,12 +69,13 @@ class TelegramTransportRunner:
         if not text:
             return
         sender_id = str(getattr(user, "id", ""))
-        if text.startswith("{") and self.proposal_parser is not None and self.proposal_submitter is not None:
+        json_candidate = self._extract_json_candidate(text)
+        if json_candidate is not None and self.proposal_parser is not None and self.proposal_submitter is not None:
             if not self._is_authorized_sender(sender_id):
                 await message.reply_text("Unauthorized operator sender.")
                 return
             try:
-                proposal = self.proposal_parser(text)
+                proposal = self.proposal_parser(json_candidate)
             except ValueError as exc:
                 await message.reply_text(f"Invalid proposal JSON: {exc}")
                 return

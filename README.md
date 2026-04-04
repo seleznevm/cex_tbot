@@ -489,6 +489,8 @@ Telegram proposal reply behavior:
 
 - after a JSON proposal is accepted, the bot replies in the same topic with a human-readable approval card
 - that card now includes symbol, direction, timeframe, proposal id, entry zone, stop loss, targets, risk, confidence, thesis, and ready-to-use action commands
+- the Telegram runner accepts raw JSON objects, quoted JSON strings, and fenced code-block JSON payloads
+- operator commands may be sent as `/trade_approve <proposal_id>` or `trade_approve proposal <proposal_id>` when typing manually in chat
 
 ## Runnable live-market pipeline entrypoint
 

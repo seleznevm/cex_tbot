@@ -16,6 +16,54 @@ class ParsedBotCommand:
 
 
 class BotCommandDispatcher:
+    KNOWN_COMMANDS = frozenset(
+        {
+            "help",
+            "status",
+            "trade_status",
+            "dashboard",
+            "post_analysis",
+            "demo_status",
+            "demo_write_status",
+            "demo_audit",
+            "safety",
+            "gate_demo_status",
+            "demo_health",
+            "demo_account_status",
+            "demo_balance",
+            "demo_positions",
+            "demo_open_orders",
+            "demo_order_status",
+            "demo_sync",
+            "demo_place_test_order",
+            "demo_cancel_order",
+            "demo_smoke",
+            "demo_account_overview",
+            "demo_capabilities",
+            "runtime_status",
+            "session_paths",
+            "refresh_universe",
+            "list",
+            "pending",
+            "trade_pending",
+            "expired",
+            "detail",
+            "trade_report",
+            "trade_approve",
+            "trade_approve_only",
+            "trade_reject",
+            "trade_modify",
+            "modify",
+            "trade_execute",
+            "halt",
+            "unhalt",
+            "clear_safety",
+            "no_trades",
+            "seed_demo",
+            "seed_no_trade",
+        }
+    )
+
     def __init__(self, adapter: BotCommandAdapter) -> None:
         self.adapter = adapter
 
@@ -92,33 +140,40 @@ class BotCommandDispatcher:
             limit = self._parse_limit(parsed.args) if parsed.args else 10
             return self.adapter.handle_expired(limit=limit)
         if parsed.name == "detail":
-            if not parsed.args:
+            args = self._normalize_proposal_args(parsed.args)
+            if not args:
                 return BotReply("Usage: /detail <proposal_id>")
-            return self.adapter.handle_detail(parsed.args[0])
+            return self.adapter.handle_detail(args[0])
         if parsed.name == "trade_report":
-            if not parsed.args:
+            args = self._normalize_proposal_args(parsed.args)
+            if not args:
                 return BotReply("Usage: /trade_report <proposal_id>")
-            return self.adapter.handle_report(parsed.args[0])
+            return self.adapter.handle_report(args[0])
         if parsed.name == "trade_approve":
-            if not parsed.args:
+            args = self._normalize_proposal_args(parsed.args)
+            if not args:
                 return BotReply("Usage: /trade_approve <proposal_id>")
-            return self.adapter.handle_approve(parsed.args[0], execute_on_approve=True)
+            return self.adapter.handle_approve(args[0], execute_on_approve=True)
         if parsed.name == "trade_approve_only":
-            if not parsed.args:
+            args = self._normalize_proposal_args(parsed.args)
+            if not args:
                 return BotReply("Usage: /trade_approve_only <proposal_id>")
-            return self.adapter.handle_approve(parsed.args[0], execute_on_approve=False)
+            return self.adapter.handle_approve(args[0], execute_on_approve=False)
         if parsed.name == "trade_reject":
-            if not parsed.args:
+            args = self._normalize_proposal_args(parsed.args)
+            if not args:
                 return BotReply("Usage: /trade_reject <proposal_id>")
-            return self.adapter.handle_reject(parsed.args[0])
+            return self.adapter.handle_reject(args[0])
         if parsed.name in {"trade_modify", "modify"}:
-            if len(parsed.args) < 2:
+            args = self._normalize_proposal_args(parsed.args)
+            if len(args) < 2:
                 return BotReply("Usage: /modify <proposal_id> key=value[, key=value]")
-            return self.adapter.handle_modify(parsed.args[0], " ".join(parsed.args[1:]))
+            return self.adapter.handle_modify(args[0], " ".join(args[1:]))
         if parsed.name == "trade_execute":
-            if not parsed.args:
+            args = self._normalize_proposal_args(parsed.args)
+            if not args:
                 return BotReply("Usage: /trade_execute <proposal_id>")
-            return self.adapter.handle_execute(parsed.args[0])
+            return self.adapter.handle_execute(args[0])
         if parsed.name == "halt":
             if not parsed.args:
                 return BotReply("Usage: /halt <reason>")
@@ -138,9 +193,14 @@ class BotCommandDispatcher:
     @staticmethod
     def parse(text: str) -> ParsedBotCommand | None:
         stripped = text.strip()
-        if not stripped.startswith("/"):
+        if not stripped:
             return None
-        parts = stripped[1:].split()
+        if stripped.startswith("/"):
+            parts = stripped[1:].split()
+        else:
+            parts = stripped.split()
+            if not parts or parts[0].lower() not in BotCommandDispatcher.KNOWN_COMMANDS:
+                return None
         if not parts:
             return None
         return ParsedBotCommand(name=parts[0].lower(), args=parts[1:])
@@ -153,6 +213,12 @@ class BotCommandDispatcher:
             return max(1, int(args[0]))
         except ValueError:
             return 5
+
+    @staticmethod
+    def _normalize_proposal_args(args: list[str]) -> list[str]:
+        if args and args[0].lower() == "proposal":
+            return args[1:]
+        return args
 
     @staticmethod
     def _build_demo_no_trade() -> NoTradeDecision:

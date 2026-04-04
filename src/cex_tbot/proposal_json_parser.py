@@ -19,6 +19,12 @@ class JsonTradeProposalParser:
             payload = json.loads(payload_text)
         except json.JSONDecodeError as exc:
             raise ValueError(f"invalid json at char {exc.pos}: {exc.msg}") from exc
+        if isinstance(payload, str):
+            inner = payload.strip()
+            try:
+                payload = json.loads(inner)
+            except json.JSONDecodeError as exc:
+                raise ValueError(f"payload string does not contain valid json object: char {exc.pos}: {exc.msg}") from exc
         if not isinstance(payload, dict):
             raise ValueError("payload root must be an object")
         return self.parse_payload(payload)
