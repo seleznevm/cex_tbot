@@ -130,6 +130,24 @@ class BotAdapterTests(unittest.TestCase):
         self.assertIn("inactive", BotCommandAdapter(service, config=BotConfig()).handle_gate_demo_status().text)
         self.assertIn("cleared", adapter.handle_unhalt().text)
 
+    def test_missing_proposal_returns_diagnostic_reply_instead_of_keyerror(self) -> None:
+        service = TradingBackendService.from_session(TradeSessionStore())
+        adapter = BotCommandAdapter(service)
+
+        approve = adapter.handle_approve("proposal_missing_1")
+        execute = adapter.handle_execute("proposal_missing_1")
+        detail = adapter.handle_detail("proposal_missing_1")
+        report = adapter.handle_report("proposal_missing_1")
+        modify = adapter.handle_modify("proposal_missing_1", "stop_loss=98.5")
+        sync = adapter.handle_demo_sync("proposal_missing_1")
+
+        for reply in (approve, execute, detail, report, modify):
+            self.assertIn("Proposal not found: proposal_missing_1", reply.text)
+            self.assertIn("runtime_store=missing proposal_id", reply.text)
+
+        self.assertIn("Gate demo sync", sync.text)
+        self.assertIn("demo_orders=none", sync.text)
+
 
 if __name__ == "__main__":
     unittest.main()

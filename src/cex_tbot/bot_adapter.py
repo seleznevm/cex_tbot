@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 from datetime import datetime
+from typing import Callable, TypeVar
 
 from cex_tbot.audit import AuditEntry
 from cex_tbot.backend_service import TradingBackendService
@@ -13,6 +14,8 @@ from cex_tbot.query_params import TradeQuery
 from cex_tbot.enums import ProposalStatus
 from cex_tbot.risk_engine import PortfolioState
 from cex_tbot.shared import utc_now
+
+T = TypeVar("T")
 
 
 @dataclass(frozen=True)
@@ -27,6 +30,27 @@ class BotCommandAdapter:
         self.config = config or BotConfig()
         self.app = app
         self.write_arm_state = write_arm_state
+
+    @staticmethod
+    def _missing_proposal_reply(proposal_id: str) -> BotReply:
+        return BotReply(
+            "\n".join(
+                [
+                    f"Proposal not found: {proposal_id}",
+                    "- runtime_store=missing proposal_id",
+                    "- likely_cause=proposal was rendered or forwarded without being persisted into the active session storage",
+                    "- next_step=submit/store the proposal into this runtime before approve/execute/report actions",
+                ]
+            )
+        )
+
+    def _guard_missing_proposal(self, proposal_id: str, action: Callable[[], T]) -> T | BotReply:
+        try:
+            return action()
+        except KeyError as exc:
+            if f"unknown proposal_id={proposal_id}" not in str(exc):
+                raise
+            return self._missing_proposal_reply(proposal_id)
 
     def handle_help(self) -> BotReply:
         return BotReply(
@@ -350,17 +374,21 @@ class BotCommandAdapter:
         return BotReply("\n\n".join(chunks))
 
     def handle_demo_sync(self, proposal_id: str) -> BotReply:
-        records = self.backend.sync_demo_orders(proposal_id)
-        if not records:
-            return BotReply(f"Gate demo sync\n- proposal_id={proposal_id}\n- demo_orders=none")
-        lines = ["Gate demo sync", f"- proposal_id={proposal_id}"]
-        for item in records:
-            lines.append(f"- {item.role}: id={item.order_id} status={item.status} size={item.size} trigger={item.trigger_price}")
-        policy = self.backend.get_demo_policy_assessment_payload(proposal_id)
-        lines.append(f"- policy_mode={policy['mode']}")
-        for alert in policy["alerts"]:
-            lines.append(f"- alert: {alert}")
-        return BotReply("\n".join(lines))
+        def _run() -> BotReply:
+            records = self.backend.sync_demo_orders(proposal_id)
+            if not records:
+                return BotReply(f"Gate demo sync\n- proposal_id={proposal_id}\n- demo_orders=none")
+            lines = ["Gate demo sync", f"- proposal_id={proposal_id}"]
+            for item in records:
+                lines.append(f"- {item.role}: id={item.order_id} status={item.status} size={item.size} trigger={item.trigger_price}")
+            policy = self.backend.get_demo_policy_assessment_payload(proposal_id)
+            lines.append(f"- policy_mode={policy['mode']}")
+            for alert in policy["alerts"]:
+                lines.append(f"- alert: {alert}")
+            return BotReply("\n".join(lines))
+
+        result = self._guard_missing_proposal(proposal_id, _run)
+        return result if isinstance(result, BotReply) else result
 
     def handle_demo_account_overview(self) -> BotReply:
         account = self.handle_demo_account_status().text
@@ -480,72 +508,96 @@ class BotCommandAdapter:
         return BotReply("\n".join(lines))
 
     def handle_detail(self, proposal_id: str) -> BotReply:
-        detail = self.backend.get_trade_detail_payload(proposal_id)
-        lines = [
-            f"Trade detail - {detail['proposal_id']}",
-            f"Status: {detail['status']}",
-            f"Symbol: {detail['symbol']} {detail['direction']} {detail['timeframe']}",
-            f"Confidence: {detail['confidence_score']:.2f}",
-            f"Entry zone: {detail['entry_zone_min']} -> {detail['entry_zone_max']}",
-            f"Stop: {detail['stop_loss']} | TP1: {detail['take_profit_1']} | TP2: {detail['take_profit_2']}",
-            f"Thesis: {detail['thesis']}",
-        ]
-        return BotReply("\n".join(lines))
+        def _run() -> BotReply:
+            detail = self.backend.get_trade_detail_payload(proposal_id)
+            lines = [
+                f"Trade detail - {detail['proposal_id']}",
+                f"Status: {detail['status']}",
+                f"Symbol: {detail['symbol']} {detail['direction']} {detail['timeframe']}",
+                f"Confidence: {detail['confidence_score']:.2f}",
+                f"Entry zone: {detail['entry_zone_min']} -> {detail['entry_zone_max']}",
+                f"Stop: {detail['stop_loss']} | TP1: {detail['take_profit_1']} | TP2: {detail['take_profit_2']}",
+                f"Thesis: {detail['thesis']}",
+            ]
+            return BotReply("\n".join(lines))
+
+        result = self._guard_missing_proposal(proposal_id, _run)
+        return result if isinstance(result, BotReply) else result
 
     def handle_report(self, proposal_id: str) -> BotReply:
-        report = self.backend.get_trade_report_text(proposal_id, render_mode="telegram")
-        return BotReply(f"Report for {proposal_id}\n\n{report}", parse_mode="Markdown")
+        def _run() -> BotReply:
+            report = self.backend.get_trade_report_text(proposal_id, render_mode="telegram")
+            return BotReply(f"Report for {proposal_id}\n\n{report}", parse_mode="Markdown")
+
+        result = self._guard_missing_proposal(proposal_id, _run)
+        return result if isinstance(result, BotReply) else result
 
     def handle_approve(self, proposal_id: str, *, actor: str = "Mike", portfolio_equity: float = 10_000.0, execute_on_approve: bool = True) -> BotReply:
-        response = self.backend.run_operator_command_payload(
-            actor,
-            f"APPROVE {proposal_id}",
-            portfolio=self._portfolio(portfolio_equity),
-            execute_on_approve=execute_on_approve,
-            render_mode="telegram",
-        )
-        return BotReply(f"Approval processed for {proposal_id}\n\n{response['text']}", parse_mode="Markdown")
+        def _run() -> BotReply:
+            response = self.backend.run_operator_command_payload(
+                actor,
+                f"APPROVE {proposal_id}",
+                portfolio=self._portfolio(portfolio_equity),
+                execute_on_approve=execute_on_approve,
+                render_mode="telegram",
+            )
+            return BotReply(f"Approval processed for {proposal_id}\n\n{response['text']}", parse_mode="Markdown")
+
+        result = self._guard_missing_proposal(proposal_id, _run)
+        return result if isinstance(result, BotReply) else result
 
     def handle_reject(self, proposal_id: str, *, actor: str = "Mike", portfolio_equity: float = 10_000.0) -> BotReply:
-        response = self.backend.run_operator_command_payload(
-            actor,
-            f"REJECT {proposal_id}",
-            portfolio=self._portfolio(portfolio_equity),
-            execute_on_approve=False,
-            render_mode="telegram",
-        )
-        return BotReply(f"Reject processed for {proposal_id}\n\n{response['text']}", parse_mode="Markdown")
+        def _run() -> BotReply:
+            response = self.backend.run_operator_command_payload(
+                actor,
+                f"REJECT {proposal_id}",
+                portfolio=self._portfolio(portfolio_equity),
+                execute_on_approve=False,
+                render_mode="telegram",
+            )
+            return BotReply(f"Reject processed for {proposal_id}\n\n{response['text']}", parse_mode="Markdown")
+
+        result = self._guard_missing_proposal(proposal_id, _run)
+        return result if isinstance(result, BotReply) else result
 
     def handle_modify(self, proposal_id: str, changes_text: str, *, actor: str = "Mike") -> BotReply:
-        proposal = self.backend.approval_flow.store.require(proposal_id)
-        updates = self._parse_modify_changes(changes_text)
-        replacement = replace(
-            proposal,
-            stop_loss=updates.get("stop_loss", proposal.stop_loss),
-            take_profit_1=updates.get("take_profit_1", proposal.take_profit_1),
-            take_profit_2=updates.get("take_profit_2", proposal.take_profit_2),
-            thesis=updates.get("thesis", proposal.thesis),
-            status=ProposalStatus.PENDING_APPROVAL,
-            proposal_id=f"{proposal.proposal_id}_v{proposal.proposal_version + 1}",
-        )
-        response = self.backend.run_operator_command_payload(
-            actor,
-            f"MODIFY {proposal_id}: {changes_text}",
-            portfolio=self._portfolio(10_000.0),
-            execute_on_approve=False,
-            render_mode="telegram",
-            replacement=replacement,
-        )
-        return BotReply(f"Modify processed for {proposal_id}\n\n{response['text']}", parse_mode="Markdown")
+        def _run() -> BotReply:
+            proposal = self.backend.approval_flow.store.require(proposal_id)
+            updates = self._parse_modify_changes(changes_text)
+            replacement = replace(
+                proposal,
+                stop_loss=updates.get("stop_loss", proposal.stop_loss),
+                take_profit_1=updates.get("take_profit_1", proposal.take_profit_1),
+                take_profit_2=updates.get("take_profit_2", proposal.take_profit_2),
+                thesis=updates.get("thesis", proposal.thesis),
+                status=ProposalStatus.PENDING_APPROVAL,
+                proposal_id=f"{proposal.proposal_id}_v{proposal.proposal_version + 1}",
+            )
+            response = self.backend.run_operator_command_payload(
+                actor,
+                f"MODIFY {proposal_id}: {changes_text}",
+                portfolio=self._portfolio(10_000.0),
+                execute_on_approve=False,
+                render_mode="telegram",
+                replacement=replacement,
+            )
+            return BotReply(f"Modify processed for {proposal_id}\n\n{response['text']}", parse_mode="Markdown")
+
+        result = self._guard_missing_proposal(proposal_id, _run)
+        return result if isinstance(result, BotReply) else result
 
     def handle_execute(self, proposal_id: str, *, actor: str = "Mike", portfolio_equity: float = 10_000.0) -> BotReply:
-        response = self.backend.execute_approved_proposal_payload(
-            proposal_id,
-            self._portfolio(portfolio_equity),
-            actor=actor,
-            render_mode="telegram",
-        )
-        return BotReply(response["text"], parse_mode="Markdown")
+        def _run() -> BotReply:
+            response = self.backend.execute_approved_proposal_payload(
+                proposal_id,
+                self._portfolio(portfolio_equity),
+                actor=actor,
+                render_mode="telegram",
+            )
+            return BotReply(response["text"], parse_mode="Markdown")
+
+        result = self._guard_missing_proposal(proposal_id, _run)
+        return result if isinstance(result, BotReply) else result
 
     def handle_halt(self, reason: str) -> BotReply:
         self.backend.activate_emergency_halt(reason)
