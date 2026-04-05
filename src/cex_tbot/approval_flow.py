@@ -94,11 +94,12 @@ class ApprovalFlow:
 
     def apply_command(self, actor: str, raw_text: str) -> ApprovalApplyResult:
         decision = self.record_decision(actor, raw_text)
-        self.store.append_decision(decision)
         if not decision.is_strict_match or decision.proposal_id == "UNKNOWN":
+            self.store.append_decision(decision)
             return ApprovalApplyResult(decision, None, decision.proposal_id)
 
         proposal = self.store.require(decision.proposal_id)
+        self.store.append_decision(decision)
         next_status = self.next_status(proposal.status, decision)
         updated = self.store.update_status(proposal.proposal_id, next_status)
         return ApprovalApplyResult(decision, updated.status, updated.proposal_id)
@@ -112,10 +113,11 @@ class ApprovalFlow:
         risk_evaluation: RiskEvaluation | None = None,
     ) -> ApprovalApplyResult:
         decision = self.record_decision(actor, raw_text)
-        self.store.append_decision(decision)
         if not decision.is_strict_match or decision.action != ApprovalAction.MODIFY.value:
+            self.store.append_decision(decision)
             return ApprovalApplyResult(decision, None, decision.proposal_id)
         previous = self.store.require(decision.proposal_id)
+        self.store.append_decision(decision)
         replacement = replace(replacement, proposal_version=previous.proposal_version + 1)
         self.store.supersede_and_add(previous.proposal_id, replacement)
         review_card = self.review_cards.build(replacement, risk_evaluation)
