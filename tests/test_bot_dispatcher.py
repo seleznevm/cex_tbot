@@ -75,6 +75,13 @@ class BotDispatcherTests(unittest.TestCase):
         self.assertIn("Usage: /detail", dispatcher.dispatch("/detail").text)
         self.assertIn("Unknown command", dispatcher.dispatch("hello there").text)
 
+    def test_dispatcher_accepts_telegram_command_suffix(self) -> None:
+        service = TradingBackendService.from_session(TradeSessionStore())
+        dispatcher = BotCommandDispatcher(BotCommandAdapter(service))
+
+        self.assertIn("Usage: /trade_report", dispatcher.dispatch("/trade_report@cex_sma_tbot").text)
+        self.assertIn("Session Summary", dispatcher.dispatch("/status@cex_sma_tbot").text)
+
 
 if __name__ == "__main__":
     unittest.main()

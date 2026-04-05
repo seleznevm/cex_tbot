@@ -197,6 +197,8 @@ class BotCommandDispatcher:
             return None
         if stripped.startswith("/"):
             parts = stripped[1:].split()
+            if parts:
+                parts[0] = parts[0].split("@", 1)[0]
         else:
             parts = stripped.split()
             if not parts or parts[0].lower() not in BotCommandDispatcher.KNOWN_COMMANDS:
